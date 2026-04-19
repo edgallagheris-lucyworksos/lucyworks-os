@@ -14,6 +14,7 @@ from lucyworks.rooms import room_state_summary
 from lucyworks.labs import fast_turnaround_tests
 from lucyworks.imaging import imaging_status_summary
 from lucyworks.insurance import insurers_requiring_pre_auth
+from lucyworks.messaging import build_message, load_messages, append_message, message_status_summary, case_messages
 
 
 def main():
@@ -45,6 +46,9 @@ def main():
     severity_out = assess_severity(triage_out, ethics_out, rota_out)
     discharge_out = build_discharge(case, triage_out, rota_out)
 
+    msg = build_message(case.case_id, "owner_update", "owner", "Case update", "Patient is stable.")
+    append_message(msg)
+
     assert triage_out.priority in {"Routine", "Urgent", "Emergency"}
     assert severity_out.severity in {"MINOR", "MODERATE", "CRITICAL"}
     assert isinstance(discharge_out.internal_text, str)
@@ -57,6 +61,9 @@ def main():
     assert fast_turnaround_tests() is not None
     assert imaging_status_summary() is not None
     assert insurers_requiring_pre_auth() is not None
+    assert load_messages() is not None
+    assert not message_status_summary().empty
+    assert len(case_messages(case.case_id)) >= 1
     print("smoke test passed")
 
 
