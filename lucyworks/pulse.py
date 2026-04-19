@@ -1,21 +1,30 @@
 from lucyworks.rota_store import load_assignments, load_staff, get_master_rota, get_staff_schedule
+from lucyworks.messaging import load_messages, message_status_summary
+from lucyworks.rooms import load_rooms, room_state_summary
+from lucyworks.imaging import imaging_status_summary
+from lucyworks.insurance import insurers_requiring_pre_auth
 
 
 def pulse_dashboard(st):
     st.subheader("LucyPulse Dashboard")
 
     assignments = load_assignments()
+    messages = load_messages()
     total_cases = len(assignments)
     high_risk = len(assignments[assignments["rota_risk"] == "HIGH"]) if not assignments.empty else 0
     escalations = len(assignments[assignments["safeguarding_path"] == "ESCALATE"]) if not assignments.empty else 0
+    total_messages = len(messages)
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     c1.metric("Cases", total_cases)
     c2.metric("HIGH rota risk", high_risk)
     c3.metric("Safeguarding escalations", escalations)
+    c4.metric("Messages", total_messages)
 
     st.markdown("### Assignments")
     st.dataframe(assignments, use_container_width=True)
+    st.markdown("### Message status")
+    st.dataframe(message_status_summary(), use_container_width=True)
 
 
 def rota_dashboard(st):
@@ -39,7 +48,30 @@ def rota_dashboard(st):
         if not assignments.empty:
             st.markdown("### Assigned Cases")
             case_view = assignments[
-                (assignments["assigned_vet_id"] == person_row["staff_id"]) |
-                (assignments["assigned_nurse_id"] == person_row["staff_id"])
+                (assignments["assigned_vet_id"] == person_row["staff_id"])
+                | (assignments["assigned_nurse_id"] == person_row["staff_id"])
             ]
             st.dataframe(case_view, use_container_width=True)
+
+
+def ops_dashboard(st):
+    st.subheader("Hospital Operational Dashboard")
+
+    assignments = load_assignments()
+    rooms = load_rooms()
+    messages = load_messages()
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Open cases", len(assignments))
+    c2.metric("Rooms tracked", len(rooms))
+    c3.metric("Messages tracked", len(messages))
+    c4.metric("Pre-auth insurers", len(insurers_requiring_pre_auth()))
+
+    st.markdown("### Room state summary")
+    st.dataframe(room_state_summary(), use_container_width=True)
+
+    st.markdown("### Imaging resource summary")
+    st.dataframe(imaging_status_summary(), use_container_width=True)
+
+    st.markdown("### Message queue")
+    st.dataframe(messages, use_container_width=True)
