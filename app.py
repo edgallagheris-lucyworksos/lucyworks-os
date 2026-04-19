@@ -13,7 +13,7 @@ from lucyworks.severity import assess_severity
 from lucyworks.audit import audit_event
 from lucyworks.trace import trace_event
 from lucyworks.policies import show_policies
-from lucyworks.pulse import pulse_dashboard, rota_dashboard
+from lucyworks.pulse import pulse_dashboard, rota_dashboard, ops_dashboard
 from lucyworks.dashboard_map import dashboard_map_table
 from lucyworks.room_state import default_room_state_table
 from lucyworks.staff import default_staff_type_table
@@ -22,7 +22,7 @@ from lucyworks.alerts import default_alert_table
 from lucyworks.teams import team_table
 from lucyworks.rooms import room_type_table, load_rooms, room_state_summary
 from lucyworks.procedures import procedure_library_table, procedure_duration_summary, get_procedure
-from lucyworks.drugs import drug_database_table, controlled_drug_table, get_drug
+from lucyworks.drugs import drug_database_table, controlled_drug_table
 from lucyworks.pharmacy import pharmacy_model_table, pharmacy_stock_view
 from lucyworks.labs import lab_model_table, lab_test_library_table, fast_turnaround_tests
 from lucyworks.imaging import imaging_model_table, imaging_resource_table, imaging_status_summary
@@ -32,7 +32,7 @@ from lucyworks.handover_flow import handover_schema_table
 from lucyworks.results_flow import result_schema_table
 from lucyworks.admissions_flow import admission_schema_table
 from lucyworks.discharge_flow import discharge_blocker_table
-from lucyworks.messaging import message_template_table
+from lucyworks.messaging import message_template_table, build_message, append_message, load_messages, case_messages, message_status_summary
 from lucyworks.speech import speech_target_table
 from lucyworks.governance import governance_object_table
 from lucyworks.medication import medication_object_table
@@ -45,6 +45,8 @@ page = st.sidebar.radio(
     "Page",
     [
         "Intake Prototype",
+        "Ops Dashboard",
+        "Message Center",
         "Master Rota",
         "Pulse Dashboard",
         "Full Model Map",
@@ -175,9 +177,15 @@ if page == "Intake Prototype":
                     "safeguarding_path": ethics_out.safeguarding_path,
                 }
             )
+            ack_msg = build_message(case.case_id, "referral_ack", "referrer", "Referral acknowledged", "Case " + case.case_id + " has been logged and triaged.")
+            owner_msg = build_message(case.case_id, "owner_update", "owner", "Case update", "Patient " + case.patient_name + " is in workflow with priority " + triage_out.priority + ".")
+            append_message(ack_msg)
+            append_message(owner_msg)
             audit_event({"event": "CASE_RUN", "case_id": case.case_id, "mode": mode})
             trace_event({"event": "CASE_RUN", "case_id": case.case_id, "mode": mode})
             st.success("Workflow completed")
+            st.markdown("### Draft messages created")
+            st.dataframe(case_messages(case.case_id), use_container_width=True)
 
         export_text = export_case_bundle(case, triage_out, ethics_out, rota_out, severity_out, discharge_out)
         st.download_button(
@@ -187,6 +195,14 @@ if page == "Intake Prototype":
             mime="application/json",
         )
 
+elif page == "Ops Dashboard":
+    ops_dashboard(st)
+elif page == "Message Center":
+    st.subheader("Message Center")
+    messages = load_messages()
+    st.dataframe(messages, use_container_width=True)
+    st.markdown("### Message status")
+    st.dataframe(message_status_summary(), use_container_width=True)
 elif page == "Master Rota":
     rota_dashboard(st)
 elif page == "Pulse Dashboard":
