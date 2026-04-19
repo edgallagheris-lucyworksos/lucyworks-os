@@ -7,6 +7,7 @@ from lucyworks.admissions_flow import load_admissions
 from lucyworks.handover_flow import load_handovers
 from lucyworks.results_flow import load_results
 from lucyworks.discharge_flow import load_discharge_blockers
+from lucyworks.case_state import latest_case_states, case_state_summary
 
 
 def pulse_dashboard(st):
@@ -18,6 +19,7 @@ def pulse_dashboard(st):
     handovers = load_handovers()
     results = load_results()
     blockers = load_discharge_blockers()
+    states = latest_case_states()
 
     total_cases = len(assignments)
     high_risk = len(assignments[assignments["rota_risk"] == "HIGH"]) if not assignments.empty else 0
@@ -34,6 +36,10 @@ def pulse_dashboard(st):
     c5.metric("Handovers", total_handovers)
     c6.metric("Blockers", total_blockers)
 
+    st.markdown("### Case state summary")
+    st.dataframe(case_state_summary(), use_container_width=True)
+    st.markdown("### Latest case states")
+    st.dataframe(states, use_container_width=True)
     st.markdown("### Assignments")
     st.dataframe(assignments, use_container_width=True)
     st.markdown("### Admissions")
@@ -81,6 +87,7 @@ def ops_dashboard(st):
     handovers = load_handovers()
     results = load_results()
     blockers = load_discharge_blockers()
+    states = latest_case_states()
 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("Open cases", len(assignments))
@@ -90,17 +97,17 @@ def ops_dashboard(st):
     c5.metric("Admissions", len(admissions))
     c6.metric("Handovers", len(handovers))
 
+    st.markdown("### Case lifecycle")
+    st.dataframe(case_state_summary(), use_container_width=True)
     st.markdown("### Room state summary")
     st.dataframe(room_state_summary(), use_container_width=True)
-
     st.markdown("### Imaging resource summary")
     st.dataframe(imaging_status_summary(), use_container_width=True)
-
+    st.markdown("### Latest case states")
+    st.dataframe(states, use_container_width=True)
     st.markdown("### Message queue")
     st.dataframe(messages, use_container_width=True)
-
     st.markdown("### Results queue")
     st.dataframe(results, use_container_width=True)
-
     st.markdown("### Discharge blockers")
     st.dataframe(blockers, use_container_width=True)
