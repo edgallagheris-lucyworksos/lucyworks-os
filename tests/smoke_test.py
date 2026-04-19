@@ -8,6 +8,12 @@ from lucyworks.ethics import run_ethics
 from lucyworks.severity import assess_severity
 from lucyworks.discharge import build_discharge
 from lucyworks.rota import rota_assign
+from lucyworks.procedures import get_procedure, procedure_duration_summary
+from lucyworks.drugs import get_drug, controlled_drug_table
+from lucyworks.rooms import room_state_summary
+from lucyworks.labs import fast_turnaround_tests
+from lucyworks.imaging import imaging_status_summary
+from lucyworks.insurance import insurers_requiring_pre_auth
 
 
 def main():
@@ -43,6 +49,14 @@ def main():
     assert severity_out.severity in {"MINOR", "MODERATE", "CRITICAL"}
     assert isinstance(discharge_out.internal_text, str)
     assert isinstance(rota_out, RotaOutput)
+    assert get_procedure("TPLO") is not None
+    assert get_drug("METHADONE") is not None
+    assert not procedure_duration_summary().empty
+    assert not controlled_drug_table().empty
+    assert room_state_summary() is not None
+    assert fast_turnaround_tests() is not None
+    assert imaging_status_summary() is not None
+    assert insurers_requiring_pre_auth() is not None
     print("smoke test passed")
 
 
