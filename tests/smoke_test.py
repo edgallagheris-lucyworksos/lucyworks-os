@@ -15,6 +15,10 @@ from lucyworks.labs import fast_turnaround_tests
 from lucyworks.imaging import imaging_status_summary
 from lucyworks.insurance import insurers_requiring_pre_auth
 from lucyworks.messaging import build_message, load_messages, append_message, message_status_summary, case_messages
+from lucyworks.admissions_flow import append_admission, load_admissions
+from lucyworks.handover_flow import append_handover, load_handovers
+from lucyworks.results_flow import append_result, load_results
+from lucyworks.discharge_flow import append_discharge_blocker, load_discharge_blockers
 
 
 def main():
@@ -48,6 +52,10 @@ def main():
 
     msg = build_message(case.case_id, "owner_update", "owner", "Case update", "Patient is stable.")
     append_message(msg)
+    append_admission(case.case_id, "ward")
+    append_handover(case.case_id, "intake", "wards", "Initial handover")
+    append_result(case.case_id, "lab", "Tom")
+    append_discharge_blocker(case.case_id, "notes_incomplete")
 
     assert triage_out.priority in {"Routine", "Urgent", "Emergency"}
     assert severity_out.severity in {"MINOR", "MODERATE", "CRITICAL"}
@@ -64,6 +72,10 @@ def main():
     assert load_messages() is not None
     assert not message_status_summary().empty
     assert len(case_messages(case.case_id)) >= 1
+    assert len(load_admissions()) >= 1
+    assert len(load_handovers()) >= 1
+    assert len(load_results()) >= 1
+    assert len(load_discharge_blockers()) >= 1
     print("smoke test passed")
 
 
