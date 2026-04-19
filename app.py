@@ -24,14 +24,14 @@ from lucyworks.rooms import room_type_table, load_rooms, room_state_summary
 from lucyworks.procedures import procedure_library_table, procedure_duration_summary, get_procedure
 from lucyworks.drugs import drug_database_table, controlled_drug_table
 from lucyworks.pharmacy import pharmacy_model_table, pharmacy_stock_view
-from lucyworks.labs import lab_model_table, lab_test_library_table, fast_turnaround_tests
+from lucyworks.labs import lab_model_table, lab_test_library_table, fast_turnaround_tests, load_lab_test_library
 from lucyworks.imaging import imaging_model_table, imaging_resource_table, imaging_status_summary
 from lucyworks.insurance import insurance_model_table, insurer_reference_table, insurers_requiring_pre_auth
 from lucyworks.occupancy import occupancy_schema_table
-from lucyworks.handover_flow import handover_schema_table
-from lucyworks.results_flow import result_schema_table
-from lucyworks.admissions_flow import admission_schema_table
-from lucyworks.discharge_flow import discharge_blocker_table
+from lucyworks.handover_flow import handover_schema_table, append_handover, load_handovers
+from lucyworks.results_flow import result_schema_table, append_result, load_results
+from lucyworks.admissions_flow import admission_schema_table, append_admission, load_admissions
+from lucyworks.discharge_flow import discharge_blocker_table, append_discharge_blocker, load_discharge_blockers
 from lucyworks.messaging import message_template_table, build_message, append_message, load_messages, case_messages, message_status_summary
 from lucyworks.speech import speech_target_table
 from lucyworks.governance import governance_object_table
@@ -47,6 +47,7 @@ page = st.sidebar.radio(
         "Intake Prototype",
         "Ops Dashboard",
         "Message Center",
+        "Flow Center",
         "Master Rota",
         "Pulse Dashboard",
         "Full Model Map",
@@ -177,6 +178,11 @@ if page == "Intake Prototype":
                     "safeguarding_path": ethics_out.safeguarding_path,
                 }
             )
+            append_admission(case.case_id, "ward")
+            append_handover(case.case_id, "intake", "wards", "Initial handover after triage")
+            review_owner = reviewer_name.strip() or rota_out.assigned_vet or "unassigned"
+            append_result(case.case_id, "lab", review_owner)
+            append_discharge_blocker(case.case_id, "owner_not_contacted")
             ack_msg = build_message(case.case_id, "referral_ack", "referrer", "Referral acknowledged", "Case " + case.case_id + " has been logged and triaged.")
             owner_msg = build_message(case.case_id, "owner_update", "owner", "Case update", "Patient " + case.patient_name + " is in workflow with priority " + triage_out.priority + ".")
             append_message(ack_msg)
@@ -203,6 +209,16 @@ elif page == "Message Center":
     st.dataframe(messages, use_container_width=True)
     st.markdown("### Message status")
     st.dataframe(message_status_summary(), use_container_width=True)
+elif page == "Flow Center":
+    st.subheader("Flow Center")
+    st.markdown("### Admissions")
+    st.dataframe(load_admissions(), use_container_width=True)
+    st.markdown("### Handovers")
+    st.dataframe(load_handovers(), use_container_width=True)
+    st.markdown("### Results")
+    st.dataframe(load_results(), use_container_width=True)
+    st.markdown("### Discharge blockers")
+    st.dataframe(load_discharge_blockers(), use_container_width=True)
 elif page == "Master Rota":
     rota_dashboard(st)
 elif page == "Pulse Dashboard":
