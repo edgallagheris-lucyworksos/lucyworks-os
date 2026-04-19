@@ -13,4 +13,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt
-      - run: python -m py_compile app.py
+      - run: python -m compileall app.py lucyworks tests
+      - run: python tests/smoke_test.py
