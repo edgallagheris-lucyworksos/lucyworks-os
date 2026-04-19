@@ -1,0 +1,5 @@
+resource_id,name,modality,room,status
+IMG001,MRI Scanner 1,MRI,MRI Suite,ready
+IMG002,CT Scanner 1,CT,CT Suite,ready
+IMG003,X-Ray Room 1,X_RAY,X-Ray Room,ready
+IMG004,Ultrasound 1,ULTRASOUND,Ultrasound Room,in_use
