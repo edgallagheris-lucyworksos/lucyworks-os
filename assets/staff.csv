@@ -1,0 +1,8 @@
+staff_id,name,role,skills,max_cases_per_day,current_load,active
+N001,Lucy,Nurse,"Referral,Surgery,Neuro,Ortho,Dental,Rabbit,Theatre",30,0,true
+V001,Tom,Vet,"Surgery,Ortho,TPLO,Dental,SoftTissue",16,0,true
+V002,Aisha,Vet,"Surgery,Neuro,SoftTissue",14,0,true
+N002,Ben,Nurse,"Surgery,Dental,Theatre",22,0,true
+N003,Jo,Nurse,"Rabbit,Exotics,Theatre",18,0,true
+R001,Amy,Reception,"Reception,Arrivals,Owners",50,0,true
+C001,Mia,Coordinator,"Referral,Bookings,FollowUp",40,0,true
