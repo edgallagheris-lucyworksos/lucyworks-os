@@ -1,0 +1,5 @@
+code,name,category,expected_minutes,prep_minutes,recovery_minutes,cleaning_minutes
+TPLO,TPLO,orthopaedics,120,30,60,20
+DENTAL,Dental,dental,60,20,30,15
+CASTRATION,Castration,soft_tissue,45,20,30,15
+NEURO_SPINE,Neuro Spine,neuro,180,40,60,30

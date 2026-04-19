@@ -1,0 +1,5 @@
+test_code,name,panel,turnaround_minutes
+CBC,Complete Blood Count,haematology,30
+BIOCHEM,Biochemistry Panel,biochemistry,45
+UA,Urinalysis,urine,20
+CORTISOL,Cortisol,endocrine,60

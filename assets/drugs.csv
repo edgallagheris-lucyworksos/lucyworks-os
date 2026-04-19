@@ -1,0 +1,5 @@
+drug_code,name,category,form,controlled
+MELOXICAM,Meloxicam,NSAID,oral,false
+METHADONE,Methadone,opioid,injectable,true
+PROPOFOL,Propofol,anaesthetic,injectable,false
+ALFAXALONE,Alfaxalone,anaesthetic,injectable,false
