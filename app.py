@@ -20,13 +20,13 @@ from lucyworks.staff import default_staff_type_table
 from lucyworks.intake import intake_status_table
 from lucyworks.alerts import default_alert_table
 from lucyworks.teams import team_table
-from lucyworks.rooms import room_type_table
-from lucyworks.procedures import procedure_library_table
-from lucyworks.drugs import drug_database_table
-from lucyworks.pharmacy import pharmacy_model_table
-from lucyworks.labs import lab_model_table
-from lucyworks.imaging import imaging_model_table
-from lucyworks.insurance import insurance_model_table
+from lucyworks.rooms import room_type_table, load_rooms, room_state_summary
+from lucyworks.procedures import procedure_library_table, procedure_duration_summary, get_procedure
+from lucyworks.drugs import drug_database_table, controlled_drug_table, get_drug
+from lucyworks.pharmacy import pharmacy_model_table, pharmacy_stock_view
+from lucyworks.labs import lab_model_table, lab_test_library_table, fast_turnaround_tests
+from lucyworks.imaging import imaging_model_table, imaging_resource_table, imaging_status_summary
+from lucyworks.insurance import insurance_model_table, insurer_reference_table, insurers_requiring_pre_auth
 from lucyworks.occupancy import occupancy_schema_table
 from lucyworks.handover_flow import handover_schema_table
 from lucyworks.results_flow import result_schema_table
@@ -106,6 +106,10 @@ if page == "Intake Prototype":
     )
     owner_notes = st.text_area("Owner notes", value="Owner distressed but cooperative.")
     referring_vet = st.text_input("Referring vet", value="Dr Smith")
+
+    proc_meta = get_procedure(procedure_type)
+    if proc_meta is not None:
+        st.caption("Procedure cycle minutes: " + str(proc_meta.get("expected_minutes", 0) + proc_meta.get("prep_minutes", 0) + proc_meta.get("recovery_minutes", 0) + proc_meta.get("cleaning_minutes", 0)))
 
     if st.button("Run workflow"):
         case = CaseInput(
@@ -192,20 +196,35 @@ elif page == "Full Model Map":
     st.markdown("### Teams and staff")
     st.dataframe(team_table(), use_container_width=True)
     st.dataframe(default_staff_type_table(), use_container_width=True)
+
     st.markdown("### Intake, rooms, and occupancy")
     st.dataframe(intake_status_table(), use_container_width=True)
     st.dataframe(room_type_table(), use_container_width=True)
+    st.dataframe(load_rooms(), use_container_width=True)
+    st.dataframe(room_state_summary(), use_container_width=True)
     st.dataframe(default_room_state_table(), use_container_width=True)
     st.dataframe(occupancy_schema_table(), use_container_width=True)
+
     st.markdown("### Procedures and medication")
     st.dataframe(procedure_library_table(), use_container_width=True)
+    st.dataframe(procedure_duration_summary(), use_container_width=True)
     st.dataframe(drug_database_table(), use_container_width=True)
+    st.dataframe(controlled_drug_table(), use_container_width=True)
     st.dataframe(pharmacy_model_table(), use_container_width=True)
+    st.dataframe(pharmacy_stock_view(), use_container_width=True)
     st.dataframe(medication_object_table(), use_container_width=True)
+
     st.markdown("### Labs, imaging, insurance")
     st.dataframe(lab_model_table(), use_container_width=True)
+    st.dataframe(lab_test_library_table(), use_container_width=True)
+    st.dataframe(fast_turnaround_tests(), use_container_width=True)
     st.dataframe(imaging_model_table(), use_container_width=True)
+    st.dataframe(imaging_resource_table(), use_container_width=True)
+    st.dataframe(imaging_status_summary(), use_container_width=True)
     st.dataframe(insurance_model_table(), use_container_width=True)
+    st.dataframe(insurer_reference_table(), use_container_width=True)
+    st.dataframe(insurers_requiring_pre_auth(), use_container_width=True)
+
     st.markdown("### Flows and governance")
     st.dataframe(admission_schema_table(), use_container_width=True)
     st.dataframe(handover_schema_table(), use_container_width=True)
