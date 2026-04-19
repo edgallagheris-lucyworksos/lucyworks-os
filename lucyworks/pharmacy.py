@@ -1,4 +1,5 @@
 import pandas as pd
+from lucyworks.drugs import load_drug_database
 
 PHARMACY_OBJECTS = [
     {"object": "drug_item", "purpose": "drug master item"},
@@ -14,3 +15,11 @@ PHARMACY_OBJECTS = [
 
 def pharmacy_model_table():
     return pd.DataFrame(PHARMACY_OBJECTS)
+
+
+def pharmacy_stock_view():
+    df = load_drug_database().copy()
+    if df.empty:
+        return df
+    df["dispense_ready"] = True
+    return df
