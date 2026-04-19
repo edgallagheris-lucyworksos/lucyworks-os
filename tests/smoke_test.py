@@ -1,0 +1,50 @@
+from datetime import datetime
+
+import pandas as pd
+
+from lucyworks.models import CaseInput, RotaOutput
+from lucyworks.triage import run_triage
+from lucyworks.ethics import run_ethics
+from lucyworks.severity import assess_severity
+from lucyworks.discharge import build_discharge
+from lucyworks.rota import rota_assign
+
+
+def main():
+    case = CaseInput(
+        case_id="SMOKE-001",
+        created_at=datetime.utcnow().isoformat() + "Z",
+        mode="TRAINING",
+        clinic="Test Clinic",
+        species="Dog",
+        procedure_type="TPLO",
+        urgency_symptoms=["Severe pain"],
+        owner_notes="Owner cooperative.",
+        referring_vet="Dr Test",
+        patient_name="Milo",
+        weight_kg=18.0,
+    )
+
+    triage_out = run_triage(case)
+    ethics_out = run_ethics(case, triage_out)
+
+    staff = pd.DataFrame(
+        [
+            {"staff_id": "V001", "name": "Tom", "role": "Vet", "skills": "Surgery,Ortho,TPLO", "max_cases_per_day": 10, "current_load": 1},
+            {"staff_id": "N001", "name": "Lucy", "role": "Nurse", "skills": "Theatre,Surgery", "max_cases_per_day": 20, "current_load": 2},
+        ]
+    )
+
+    rota_out = rota_assign(staff, case, triage_out)
+    severity_out = assess_severity(triage_out, ethics_out, rota_out)
+    discharge_out = build_discharge(case, triage_out, rota_out)
+
+    assert triage_out.priority in {"Routine", "Urgent", "Emergency"}
+    assert severity_out.severity in {"MINOR", "MODERATE", "CRITICAL"}
+    assert isinstance(discharge_out.internal_text, str)
+    assert isinstance(rota_out, RotaOutput)
+    print("smoke test passed")
+
+
+if __name__ == "__main__":
+    main()
