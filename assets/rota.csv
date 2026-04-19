@@ -1,0 +1,8 @@
+date,shift,staff_id,role,team,notes
+2026-03-01,AM,V001,Vet,Theatre,
+2026-03-01,AM,N001,Nurse,Theatre,
+2026-03-01,AM,N002,Nurse,Theatre,
+2026-03-01,AM,R001,Reception,FrontDesk,
+2026-03-01,AM,C001,Coordinator,Referral,
+2026-03-01,PM,V002,Vet,Procedures,
+2026-03-01,PM,N003,Nurse,Procedures,
