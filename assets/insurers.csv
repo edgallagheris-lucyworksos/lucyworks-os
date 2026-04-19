@@ -1,0 +1,5 @@
+insurer_code,name,pre_auth_required,notes
+AGRIA,Agria,true,Referral cases often need pre-auth
+PETPLAN,Petplan,true,Check policy excess and exclusions
+MANYPETS,ManyPets,false,Confirm live policy before discharge
+DIRECTLINE,Direct Line,true,Owner shortfall may apply
