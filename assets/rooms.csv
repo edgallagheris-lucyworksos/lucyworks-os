@@ -1,0 +1,6 @@
+room_id,room_name,room_type,department,state
+RM001,Consult 1,consult,Front Of House,ready
+RM002,Theatre 1,theatre,Surgery,ready
+RM003,Recovery 1,recovery,Surgery,cleaning
+RM004,ICU Bay 1,icu_bay,ICU,occupied
+RM005,MRI Suite,imaging_suite,Imaging,reserved
