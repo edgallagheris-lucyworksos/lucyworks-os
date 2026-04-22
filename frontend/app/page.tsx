@@ -15,6 +15,12 @@ export default function HomePage() {
           <Link href="/input" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>
             Open input
           </Link>
+          <Link href="/queues" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>
+            Open queues
+          </Link>
+          <Link href="/audit" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>
+            Open audit
+          </Link>
         </div>
       </div>
     </main>
