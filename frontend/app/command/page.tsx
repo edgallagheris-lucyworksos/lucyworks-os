@@ -53,6 +53,7 @@ export default async function CommandPage() {
           <p style={{ color: "#94a3b8" }}>Whole-hospital visibility, section pressure, and live priority work.</p>
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Link href="/ward">Ward / ICU</Link>
           <Link href="/input">New input</Link>
           <Link href="/queues">Queues</Link>
           <Link href="/audit">Audit</Link>
