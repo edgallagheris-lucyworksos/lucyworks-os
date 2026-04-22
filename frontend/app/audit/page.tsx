@@ -1,4 +1,9 @@
-import { apiGet } from "@/lib/api";
+"use client";
+
+import { useEffect, useState } from "react";
+import { AuthGuard } from "@/components/auth-guard";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 type AuditEvent = {
   id: number;
@@ -10,8 +15,16 @@ type AuditEvent = {
   created_at: string;
 };
 
-export default async function AuditPage() {
-  const events = await apiGet<AuditEvent[]>("/api/audit");
+function AuditInner() {
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch(`${API_BASE}/api/audit`, { cache: "no-store" });
+      setEvents(await res.json());
+    }
+    load();
+  }, []);
 
   return (
     <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
@@ -32,4 +45,8 @@ export default async function AuditPage() {
       </div>
     </main>
   );
+}
+
+export default function AuditPage() {
+  return <AuthGuard allowedRoles={["ops_manager", "clinician", "admin"]}>{() => <AuditInner />}</AuthGuard>;
 }
