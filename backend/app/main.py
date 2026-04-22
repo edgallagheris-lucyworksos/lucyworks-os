@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, engine, get_session
-from app.models import AuditEvent, User, WorkItem
+from app.models import AuditEvent, HospitalSection, Room, User, WorkItem
 from app.schemas import LoginDemoRequest, WorkItemAssign, WorkItemCreate, WorkItemStatusUpdate
 from app.seed import seed_data
 
@@ -38,6 +38,19 @@ def health() -> dict:
 @app.get("/api/users")
 def list_users(session: Session = Depends(get_session)):
     return session.exec(select(User)).all()
+
+
+@app.get("/api/sections")
+def list_sections(session: Session = Depends(get_session)):
+    return session.exec(select(HospitalSection).order_by(HospitalSection.name)).all()
+
+
+@app.get("/api/rooms")
+def list_rooms(section_name: str | None = None, session: Session = Depends(get_session)):
+    rooms = session.exec(select(Room).order_by(Room.section_name, Room.name)).all()
+    if section_name:
+        rooms = [room for room in rooms if room.section_name == section_name]
+    return rooms
 
 
 @app.post("/api/auth/login-demo")
@@ -135,4 +148,6 @@ def pulse(session: Session = Depends(get_session)):
         "new_items": len([i for i in items if i.status == "new"]),
         "in_progress_items": len([i for i in items if i.status == "in_progress"]),
         "unowned_items": len([i for i in items if i.owner_user_id is None]),
+        "wards_items": len([i for i in items if i.section_name == "Wards"]),
+        "theatres_items": len([i for i in items if i.section_name == "Theatres"]),
     }
