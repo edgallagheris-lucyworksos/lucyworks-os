@@ -17,6 +17,9 @@ type WorkItem = {
   owner_role: string;
   owner_user_id?: number | null;
   status: string;
+  section_name?: string | null;
+  room_name?: string | null;
+  patient_location_label?: string | null;
   linked_patient_name?: string | null;
   linked_episode_ref?: string | null;
 };
@@ -85,6 +88,9 @@ export default function QueuesPage() {
                     <span>{item.urgency.toUpperCase()} / {item.status}</span>
                   </div>
                   <div style={{ color: "#94a3b8", marginTop: 6 }}>
+                    {item.section_name ? `section: ${item.section_name} • ` : ""}
+                    {item.room_name ? `room: ${item.room_name} • ` : ""}
+                    {item.patient_location_label ? `location: ${item.patient_location_label} • ` : ""}
                     {item.linked_patient_name ? `patient: ${item.linked_patient_name} • ` : ""}
                     {item.linked_episode_ref ? `episode: ${item.linked_episode_ref}` : ""}
                   </div>
