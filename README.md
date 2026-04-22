@@ -44,11 +44,50 @@ It should not be reduced to page-by-page CRUD scaffolding.
 
 ## Technical direction
 
-- **Frontend:** Next.js + TypeScript + Tailwind
+- **Frontend:** Next.js + TypeScript
 - **Backend:** FastAPI
 - **Database:** PostgreSQL as target, SQLite only as local fallback
 - **Ports:** frontend `3000`, backend `8000`
 - **Dev flow:** GitHub Codespaces and phone-accessible forwarded ports
+
+## Current coded build
+
+The repo now includes a first usable platform spine:
+- backend database and models
+- seeded users and seeded work items
+- unified input -> work item creation
+- command view with pulse counters from backend
+- role queues with assign and status actions
+- audit view
+- demo login endpoint
+
+## Run locally
+
+### Backend
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+cp .env.local.example .env.local
+npm run dev -- --hostname 0.0.0.0 --port 3000
+```
+
+## Open
+- frontend: `http://localhost:3000`
+- backend health: `http://localhost:8000/api/health`
+- command view: `http://localhost:3000/command`
+- unified input: `http://localhost:3000/input`
+- queues: `http://localhost:3000/queues`
+- audit: `http://localhost:3000/audit`
 
 ## Build rule
 
