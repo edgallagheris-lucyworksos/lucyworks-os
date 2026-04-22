@@ -7,6 +7,8 @@ type Pulse = {
   new_items: number;
   in_progress_items: number;
   unowned_items: number;
+  wards_items: number;
+  theatres_items: number;
 };
 
 type WorkItem = {
@@ -15,8 +17,11 @@ type WorkItem = {
   urgency: string;
   owner_role: string;
   status: string;
-  linked_patient_name?: string;
-  linked_episode_ref?: string;
+  section_name?: string | null;
+  room_name?: string | null;
+  patient_location_label?: string | null;
+  linked_patient_name?: string | null;
+  linked_episode_ref?: string | null;
 };
 
 export default async function CommandPage() {
@@ -32,6 +37,7 @@ export default async function CommandPage() {
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <Link href="/input">New input</Link>
+          <Link href="/queues">Queues</Link>
           <Link href="/audit">Audit</Link>
         </div>
       </div>
@@ -55,7 +61,12 @@ export default async function CommandPage() {
                 <span>{item.urgency.toUpperCase()} / {item.status}</span>
               </div>
               <div style={{ color: "#94a3b8", marginTop: 6 }}>
-                owner role: {item.owner_role} {item.linked_patient_name ? `• patient: ${item.linked_patient_name}` : ""} {item.linked_episode_ref ? `• episode: ${item.linked_episode_ref}` : ""}
+                owner role: {item.owner_role}
+                {item.section_name ? ` • section: ${item.section_name}` : ""}
+                {item.room_name ? ` • room: ${item.room_name}` : ""}
+                {item.patient_location_label ? ` • location: ${item.patient_location_label}` : ""}
+                {item.linked_patient_name ? ` • patient: ${item.linked_patient_name}` : ""}
+                {item.linked_episode_ref ? ` • episode: ${item.linked_episode_ref}` : ""}
               </div>
             </div>
           ))}
