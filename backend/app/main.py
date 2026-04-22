@@ -3,7 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, engine, get_session
-from app.models import AuditEvent, HospitalSection, Room, User, WorkItem
+from app.models import (
+    Admission,
+    AuditEvent,
+    Episode,
+    Handover,
+    HospitalSection,
+    Patient,
+    ResultReview,
+    Room,
+    RoomState,
+    User,
+    WorkItem,
+)
 from app.schemas import LoginDemoRequest, WorkItemAssign, WorkItemCreate, WorkItemStatusUpdate
 from app.seed import seed_data
 
@@ -38,6 +50,36 @@ def health() -> dict:
 @app.get("/api/users")
 def list_users(session: Session = Depends(get_session)):
     return session.exec(select(User)).all()
+
+
+@app.get("/api/patients")
+def list_patients(session: Session = Depends(get_session)):
+    return session.exec(select(Patient).order_by(Patient.patient_name)).all()
+
+
+@app.get("/api/episodes")
+def list_episodes(session: Session = Depends(get_session)):
+    return session.exec(select(Episode).order_by(Episode.created_at.desc())).all()
+
+
+@app.get("/api/admissions")
+def list_admissions(session: Session = Depends(get_session)):
+    return session.exec(select(Admission).order_by(Admission.admitted_at.desc())).all()
+
+
+@app.get("/api/handovers")
+def list_handovers(session: Session = Depends(get_session)):
+    return session.exec(select(Handover).order_by(Handover.created_at.desc())).all()
+
+
+@app.get("/api/results")
+def list_results(session: Session = Depends(get_session)):
+    return session.exec(select(ResultReview).order_by(ResultReview.id.desc())).all()
+
+
+@app.get("/api/room-states")
+def list_room_states(session: Session = Depends(get_session)):
+    return session.exec(select(RoomState).order_by(RoomState.department, RoomState.room_name)).all()
 
 
 @app.get("/api/sections")
@@ -150,6 +192,7 @@ def pulse(session: Session = Depends(get_session)):
         "unowned_items": len([i for i in items if i.owner_user_id is None]),
         "wards_items": len([i for i in items if i.section_name == "Wards"]),
         "theatres_items": len([i for i in items if i.section_name == "Theatres"]),
+        "consult_items": len([i for i in items if i.section_name == "Consults"]),
     }
 
 
@@ -165,32 +208,53 @@ def director_board(session: Session = Depends(get_session)):
         {"key": "unowned_work", "label": "Unowned work", "value": count_where(lambda i: i.owner_user_id is None), "tone": "warning"},
         {"key": "theatre_risk", "label": "Theatre risk", "value": count_where(lambda i: i.section_name == "Theatres" and i.urgency in {"amber", "red"}), "tone": "critical"},
         {"key": "ward_pressure", "label": "Ward pressure", "value": count_where(lambda i: i.section_name == "Wards" and i.status != "done"), "tone": "warning"},
+        {"key": "consult_pressure", "label": "Consult pressure", "value": count_where(lambda i: i.section_name == "Consults" and i.status != "done"), "tone": "warning"},
         {"key": "imaging_reviews", "label": "Imaging reviews", "value": count_where(lambda i: i.section_name == "Imaging" and i.status != "done"), "tone": "info"},
         {"key": "discharge_blockers", "label": "Discharge blockers", "value": count_where(lambda i: i.input_type == "discharge_blocker" and i.status != "done"), "tone": "warning"},
         {"key": "new_inputs", "label": "New inputs", "value": count_where(lambda i: i.status == "new"), "tone": "neutral"},
-        {"key": "live_work", "label": "Live work", "value": count_where(lambda i: i.status != "done"), "tone": "stable"},
     ]
 
     section_names = sorted({item.section_name for item in items if item.section_name})
     section_pressure = []
     for name in section_names:
         section_items = [item for item in items if item.section_name == name]
-        section_pressure.append(
-            {
-                "section_name": name,
-                "live": len([item for item in section_items if item.status != "done"]),
-                "red": len([item for item in section_items if item.urgency == "red"]),
-                "unowned": len([item for item in section_items if item.owner_user_id is None]),
-            }
-        )
+        section_pressure.append({"section_name": name, "live": len([item for item in section_items if item.status != "done"]), "red": len([item for item in section_items if item.urgency == "red"]), "unowned": len([item for item in section_items if item.owner_user_id is None])})
 
-    priority_items = [item for item in items if item.urgency == "red" or item.status == "new"][:8]
+    priority_items = [item for item in items if item.urgency == "red" or item.status == "new"][:10]
+    return {"cards": cards, "section_pressure": section_pressure, "priority_items": priority_items}
 
-    return {
-        "cards": cards,
-        "section_pressure": section_pressure,
-        "priority_items": priority_items,
-    }
+
+@app.get("/api/consult-board")
+def consult_board(session: Session = Depends(get_session)):
+    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
+    consult_items = [item for item in items if item.section_name == "Consults"]
+    room_states = session.exec(select(RoomState).where(RoomState.department == "Consults")).all()
+
+    def count_where(fn):
+        return len([item for item in consult_items if fn(item)])
+
+    cards = [
+        {"key": "consult_live", "label": "Consult live", "value": count_where(lambda i: i.status != "done"), "tone": "warning"},
+        {"key": "notes_incomplete", "label": "Notes incomplete", "value": count_where(lambda i: i.category == "documentation" and i.status != "done"), "tone": "warning"},
+        {"key": "owner_updates", "label": "Owner updates", "value": count_where(lambda i: i.category == "owner_comms" and i.status != "done"), "tone": "info"},
+        {"key": "follow_up", "label": "Follow-up pending", "value": count_where(lambda i: i.category == "follow_up" and i.status != "done"), "tone": "critical"},
+    ]
+
+    rooms = sorted({item.room_name for item in consult_items if item.room_name})
+    room_groups = []
+    for room_name in rooms:
+        room_items = [item for item in consult_items if item.room_name == room_name]
+        room_state = next((state for state in room_states if state.room_name == room_name), None)
+        room_groups.append({
+            "room_name": room_name,
+            "state": room_state.state if room_state else "unknown",
+            "current_episode_ref": room_state.current_episode_ref if room_state else None,
+            "next_episode_ref": room_state.next_episode_ref if room_state else None,
+            "live": len([item for item in room_items if item.status != "done"]),
+            "red": len([item for item in room_items if item.urgency == "red"]),
+            "items": room_items,
+        })
+    return {"cards": cards, "room_groups": room_groups}
 
 
 @app.get("/api/ward-board")
@@ -209,25 +273,12 @@ def ward_board(session: Session = Depends(get_session)):
         {"key": "clinician_review", "label": "Clinician review", "value": count_where(lambda i: i.owner_role == "clinician" and i.status != "done"), "tone": "info"},
         {"key": "nurse_queue", "label": "Nurse queue", "value": count_where(lambda i: i.owner_role == "nurse" and i.status != "done"), "tone": "stable"},
     ]
-
     rooms = sorted({item.room_name for item in ward_items if item.room_name})
     room_groups = []
     for room_name in rooms:
         room_items = [item for item in ward_items if item.room_name == room_name]
-        room_groups.append(
-            {
-                "room_name": room_name,
-                "section_name": room_items[0].section_name if room_items else None,
-                "live": len([item for item in room_items if item.status != "done"]),
-                "red": len([item for item in room_items if item.urgency == "red"]),
-                "items": room_items,
-            }
-        )
-
-    return {
-        "cards": cards,
-        "room_groups": room_groups,
-    }
+        room_groups.append({"room_name": room_name, "section_name": room_items[0].section_name if room_items else None, "live": len([item for item in room_items if item.status != "done"]), "red": len([item for item in room_items if item.urgency == "red"]), "items": room_items})
+    return {"cards": cards, "room_groups": room_groups}
 
 
 @app.get("/api/theatre-board")
@@ -246,22 +297,9 @@ def theatre_board(session: Session = Depends(get_session)):
         {"key": "ops_risk", "label": "Ops risk", "value": count_where(lambda i: i.owner_role == "ops_manager" and i.status != "done"), "tone": "critical"},
         {"key": "nurse_actions", "label": "Nurse actions", "value": count_where(lambda i: i.owner_role == "nurse" and i.status != "done"), "tone": "stable"},
     ]
-
     rooms = sorted({item.room_name for item in theatre_items if item.room_name})
     room_groups = []
     for room_name in rooms:
         room_items = [item for item in theatre_items if item.room_name == room_name]
-        room_groups.append(
-            {
-                "room_name": room_name,
-                "section_name": room_items[0].section_name if room_items else None,
-                "live": len([item for item in room_items if item.status != "done"]),
-                "red": len([item for item in room_items if item.urgency == "red"]),
-                "items": room_items,
-            }
-        )
-
-    return {
-        "cards": cards,
-        "room_groups": room_groups,
-    }
+        room_groups.append({"room_name": room_name, "section_name": room_items[0].section_name if room_items else None, "live": len([item for item in room_items if item.status != "done"]), "red": len([item for item in room_items if item.urgency == "red"]), "items": room_items})
+    return {"cards": cards, "room_groups": room_groups}
