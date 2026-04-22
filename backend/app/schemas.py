@@ -17,6 +17,9 @@ class WorkItemCreate(BaseModel):
     urgency: str
     owner_role: str
     owner_user_id: Optional[int] = None
+    section_name: Optional[str] = None
+    room_name: Optional[str] = None
+    patient_location_label: Optional[str] = None
     linked_patient_name: Optional[str] = None
     linked_episode_ref: Optional[str] = None
     due_at: Optional[datetime] = None
