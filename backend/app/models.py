@@ -16,6 +16,21 @@ class User(SQLModel, table=True):
     active: bool = True
 
 
+class HospitalSection(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    section_type: str
+    active: bool = True
+
+
+class Room(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    section_name: str
+    name: str
+    room_type: str
+    active: bool = True
+
+
 class WorkItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
@@ -26,6 +41,9 @@ class WorkItem(SQLModel, table=True):
     urgency: str
     owner_role: str
     owner_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    section_name: Optional[str] = None
+    room_name: Optional[str] = None
+    patient_location_label: Optional[str] = None
     linked_patient_name: Optional[str] = None
     linked_episode_ref: Optional[str] = None
     status: str = "new"
