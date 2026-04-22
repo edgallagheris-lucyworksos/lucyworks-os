@@ -7,6 +7,7 @@ import { clearSession } from "@/lib/session";
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
     { href: "/command", label: "Clinical Director / Command" },
+    { href: "/consult", label: "Consult Rooms" },
     { href: "/ward", label: "Ward / ICU" },
     { href: "/theatre", label: "Theatre / Recovery" },
     { href: "/queues", label: "Queues" },
@@ -15,6 +16,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   clinician: [
     { href: "/command", label: "Clinical Director / Command" },
+    { href: "/consult", label: "Consult Rooms" },
     { href: "/ward", label: "Ward / ICU" },
     { href: "/theatre", label: "Theatre / Recovery" },
     { href: "/queues", label: "Queues" },
@@ -27,6 +29,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: "/input", label: "New input" },
   ],
   admin: [
+    { href: "/consult", label: "Consult Rooms" },
     { href: "/input", label: "New input" },
     { href: "/queues", label: "Queues" },
     { href: "/audit", label: "Audit" },
