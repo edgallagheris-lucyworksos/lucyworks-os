@@ -8,17 +8,21 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
     { href: "/command", label: "Clinical Director / Command" },
     { href: "/ward", label: "Ward / ICU" },
+    { href: "/theatre", label: "Theatre / Recovery" },
     { href: "/queues", label: "Queues" },
     { href: "/audit", label: "Audit" },
     { href: "/input", label: "New input" },
   ],
   clinician: [
+    { href: "/command", label: "Clinical Director / Command" },
     { href: "/ward", label: "Ward / ICU" },
+    { href: "/theatre", label: "Theatre / Recovery" },
     { href: "/queues", label: "Queues" },
     { href: "/audit", label: "Audit" },
   ],
   nurse: [
     { href: "/ward", label: "Ward / ICU" },
+    { href: "/theatre", label: "Theatre / Recovery" },
     { href: "/queues", label: "Queues" },
     { href: "/input", label: "New input" },
   ],
