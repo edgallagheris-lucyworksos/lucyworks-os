@@ -228,3 +228,40 @@ def ward_board(session: Session = Depends(get_session)):
         "cards": cards,
         "room_groups": room_groups,
     }
+
+
+@app.get("/api/theatre-board")
+def theatre_board(session: Session = Depends(get_session)):
+    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
+    theatre_items = [item for item in items if item.section_name in {"Theatres", "Recovery"}]
+
+    def count_where(fn):
+        return len([item for item in theatre_items if fn(item)])
+
+    cards = [
+        {"key": "theatre_red", "label": "Theatre red", "value": count_where(lambda i: i.section_name == "Theatres" and i.urgency == "red"), "tone": "critical"},
+        {"key": "recovery_live", "label": "Recovery live", "value": count_where(lambda i: i.section_name == "Recovery" and i.status != "done"), "tone": "warning"},
+        {"key": "prep_blockers", "label": "Prep blockers", "value": count_where(lambda i: i.category == "prep" and i.status != "done"), "tone": "warning"},
+        {"key": "handoff_gaps", "label": "Handoff gaps", "value": count_where(lambda i: i.category == "handoff" and i.status != "done"), "tone": "info"},
+        {"key": "ops_risk", "label": "Ops risk", "value": count_where(lambda i: i.owner_role == "ops_manager" and i.status != "done"), "tone": "critical"},
+        {"key": "nurse_actions", "label": "Nurse actions", "value": count_where(lambda i: i.owner_role == "nurse" and i.status != "done"), "tone": "stable"},
+    ]
+
+    rooms = sorted({item.room_name for item in theatre_items if item.room_name})
+    room_groups = []
+    for room_name in rooms:
+        room_items = [item for item in theatre_items if item.room_name == room_name]
+        room_groups.append(
+            {
+                "room_name": room_name,
+                "section_name": room_items[0].section_name if room_items else None,
+                "live": len([item for item in room_items if item.status != "done"]),
+                "red": len([item for item in room_items if item.urgency == "red"]),
+                "items": room_items,
+            }
+        )
+
+    return {
+        "cards": cards,
+        "room_groups": room_groups,
+    }
