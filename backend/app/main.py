@@ -151,3 +151,43 @@ def pulse(session: Session = Depends(get_session)):
         "wards_items": len([i for i in items if i.section_name == "Wards"]),
         "theatres_items": len([i for i in items if i.section_name == "Theatres"]),
     }
+
+
+@app.get("/api/director-board")
+def director_board(session: Session = Depends(get_session)):
+    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
+
+    def count_where(fn):
+        return len([item for item in items if fn(item)])
+
+    cards = [
+        {"key": "red_alerts", "label": "Red alerts", "value": count_where(lambda i: i.urgency == "red"), "tone": "critical"},
+        {"key": "unowned_work", "label": "Unowned work", "value": count_where(lambda i: i.owner_user_id is None), "tone": "warning"},
+        {"key": "theatre_risk", "label": "Theatre risk", "value": count_where(lambda i: i.section_name == "Theatres" and i.urgency in {"amber", "red"}), "tone": "critical"},
+        {"key": "ward_pressure", "label": "Ward pressure", "value": count_where(lambda i: i.section_name == "Wards" and i.status != "done"), "tone": "warning"},
+        {"key": "imaging_reviews", "label": "Imaging reviews", "value": count_where(lambda i: i.section_name == "Imaging" and i.status != "done"), "tone": "info"},
+        {"key": "discharge_blockers", "label": "Discharge blockers", "value": count_where(lambda i: i.input_type == "discharge_blocker" and i.status != "done"), "tone": "warning"},
+        {"key": "new_inputs", "label": "New inputs", "value": count_where(lambda i: i.status == "new"), "tone": "neutral"},
+        {"key": "live_work", "label": "Live work", "value": count_where(lambda i: i.status != "done"), "tone": "stable"},
+    ]
+
+    section_names = sorted({item.section_name for item in items if item.section_name})
+    section_pressure = []
+    for name in section_names:
+        section_items = [item for item in items if item.section_name == name]
+        section_pressure.append(
+            {
+                "section_name": name,
+                "live": len([item for item in section_items if item.status != "done"]),
+                "red": len([item for item in section_items if item.urgency == "red"]),
+                "unowned": len([item for item in section_items if item.owner_user_id is None]),
+            }
+        )
+
+    priority_items = [item for item in items if item.urgency == "red" or item.status == "new"][:8]
+
+    return {
+        "cards": cards,
+        "section_pressure": section_pressure,
+        "priority_items": priority_items,
+    }
