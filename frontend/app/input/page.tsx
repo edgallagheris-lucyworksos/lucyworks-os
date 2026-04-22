@@ -1,9 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiPost } from "@/lib/api";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+
+type Section = {
+  id: number;
+  name: string;
+  section_type: string;
+};
+
+type Room = {
+  id: number;
+  section_name: string;
+  name: string;
+  room_type: string;
+};
+
 export default function InputPage() {
+  const [sections, setSections] = useState<Section[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [form, setForm] = useState({
     title: "",
     input_type: "email",
@@ -12,10 +29,29 @@ export default function InputPage() {
     description: "",
     urgency: "amber",
     owner_role: "ops_manager",
+    section_name: "Wards",
+    room_name: "Ward Dogs",
+    patient_location_label: "",
     linked_patient_name: "",
     linked_episode_ref: "",
   });
   const [result, setResult] = useState<string>("");
+
+  useEffect(() => {
+    async function loadTopology() {
+      const [sectionsRes, roomsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/sections`, { cache: "no-store" }),
+        fetch(`${API_BASE}/api/rooms`, { cache: "no-store" }),
+      ]);
+      setSections(await sectionsRes.json());
+      setRooms(await roomsRes.json());
+    }
+    loadTopology();
+  }, []);
+
+  const filteredRooms = useMemo(() => {
+    return rooms.filter((room) => room.section_name === form.section_name);
+  }, [rooms, form.section_name]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,6 +65,9 @@ export default function InputPage() {
       description: "",
       urgency: "amber",
       owner_role: "ops_manager",
+      section_name: form.section_name,
+      room_name: filteredRooms[0]?.name || "",
+      patient_location_label: "",
       linked_patient_name: "",
       linked_episode_ref: "",
     });
@@ -38,10 +77,16 @@ export default function InputPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  useEffect(() => {
+    if (!filteredRooms.find((room) => room.name === form.room_name)) {
+      setForm((prev) => ({ ...prev, room_name: filteredRooms[0]?.name || "" }));
+    }
+  }, [filteredRooms, form.room_name]);
+
   return (
-    <main style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
+    <main style={{ padding: 24, maxWidth: 980, margin: "0 auto" }}>
       <h1 style={{ fontSize: 36, marginTop: 0 }}>Unified Input</h1>
-      <p style={{ color: "#94a3b8" }}>Turn an operational input into owned work.</p>
+      <p style={{ color: "#94a3b8" }}>Turn an operational input into owned work in the correct hospital area.</p>
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12, marginTop: 20 }}>
         <input value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="Title" required style={{ padding: 12, borderRadius: 12 }} />
         <textarea value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Description" required style={{ padding: 12, borderRadius: 12, minHeight: 120 }} />
@@ -71,6 +116,19 @@ export default function InputPage() {
             <option value="nurse">nurse</option>
             <option value="admin">admin</option>
           </select>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <select value={form.section_name} onChange={(e) => update("section_name", e.target.value)} style={{ padding: 12, borderRadius: 12 }}>
+            {sections.map((section) => (
+              <option key={section.id} value={section.name}>{section.name}</option>
+            ))}
+          </select>
+          <select value={form.room_name} onChange={(e) => update("room_name", e.target.value)} style={{ padding: 12, borderRadius: 12 }}>
+            {filteredRooms.map((room) => (
+              <option key={room.id} value={room.name}>{room.name}</option>
+            ))}
+          </select>
+          <input value={form.patient_location_label} onChange={(e) => update("patient_location_label", e.target.value)} placeholder="Patient location / kennel / bay" style={{ padding: 12, borderRadius: 12 }} />
         </div>
         <input value={form.linked_patient_name} onChange={(e) => update("linked_patient_name", e.target.value)} placeholder="Patient name (optional)" style={{ padding: 12, borderRadius: 12 }} />
         <input value={form.linked_episode_ref} onChange={(e) => update("linked_episode_ref", e.target.value)} placeholder="Episode ref (optional)" style={{ padding: 12, borderRadius: 12 }} />
