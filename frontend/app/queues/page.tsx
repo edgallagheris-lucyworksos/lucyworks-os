@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AuthGuard } from "@/components/auth-guard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -24,7 +25,7 @@ type WorkItem = {
   linked_episode_ref?: string | null;
 };
 
-export default function QueuesPage() {
+function QueuesInner() {
   const [users, setUsers] = useState<User[]>([]);
   const [items, setItems] = useState<WorkItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,9 +73,7 @@ export default function QueuesPage() {
     <main style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
       <h1 style={{ fontSize: 36, marginTop: 0 }}>Role Queues</h1>
       <p style={{ color: "#94a3b8" }}>Assignable routed work by operational role.</p>
-
       {loading ? <p>Loading...</p> : null}
-
       <div style={{ display: "grid", gap: 16, marginTop: 24 }}>
         {Object.entries(grouped).map(([role, roleItems]) => (
           <section key={role} style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
@@ -112,4 +111,8 @@ export default function QueuesPage() {
       </div>
     </main>
   );
+}
+
+export default function QueuesPage() {
+  return <AuthGuard allowedRoles={["ops_manager", "clinician", "nurse", "admin"]}>{() => <QueuesInner />}</AuthGuard>;
 }
