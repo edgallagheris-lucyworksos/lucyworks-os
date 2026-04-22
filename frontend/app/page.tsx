@@ -12,6 +12,9 @@ export default function HomePage() {
           <Link href="/command" style={{ background: "#14b8a6", color: "#020617", padding: "12px 16px", borderRadius: 12 }}>
             Open command view
           </Link>
+          <Link href="/ward" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>
+            Open Ward / ICU
+          </Link>
           <Link href="/input" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>
             Open input
           </Link>
