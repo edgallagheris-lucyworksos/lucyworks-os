@@ -26,6 +26,57 @@ Represents a live visit / admission / treatment pathway.
 - owner
 - created_at
 - current_phase
+- current_section_id
+- current_room_id
+- patient_location_label
+
+### Hospital Section
+High-level operational area.
+- id
+- name
+- type
+- active
+
+Examples:
+- reception
+- emergency / triage
+- ward
+- ICU
+- theatres
+- imaging
+- consults
+- pharmacy
+- discharge
+
+### Room / Space
+Specific operational room or space.
+- id
+- section_id
+- name
+- room_type
+- active
+
+Examples:
+- front desk
+- consult room 1
+- theatre 2
+- ICU bay area
+- imaging room
+- pharmacy store
+
+### Resource Position
+Optional finer-grain location.
+- id
+- room_id
+- label
+- resource_type
+- active
+
+Examples:
+- kennel B4
+- bay A
+- prep table 2
+- scanner slot 1
 
 ### Work Item
 Generic operational unit created from input.
@@ -40,6 +91,10 @@ Generic operational unit created from input.
 - linked_episode_id
 - linked_patient_id
 - linked_thread_id
+- section_id
+- room_id
+- resource_position_id
+- patient_location_label
 
 ### Task
 More granular executable work.
@@ -85,6 +140,8 @@ Used for mail or messaging.
 - actual_duration_mins
 - status
 - required_skills
+- section_id
+- room_id
 
 ### Theatre Slot
 - id
@@ -101,6 +158,9 @@ Used for mail or messaging.
 - ward_status
 - due_checks
 - discharge_blocked
+- section_id
+- room_id
+- resource_position_id
 
 ### Shift
 - id
@@ -111,6 +171,7 @@ Used for mail or messaging.
 - shift_type
 - on_call
 - approved_overtime
+- home_section_id
 
 ### Staff Member
 - id
@@ -119,6 +180,7 @@ Used for mail or messaging.
 - skills
 - permissions
 - current_status
+- home_section_id
 
 ### Stock Item
 - id
@@ -127,6 +189,8 @@ Used for mail or messaging.
 - on_hand
 - reorder_level
 - restricted_flag
+- section_id
+- room_id
 
 ### Order
 - id
@@ -155,4 +219,4 @@ Used for mail or messaging.
 - created_at
 
 ## Key principle
-The platform should be able to create a work item from any meaningful input, then relate that work item to the correct episode, thread, task, and audit trail.
+The platform should be able to create a work item from any meaningful input, then relate that work item to the correct episode, thread, task, audit trail, and hospital location.
