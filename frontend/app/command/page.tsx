@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { apiGet } from "@/lib/api";
 
-type Pulse = {
-  total_work_items: number;
-  red_items: number;
-  new_items: number;
-  in_progress_items: number;
-  unowned_items: number;
-  wards_items: number;
-  theatres_items: number;
+type DirectorCard = {
+  key: string;
+  label: string;
+  value: number;
+  tone: string;
+};
+
+type SectionPressure = {
+  section_name: string;
+  live: number;
+  red: number;
+  unowned: number;
 };
 
 type WorkItem = {
@@ -24,53 +28,84 @@ type WorkItem = {
   linked_episode_ref?: string | null;
 };
 
+type DirectorBoard = {
+  cards: DirectorCard[];
+  section_pressure: SectionPressure[];
+  priority_items: WorkItem[];
+};
+
+function toneBorder(tone: string): string {
+  if (tone === "critical") return "1px solid #7f1d1d";
+  if (tone === "warning") return "1px solid #78350f";
+  if (tone === "stable") return "1px solid #14532d";
+  if (tone === "info") return "1px solid #1e3a8a";
+  return "1px solid #1f2937";
+}
+
 export default async function CommandPage() {
-  const pulse = await apiGet<Pulse>("/api/pulse");
-  const items = await apiGet<WorkItem[]>("/api/work-items");
+  const board = await apiGet<DirectorBoard>("/api/director-board");
 
   return (
-    <main style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+    <main style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 36 }}>Lucy Pulse / Command</h1>
-          <p style={{ color: "#94a3b8" }}>Live operational view from real backend data.</p>
+          <h1 style={{ margin: 0, fontSize: 36 }}>Clinical Director / Command</h1>
+          <p style={{ color: "#94a3b8" }}>Whole-hospital visibility, section pressure, and live priority work.</p>
         </div>
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <Link href="/input">New input</Link>
           <Link href="/queues">Queues</Link>
           <Link href="/audit">Audit</Link>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 20 }}>
-        {Object.entries(pulse).map(([key, value]) => (
-          <div key={key} style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}>
-            <div style={{ color: "#94a3b8", fontSize: 14 }}>{key.replaceAll("_", " ")}</div>
-            <div style={{ fontSize: 32, marginTop: 8 }}>{value}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12, marginTop: 20 }}>
+        {board.cards.map((card) => (
+          <div key={card.key} style={{ border: toneBorder(card.tone), borderRadius: 18, padding: 16, background: "#0f172a" }}>
+            <div style={{ color: "#94a3b8", fontSize: 14 }}>{card.label}</div>
+            <div style={{ fontSize: 34, marginTop: 8 }}>{card.value}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ marginTop: 24, border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-        <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Work queue</div>
-        <div>
-          {items.map((item) => (
-            <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                <strong>{item.title}</strong>
-                <span>{item.urgency.toUpperCase()} / {item.status}</span>
+      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginTop: 24 }}>
+        <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
+          <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Priority board</div>
+          <div>
+            {board.priority_items.map((item) => (
+              <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <strong>{item.title}</strong>
+                  <span>{item.urgency.toUpperCase()} / {item.status}</span>
+                </div>
+                <div style={{ color: "#94a3b8", marginTop: 6 }}>
+                  {item.section_name ? `section: ${item.section_name} • ` : ""}
+                  {item.room_name ? `room: ${item.room_name} • ` : ""}
+                  {item.patient_location_label ? `location: ${item.patient_location_label} • ` : ""}
+                  {item.linked_patient_name ? `patient: ${item.linked_patient_name} • ` : ""}
+                  {item.linked_episode_ref ? `episode: ${item.linked_episode_ref}` : ""}
+                </div>
               </div>
-              <div style={{ color: "#94a3b8", marginTop: 6 }}>
-                owner role: {item.owner_role}
-                {item.section_name ? ` • section: ${item.section_name}` : ""}
-                {item.room_name ? ` • room: ${item.room_name}` : ""}
-                {item.patient_location_label ? ` • location: ${item.patient_location_label}` : ""}
-                {item.linked_patient_name ? ` • patient: ${item.linked_patient_name}` : ""}
-                {item.linked_episode_ref ? ` • episode: ${item.linked_episode_ref}` : ""}
+            ))}
+          </div>
+        </section>
+
+        <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
+          <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Section pressure</div>
+          <div>
+            {board.section_pressure.map((section) => (
+              <div key={section.section_name} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <strong>{section.section_name}</strong>
+                  <span>live {section.live}</span>
+                </div>
+                <div style={{ color: "#94a3b8", marginTop: 6 }}>
+                  red {section.red} • unowned {section.unowned}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
       </div>
     </main>
   );
