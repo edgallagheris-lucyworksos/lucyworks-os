@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
-from app.database import create_db_and_tables, get_session
+from app.database import create_db_and_tables, engine, get_session
 from app.models import AuditEvent, User, WorkItem
 from app.schemas import LoginDemoRequest, WorkItemAssign, WorkItemCreate, WorkItemStatusUpdate
 from app.seed import seed_data
@@ -21,7 +21,7 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     create_db_and_tables()
-    with Session(get_session.__globals__["engine"]) as session:
+    with Session(engine) as session:
         seed_data(session)
 
 
