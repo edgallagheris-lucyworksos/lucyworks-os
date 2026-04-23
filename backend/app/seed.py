@@ -6,7 +6,10 @@ from app.models import (
     Episode,
     Handover,
     HospitalSection,
+    MessageEntry,
+    MessageThread,
     Patient,
+    ProcedureType,
     ResultReview,
     Room,
     RoomState,
@@ -122,10 +125,18 @@ def seed_data(session: Session) -> None:
         session.add(handover)
 
     results = [
-        ResultReview(episode_id=episode_by_ref["EP-1045"].id, result_type="imaging", review_owner="Cal Clinician", status="pending_review"),
+        ResultReview(episode_id=episode_by_ref["EP-1045"].id, result_type="imaging", review_owner="Cal Clinician", status="pending_review", required_action="Review scan and contact owner"),
     ]
     for result in results:
         session.add(result)
+
+    procedures = [
+        ProcedureType(name="TPLO", department="Theatres", default_duration_min=90, prep_min=20, anaesthesia_min=15, recovery_min=45, cleaning_min=20, required_role="clinician", required_room_type="theatre"),
+        ProcedureType(name="MRI", department="Imaging", default_duration_min=60, prep_min=15, anaesthesia_min=10, recovery_min=20, cleaning_min=15, required_role="clinician", required_room_type="imaging"),
+        ProcedureType(name="Dental", department="Theatres", default_duration_min=50, prep_min=15, anaesthesia_min=10, recovery_min=25, cleaning_min=15, required_role="clinician", required_room_type="theatre"),
+    ]
+    for procedure in procedures:
+        session.add(procedure)
 
     room_states = [
         RoomState(room_name="Consult Room 1", room_type="consult", department="Consults", state="occupied", current_episode_ref="EP-1057", next_episode_ref="EP-1059"),
@@ -155,6 +166,26 @@ def seed_data(session: Session) -> None:
     ]
     for item in items:
         session.add(item)
+
+    session.commit()
+
+    threads = [
+        MessageThread(episode_id=episode_by_ref["EP-1045"].id, source_type="email", subject="Imaging report for Luna", owner_role="clinician", owner_user_id=user_by_role["clinician"].id),
+        MessageThread(episode_id=episode_by_ref["EP-1042"].id, source_type="internal_message", subject="Owner update for Milo discharge", owner_role="nurse", owner_user_id=user_by_role["nurse"].id),
+    ]
+    for thread in threads:
+        session.add(thread)
+    session.commit()
+
+    saved_threads = session.exec(select(MessageThread)).all()
+    thread_by_subject = {thread.subject: thread for thread in saved_threads}
+
+    entries = [
+        MessageEntry(thread_id=thread_by_subject["Imaging report for Luna"].id, sender_name="Imaging", direction="inbound", body="MRI report returned and requires clinician review.", material_decision_flag=True),
+        MessageEntry(thread_id=thread_by_subject["Owner update for Milo discharge"].id, sender_name="Ward Nurse", direction="outbound", body="Owner updated that discharge is delayed pending clinician review.", material_decision_flag=True),
+    ]
+    for entry in entries:
+        session.add(entry)
 
     session.commit()
 
