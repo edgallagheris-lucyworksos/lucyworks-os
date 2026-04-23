@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
+import { HospitalShell } from "@/components/hospital-shell";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -59,25 +60,12 @@ function WardInner() {
   }, []);
 
   return (
-    <main style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 36 }}>Ward / ICU Board</h1>
-          <p style={{ color: "#94a3b8" }}>Inpatient pressure, bays, rooms, and blockers.</p>
-        </div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <Link href="/command">Command</Link>
-          <Link href="/theatre">Theatre / Recovery</Link>
-          <Link href="/queues">Queues</Link>
-          <Link href="/audit">Audit</Link>
-        </div>
-      </div>
-
-      {!board ? <p style={{ marginTop: 20 }}>Loading ward board...</p> : null}
+    <HospitalShell title="Ward / ICU Board" subtitle="Inpatient pressure, bays, rooms, and blockers">
+      {!board ? <p>Loading ward board...</p> : null}
 
       {board ? (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12, marginTop: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
             {board.cards.map((card) => (
               <div key={card.key} style={{ border: toneBorder(card.tone), borderRadius: 18, padding: 16, background: "#0f172a" }}>
                 <div style={{ color: "#94a3b8", fontSize: 14 }}>{card.label}</div>
@@ -105,6 +93,11 @@ function WardInner() {
                       {item.linked_episode_ref ? `episode: ${item.linked_episode_ref} • ` : ""}
                       owner role: {item.owner_role}
                     </div>
+                    {item.linked_episode_ref ? (
+                      <div style={{ marginTop: 8 }}>
+                        <Link href={`/episodes/${item.linked_episode_ref}`}>Open episode</Link>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </section>
@@ -112,7 +105,7 @@ function WardInner() {
           </div>
         </>
       ) : null}
-    </main>
+    </HospitalShell>
   );
 }
 
