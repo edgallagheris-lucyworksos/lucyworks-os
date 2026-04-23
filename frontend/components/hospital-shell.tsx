@@ -14,6 +14,7 @@ type AlertSummary = {
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
     { href: "/command", label: "Command" },
+    { href: "/episodes", label: "Episodes" },
     { href: "/consult", label: "Consult" },
     { href: "/ward", label: "Ward" },
     { href: "/theatre", label: "Theatre" },
@@ -23,6 +24,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   clinician: [
     { href: "/command", label: "Command" },
+    { href: "/episodes", label: "Episodes" },
     { href: "/consult", label: "Consult" },
     { href: "/ward", label: "Ward" },
     { href: "/theatre", label: "Theatre" },
@@ -30,6 +32,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: "/alerts", label: "Alerts" },
   ],
   nurse: [
+    { href: "/episodes", label: "Episodes" },
     { href: "/ward", label: "Ward" },
     { href: "/theatre", label: "Theatre" },
     { href: "/queues", label: "Queues" },
@@ -37,6 +40,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: "/input", label: "Input" },
   ],
   admin: [
+    { href: "/episodes", label: "Episodes" },
     { href: "/consult", label: "Consult" },
     { href: "/queues", label: "Queues" },
     { href: "/alerts", label: "Alerts" },
