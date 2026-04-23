@@ -1,25 +1,21 @@
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
+from datetime import datetime, timedelta
 
 from app.database import create_db_and_tables, engine, get_session
 from app.models import (
-    Admission,
-    AuditEvent,
-    Episode,
-    Handover,
-    HospitalSection,
-    Patient,
-    ResultReview,
-    Room,
-    RoomState,
-    User,
-    WorkItem,
+    Admission, AuditEvent, Episode, Handover, HospitalSection, Patient,
+    ResultReview, Room, RoomState, User, WorkItem,
+    ProcedureType, CaseProcedure, ScheduleBlock, MessageThread, MessageEntry
 )
-from app.schemas import LoginDemoRequest, WorkItemAssign, WorkItemCreate, WorkItemStatusUpdate
+from app.schemas import (
+    LoginDemoRequest, WorkItemAssign, WorkItemCreate, WorkItemStatusUpdate,
+    ScheduleGenerateRequest, ResultActionRequest, MessageThreadCreate, MessageEntryCreate
+)
 from app.seed import seed_data
 
-app = FastAPI(title="LucyWorks OS API", version="0.1.0")
+app = FastAPI(title="LucyWorks OS API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,317 +25,95 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.on_event("startup")
 def on_startup() -> None:
     create_db_and_tables()
     with Session(engine) as session:
         seed_data(session)
 
+@app.post("/api/schedule/generate")
+def generate_schedule(payload: ScheduleGenerateRequest, session: Session = Depends(get_session)):
+    episode = session.exec(select(Episode).where(Episode.episode_ref == payload.episode_ref)).first()
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
 
-@app.get("/")
-def root() -> dict:
-    return {"product": "LucyWorks OS", "status": "running"}
+    procedure = session.get(ProcedureType, payload.procedure_type_id)
+    if not procedure:
+        raise HTTPException(status_code=404, detail="Procedure type not found")
 
-
-@app.get("/api/health")
-def health() -> dict:
-    return {"ok": True, "service": "backend", "product": "LucyWorks OS"}
-
-
-@app.get("/api/users")
-def list_users(session: Session = Depends(get_session)):
-    return session.exec(select(User)).all()
-
-
-@app.get("/api/patients")
-def list_patients(session: Session = Depends(get_session)):
-    return session.exec(select(Patient).order_by(Patient.patient_name)).all()
-
-
-@app.get("/api/episodes")
-def list_episodes(session: Session = Depends(get_session)):
-    return session.exec(select(Episode).order_by(Episode.created_at.desc())).all()
-
-
-@app.get("/api/admissions")
-def list_admissions(session: Session = Depends(get_session)):
-    return session.exec(select(Admission).order_by(Admission.admitted_at.desc())).all()
-
-
-@app.get("/api/handovers")
-def list_handovers(session: Session = Depends(get_session)):
-    return session.exec(select(Handover).order_by(Handover.created_at.desc())).all()
-
-
-@app.get("/api/results")
-def list_results(session: Session = Depends(get_session)):
-    return session.exec(select(ResultReview).order_by(ResultReview.id.desc())).all()
-
-
-@app.get("/api/room-states")
-def list_room_states(session: Session = Depends(get_session)):
-    return session.exec(select(RoomState).order_by(RoomState.department, RoomState.room_name)).all()
-
-
-@app.get("/api/alerts")
-def list_alerts(session: Session = Depends(get_session)):
-    items = session.exec(select(WorkItem)).all()
-    results = session.exec(select(ResultReview)).all()
-    handovers = session.exec(select(Handover)).all()
-    room_states = session.exec(select(RoomState)).all()
-
-    alerts = []
-
-    for result in results:
-        if result.status == "pending_review":
-            alerts.append({"alert_type": "overdue_result", "severity": "high", "detail": f"Pending review for episode {result.episode_id}"})
-
-    for item in items:
-        if item.input_type == "discharge_blocker" and item.status != "done":
-            alerts.append({"alert_type": "blocked_discharge", "severity": "high", "detail": item.title})
-
-    for handover in handovers:
-        if not handover.acknowledged:
-            alerts.append({"alert_type": "unacknowledged_handover", "severity": "high", "detail": handover.note})
-
-    for room_state in room_states:
-        if room_state.state in {"blocked", "out_of_service"}:
-            alerts.append({"alert_type": "room_unavailable", "severity": "medium", "detail": room_state.room_name})
-        if room_state.state == "cleaning" and (room_state.cleaning_due_minutes or 0) > 15:
-            alerts.append({"alert_type": "cleaning_overrun", "severity": "medium", "detail": room_state.room_name})
-
-    if len([item for item in items if item.section_name == "ICU" and item.status != "done"]) >= 1:
-        alerts.append({"alert_type": "icu_pressure", "severity": "high", "detail": "Active ICU pressure detected"})
-
-    if len([item for item in items if item.section_name == "Imaging" and item.status != "done"]) >= 1:
-        alerts.append({"alert_type": "imaging_backlog", "severity": "medium", "detail": "Imaging backlog detected"})
-
-    return {
-        "total_alerts": len(alerts),
-        "high_alerts": len([a for a in alerts if a["severity"] == "high"]),
-        "alerts": alerts,
-    }
-
-
-@app.get("/api/sections")
-def list_sections(session: Session = Depends(get_session)):
-    return session.exec(select(HospitalSection).order_by(HospitalSection.name)).all()
-
-
-@app.get("/api/rooms")
-def list_rooms(section_name: str | None = None, session: Session = Depends(get_session)):
-    rooms = session.exec(select(Room).order_by(Room.section_name, Room.name)).all()
-    if section_name:
-        rooms = [room for room in rooms if room.section_name == section_name]
-    return rooms
-
-
-@app.post("/api/auth/login-demo")
-def login_demo(payload: LoginDemoRequest, session: Session = Depends(get_session)):
-    user = session.get(User, payload.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"user": user, "token": f"demo-token-{user.id}"}
-
-
-@app.get("/api/work-items")
-def list_work_items(role: str | None = None, session: Session = Depends(get_session)):
-    statement = select(WorkItem).order_by(WorkItem.created_at.desc())
-    items = session.exec(statement).all()
-    if role:
-        items = [item for item in items if item.owner_role == role]
-    return items
-
-
-@app.post("/api/work-items")
-def create_work_item(payload: WorkItemCreate, session: Session = Depends(get_session)):
-    item = WorkItem(**payload.model_dump())
-    session.add(item)
+    case_proc = CaseProcedure(episode_id=episode.id, procedure_type_id=procedure.id, scheduled_start=payload.start_time)
+    session.add(case_proc)
     session.commit()
-    session.refresh(item)
+    session.refresh(case_proc)
 
-    event = AuditEvent(
-        actor_name="System",
-        action="created",
-        entity_type="work_item",
-        entity_id=item.id or 0,
-        summary=f"Created work item: {item.title}",
-    )
-    session.add(event)
+    blocks = []
+    current = payload.start_time
+
+    def add_block(name, minutes):
+        nonlocal current
+        block = ScheduleBlock(
+            episode_id=episode.id,
+            case_procedure_id=case_proc.id,
+            block_type=name,
+            room_name=payload.room_name,
+            owner_role=procedure.required_role,
+            starts_at=current,
+            ends_at=current + timedelta(minutes=minutes)
+        )
+        current = block.ends_at
+        blocks.append(block)
+
+    add_block("prep", procedure.prep_min)
+    add_block("anaesthesia", procedure.anaesthesia_min)
+    add_block("procedure", procedure.default_duration_min)
+    add_block("recovery", procedure.recovery_min)
+    add_block("cleaning", procedure.cleaning_min)
+
+    for b in blocks:
+        session.add(b)
     session.commit()
-    return item
 
+    return {"case_procedure": case_proc, "blocks": blocks}
 
-@app.post("/api/work-items/{item_id}/assign")
-def assign_work_item(item_id: int, payload: WorkItemAssign, session: Session = Depends(get_session)):
-    item = session.get(WorkItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Work item not found")
-    item.owner_role = payload.owner_role
-    item.owner_user_id = payload.owner_user_id
-    session.add(item)
+@app.get("/api/conflicts")
+def get_conflicts(session: Session = Depends(get_session)):
+    blocks = session.exec(select(ScheduleBlock)).all()
+    conflicts = []
+
+    for b1 in blocks:
+        for b2 in blocks:
+            if b1.id >= b2.id:
+                continue
+            if b1.room_name == b2.room_name and not (b1.ends_at <= b2.starts_at or b2.ends_at <= b1.starts_at):
+                conflicts.append({"type": "room_conflict", "detail": f"{b1.room_name} overlap"})
+
+    return {"conflicts": conflicts}
+
+@app.post("/api/results/{result_id}/action")
+def action_result(result_id: int, payload: ResultActionRequest, session: Session = Depends(get_session)):
+    result = session.get(ResultReview, result_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Result not found")
+
+    result.status = payload.status
+    result.required_action = payload.required_action
+    result.reviewed_at = datetime.utcnow()
+
+    session.add(result)
     session.commit()
-    session.refresh(item)
 
-    event = AuditEvent(
-        actor_name=payload.actor_name,
-        action="assigned",
-        entity_type="work_item",
-        entity_id=item.id or 0,
-        summary=f"Assigned to role {payload.owner_role}",
-    )
-    session.add(event)
+    return result
+
+@app.post("/api/messages/thread")
+def create_thread(payload: MessageThreadCreate, session: Session = Depends(get_session)):
+    thread = MessageThread(**payload.model_dump())
+    session.add(thread)
     session.commit()
-    return item
+    return thread
 
-
-@app.post("/api/work-items/{item_id}/status")
-def update_work_item_status(item_id: int, payload: WorkItemStatusUpdate, session: Session = Depends(get_session)):
-    item = session.get(WorkItem, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Work item not found")
-    item.status = payload.status
-    session.add(item)
+@app.post("/api/messages/{thread_id}")
+def add_message(thread_id: int, payload: MessageEntryCreate, session: Session = Depends(get_session)):
+    entry = MessageEntry(thread_id=thread_id, sender_name=payload.sender_name, direction=payload.direction, body=payload.body, material_decision_flag=payload.material_decision_flag)
+    session.add(entry)
     session.commit()
-    session.refresh(item)
-
-    event = AuditEvent(
-        actor_name=payload.actor_name,
-        action="status_updated",
-        entity_type="work_item",
-        entity_id=item.id or 0,
-        summary=f"Status changed to {payload.status}",
-    )
-    session.add(event)
-    session.commit()
-    return item
-
-
-@app.get("/api/audit")
-def list_audit(session: Session = Depends(get_session)):
-    return session.exec(select(AuditEvent).order_by(AuditEvent.created_at.desc())).all()
-
-
-@app.get("/api/pulse")
-def pulse(session: Session = Depends(get_session)):
-    items = session.exec(select(WorkItem)).all()
-    return {
-        "total_work_items": len(items),
-        "red_items": len([i for i in items if i.urgency == "red"]),
-        "new_items": len([i for i in items if i.status == "new"]),
-        "in_progress_items": len([i for i in items if i.status == "in_progress"]),
-        "unowned_items": len([i for i in items if i.owner_user_id is None]),
-        "wards_items": len([i for i in items if i.section_name == "Wards"]),
-        "theatres_items": len([i for i in items if i.section_name == "Theatres"]),
-        "consult_items": len([i for i in items if i.section_name == "Consults"]),
-    }
-
-
-@app.get("/api/director-board")
-def director_board(session: Session = Depends(get_session)):
-    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
-
-    def count_where(fn):
-        return len([item for item in items if fn(item)])
-
-    cards = [
-        {"key": "red_alerts", "label": "Red alerts", "value": count_where(lambda i: i.urgency == "red"), "tone": "critical"},
-        {"key": "unowned_work", "label": "Unowned work", "value": count_where(lambda i: i.owner_user_id is None), "tone": "warning"},
-        {"key": "theatre_risk", "label": "Theatre risk", "value": count_where(lambda i: i.section_name == "Theatres" and i.urgency in {"amber", "red"}), "tone": "critical"},
-        {"key": "ward_pressure", "label": "Ward pressure", "value": count_where(lambda i: i.section_name == "Wards" and i.status != "done"), "tone": "warning"},
-        {"key": "consult_pressure", "label": "Consult pressure", "value": count_where(lambda i: i.section_name == "Consults" and i.status != "done"), "tone": "warning"},
-        {"key": "imaging_reviews", "label": "Imaging reviews", "value": count_where(lambda i: i.section_name == "Imaging" and i.status != "done"), "tone": "info"},
-        {"key": "discharge_blockers", "label": "Discharge blockers", "value": count_where(lambda i: i.input_type == "discharge_blocker" and i.status != "done"), "tone": "warning"},
-        {"key": "new_inputs", "label": "New inputs", "value": count_where(lambda i: i.status == "new"), "tone": "neutral"},
-    ]
-
-    section_names = sorted({item.section_name for item in items if item.section_name})
-    section_pressure = []
-    for name in section_names:
-        section_items = [item for item in items if item.section_name == name]
-        section_pressure.append({"section_name": name, "live": len([item for item in section_items if item.status != "done"]), "red": len([item for item in section_items if item.urgency == "red"]), "unowned": len([item for item in section_items if item.owner_user_id is None])})
-
-    priority_items = [item for item in items if item.urgency == "red" or item.status == "new"][:10]
-    return {"cards": cards, "section_pressure": section_pressure, "priority_items": priority_items}
-
-
-@app.get("/api/consult-board")
-def consult_board(session: Session = Depends(get_session)):
-    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
-    consult_items = [item for item in items if item.section_name == "Consults"]
-    room_states = session.exec(select(RoomState).where(RoomState.department == "Consults")).all()
-
-    def count_where(fn):
-        return len([item for item in consult_items if fn(item)])
-
-    cards = [
-        {"key": "consult_live", "label": "Consult live", "value": count_where(lambda i: i.status != "done"), "tone": "warning"},
-        {"key": "notes_incomplete", "label": "Notes incomplete", "value": count_where(lambda i: i.category == "documentation" and i.status != "done"), "tone": "warning"},
-        {"key": "owner_updates", "label": "Owner updates", "value": count_where(lambda i: i.category == "owner_comms" and i.status != "done"), "tone": "info"},
-        {"key": "follow_up", "label": "Follow-up pending", "value": count_where(lambda i: i.category == "follow_up" and i.status != "done"), "tone": "critical"},
-    ]
-
-    rooms = sorted({item.room_name for item in consult_items if item.room_name})
-    room_groups = []
-    for room_name in rooms:
-        room_items = [item for item in consult_items if item.room_name == room_name]
-        room_state = next((state for state in room_states if state.room_name == room_name), None)
-        room_groups.append({
-            "room_name": room_name,
-            "state": room_state.state if room_state else "unknown",
-            "current_episode_ref": room_state.current_episode_ref if room_state else None,
-            "next_episode_ref": room_state.next_episode_ref if room_state else None,
-            "live": len([item for item in room_items if item.status != "done"]),
-            "red": len([item for item in room_items if item.urgency == "red"]),
-            "items": room_items,
-        })
-    return {"cards": cards, "room_groups": room_groups}
-
-
-@app.get("/api/ward-board")
-def ward_board(session: Session = Depends(get_session)):
-    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
-    ward_items = [item for item in items if item.section_name in {"Wards", "ICU"}]
-
-    def count_where(fn):
-        return len([item for item in ward_items if fn(item)])
-
-    cards = [
-        {"key": "icu_red", "label": "ICU red", "value": count_where(lambda i: i.section_name == "ICU" and i.urgency == "red"), "tone": "critical"},
-        {"key": "ward_live", "label": "Ward live", "value": count_where(lambda i: i.section_name == "Wards" and i.status != "done"), "tone": "warning"},
-        {"key": "discharge_blockers", "label": "Discharge blockers", "value": count_where(lambda i: i.input_type == "discharge_blocker" and i.status != "done"), "tone": "warning"},
-        {"key": "unowned_inpatient", "label": "Unowned inpatient", "value": count_where(lambda i: i.owner_user_id is None), "tone": "warning"},
-        {"key": "clinician_review", "label": "Clinician review", "value": count_where(lambda i: i.owner_role == "clinician" and i.status != "done"), "tone": "info"},
-        {"key": "nurse_queue", "label": "Nurse queue", "value": count_where(lambda i: i.owner_role == "nurse" and i.status != "done"), "tone": "stable"},
-    ]
-    rooms = sorted({item.room_name for item in ward_items if item.room_name})
-    room_groups = []
-    for room_name in rooms:
-        room_items = [item for item in ward_items if item.room_name == room_name]
-        room_groups.append({"room_name": room_name, "section_name": room_items[0].section_name if room_items else None, "live": len([item for item in room_items if item.status != "done"]), "red": len([item for item in room_items if item.urgency == "red"]), "items": room_items})
-    return {"cards": cards, "room_groups": room_groups}
-
-
-@app.get("/api/theatre-board")
-def theatre_board(session: Session = Depends(get_session)):
-    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
-    theatre_items = [item for item in items if item.section_name in {"Theatres", "Recovery"}]
-
-    def count_where(fn):
-        return len([item for item in theatre_items if fn(item)])
-
-    cards = [
-        {"key": "theatre_red", "label": "Theatre red", "value": count_where(lambda i: i.section_name == "Theatres" and i.urgency == "red"), "tone": "critical"},
-        {"key": "recovery_live", "label": "Recovery live", "value": count_where(lambda i: i.section_name == "Recovery" and i.status != "done"), "tone": "warning"},
-        {"key": "prep_blockers", "label": "Prep blockers", "value": count_where(lambda i: i.category == "prep" and i.status != "done"), "tone": "warning"},
-        {"key": "handoff_gaps", "label": "Handoff gaps", "value": count_where(lambda i: i.category == "handoff" and i.status != "done"), "tone": "info"},
-        {"key": "ops_risk", "label": "Ops risk", "value": count_where(lambda i: i.owner_role == "ops_manager" and i.status != "done"), "tone": "critical"},
-        {"key": "nurse_actions", "label": "Nurse actions", "value": count_where(lambda i: i.owner_role == "nurse" and i.status != "done"), "tone": "stable"},
-    ]
-    rooms = sorted({item.room_name for item in theatre_items if item.room_name})
-    room_groups = []
-    for room_name in rooms:
-        room_items = [item for item in theatre_items if item.room_name == room_name]
-        room_groups.append({"room_name": room_name, "section_name": room_items[0].section_name if room_items else None, "live": len([item for item in room_items if item.status != "done"]), "red": len([item for item in room_items if item.urgency == "red"]), "items": room_items})
-    return {"cards": cards, "room_groups": room_groups}
+    return entry
