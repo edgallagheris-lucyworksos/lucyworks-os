@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
+import { HospitalShell } from "@/components/hospital-shell";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
@@ -59,26 +60,12 @@ function CommandInner() {
   }, []);
 
   return (
-    <main style={{ padding: 24, maxWidth: 1280, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 36 }}>Clinical Director / Command</h1>
-          <p style={{ color: "#94a3b8" }}>Whole-hospital visibility, section pressure, and live priority work.</p>
-        </div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <Link href="/ward">Ward / ICU</Link>
-          <Link href="/theatre">Theatre / Recovery</Link>
-          <Link href="/input">New input</Link>
-          <Link href="/queues">Queues</Link>
-          <Link href="/audit">Audit</Link>
-        </div>
-      </div>
-
-      {!board ? <p style={{ marginTop: 20 }}>Loading command board...</p> : null}
+    <HospitalShell title="Clinical Director / Command" subtitle="Whole-hospital visibility and priority work">
+      {!board ? <p>Loading command board...</p> : null}
 
       {board ? (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12, marginTop: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
             {board.cards.map((card) => (
               <div key={card.key} style={{ border: toneBorder(card.tone), borderRadius: 18, padding: 16, background: "#0f172a" }}>
                 <div style={{ color: "#94a3b8", fontSize: 14 }}>{card.label}</div>
@@ -104,6 +91,11 @@ function CommandInner() {
                       {item.linked_patient_name ? `patient: ${item.linked_patient_name} • ` : ""}
                       {item.linked_episode_ref ? `episode: ${item.linked_episode_ref}` : ""}
                     </div>
+                    {item.linked_episode_ref ? (
+                      <div style={{ marginTop: 8 }}>
+                        <Link href={`/episodes/${item.linked_episode_ref}`}>Open episode</Link>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -128,7 +120,7 @@ function CommandInner() {
           </div>
         </>
       ) : null}
-    </main>
+    </HospitalShell>
   );
 }
 
