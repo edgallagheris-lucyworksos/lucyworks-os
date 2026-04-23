@@ -75,7 +75,63 @@ class ResultReview(SQLModel, table=True):
     result_type: str
     review_owner: str
     status: str = "pending_review"
+    required_action: Optional[str] = None
     reviewed_at: Optional[datetime] = None
+
+
+class MessageThread(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    source_type: str
+    subject: str
+    owner_role: str
+    owner_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    status: str = "open"
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class MessageEntry(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    thread_id: int = Field(foreign_key="messagethread.id")
+    sender_name: str
+    direction: str
+    body: str
+    material_decision_flag: bool = False
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class ProcedureType(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    department: str
+    default_duration_min: int
+    prep_min: int
+    anaesthesia_min: int
+    recovery_min: int
+    cleaning_min: int
+    required_role: str
+    required_room_type: str
+
+
+class CaseProcedure(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: int = Field(foreign_key="episode.id")
+    procedure_type_id: int = Field(foreign_key="proceduretype.id")
+    status: str = "planned"
+    scheduled_start: Optional[datetime] = None
+    complexity: str = "standard"
+
+
+class ScheduleBlock(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: int = Field(foreign_key="episode.id")
+    case_procedure_id: int = Field(foreign_key="caseprocedure.id")
+    block_type: str
+    room_name: Optional[str] = None
+    owner_role: Optional[str] = None
+    starts_at: datetime
+    ends_at: datetime
+    status: str = "planned"
 
 
 class RoomState(SQLModel, table=True):
