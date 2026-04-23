@@ -82,6 +82,46 @@ def list_room_states(session: Session = Depends(get_session)):
     return session.exec(select(RoomState).order_by(RoomState.department, RoomState.room_name)).all()
 
 
+@app.get("/api/alerts")
+def list_alerts(session: Session = Depends(get_session)):
+    items = session.exec(select(WorkItem)).all()
+    results = session.exec(select(ResultReview)).all()
+    handovers = session.exec(select(Handover)).all()
+    room_states = session.exec(select(RoomState)).all()
+
+    alerts = []
+
+    for result in results:
+        if result.status == "pending_review":
+            alerts.append({"alert_type": "overdue_result", "severity": "high", "detail": f"Pending review for episode {result.episode_id}"})
+
+    for item in items:
+        if item.input_type == "discharge_blocker" and item.status != "done":
+            alerts.append({"alert_type": "blocked_discharge", "severity": "high", "detail": item.title})
+
+    for handover in handovers:
+        if not handover.acknowledged:
+            alerts.append({"alert_type": "unacknowledged_handover", "severity": "high", "detail": handover.note})
+
+    for room_state in room_states:
+        if room_state.state in {"blocked", "out_of_service"}:
+            alerts.append({"alert_type": "room_unavailable", "severity": "medium", "detail": room_state.room_name})
+        if room_state.state == "cleaning" and (room_state.cleaning_due_minutes or 0) > 15:
+            alerts.append({"alert_type": "cleaning_overrun", "severity": "medium", "detail": room_state.room_name})
+
+    if len([item for item in items if item.section_name == "ICU" and item.status != "done"]) >= 1:
+        alerts.append({"alert_type": "icu_pressure", "severity": "high", "detail": "Active ICU pressure detected"})
+
+    if len([item for item in items if item.section_name == "Imaging" and item.status != "done"]) >= 1:
+        alerts.append({"alert_type": "imaging_backlog", "severity": "medium", "detail": "Imaging backlog detected"})
+
+    return {
+        "total_alerts": len(alerts),
+        "high_alerts": len([a for a in alerts if a["severity"] == "high"]),
+        "alerts": alerts,
+    }
+
+
 @app.get("/api/sections")
 def list_sections(session: Session = Depends(get_session)):
     return session.exec(select(HospitalSection).order_by(HospitalSection.name)).all()
