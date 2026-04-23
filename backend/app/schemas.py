@@ -34,3 +34,33 @@ class WorkItemAssign(BaseModel):
 class WorkItemStatusUpdate(BaseModel):
     status: str
     actor_name: str = "System"
+
+
+class ScheduleGenerateRequest(BaseModel):
+    episode_ref: str
+    procedure_type_id: int
+    room_name: str
+    start_time: datetime
+    actor_name: str = "System"
+
+
+class ResultActionRequest(BaseModel):
+    status: str
+    actor_name: str = "System"
+    required_action: Optional[str] = None
+
+
+class MessageThreadCreate(BaseModel):
+    episode_ref: Optional[str] = None
+    source_type: str
+    subject: str
+    owner_role: str
+    owner_user_id: Optional[int] = None
+
+
+class MessageEntryCreate(BaseModel):
+    sender_name: str
+    direction: str
+    body: str
+    material_decision_flag: bool = False
+    actor_name: str = "System"
