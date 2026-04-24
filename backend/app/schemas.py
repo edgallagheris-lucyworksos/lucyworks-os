@@ -44,6 +44,11 @@ class ScheduleGenerateRequest(BaseModel):
     actor_name: str = "System"
 
 
+class ScheduleShiftRequest(BaseModel):
+    minutes: int
+    actor_name: str = "System"
+
+
 class ResultActionRequest(BaseModel):
     status: str
     actor_name: str = "System"
@@ -63,4 +68,10 @@ class MessageEntryCreate(BaseModel):
     direction: str
     body: str
     material_decision_flag: bool = False
+    actor_name: str = "System"
+
+
+class StaffAllocateRequest(BaseModel):
+    schedule_block_id: int
+    staff_member_id: int
     actor_name: str = "System"
