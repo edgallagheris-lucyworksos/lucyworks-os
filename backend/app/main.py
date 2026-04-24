@@ -40,7 +40,7 @@ from app.schemas import (
 )
 from app.seed import seed_data
 
-app = FastAPI(title="LucyWorks OS API", version="0.5.0")
+app = FastAPI(title="LucyWorks OS API", version="0.6.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -109,6 +109,32 @@ def derive_alerts(session: Session):
     if any(i.section_name == "ICU" and i.status != "done" for i in items):
         alerts.append({"type": "icu_pressure", "severity": "high", "detail": "Active ICU pressure detected", "episode_ids": []})
     return alerts
+
+
+def board_cards(items):
+    def count_where(fn):
+        return len([item for item in items if fn(item)])
+    return [
+        {"key": "red_alerts", "label": "Red alerts", "value": count_where(lambda i: i.urgency == "red"), "tone": "critical"},
+        {"key": "unowned_work", "label": "Unowned work", "value": count_where(lambda i: i.owner_user_id is None), "tone": "warning"},
+        {"key": "new_inputs", "label": "New inputs", "value": count_where(lambda i: i.status == "new"), "tone": "neutral"},
+        {"key": "live_work", "label": "Live work", "value": count_where(lambda i: i.status != "done"), "tone": "info"},
+    ]
+
+
+def room_groups_for(items):
+    rooms = sorted({item.room_name for item in items if item.room_name})
+    groups = []
+    for room_name in rooms:
+        room_items = [item for item in items if item.room_name == room_name]
+        groups.append({
+            "room_name": room_name,
+            "section_name": room_items[0].section_name if room_items else None,
+            "live": len([item for item in room_items if item.status != "done"]),
+            "red": len([item for item in room_items if item.urgency == "red"]),
+            "items": room_items,
+        })
+    return groups
 
 
 @app.get("/")
@@ -259,6 +285,44 @@ def list_work_items(role: str | None = None, session: Session = Depends(get_sess
     return [item for item in items if item.owner_role == role] if role else items
 
 
+@app.get("/api/director-board")
+def director_board(session: Session = Depends(get_session)):
+    items = session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all()
+    section_names = sorted({item.section_name for item in items if item.section_name})
+    section_pressure = []
+    for name in section_names:
+        section_items = [item for item in items if item.section_name == name]
+        section_pressure.append({"section_name": name, "live": len([i for i in section_items if i.status != "done"]), "red": len([i for i in section_items if i.urgency == "red"]), "unowned": len([i for i in section_items if i.owner_user_id is None])})
+    priority_items = [item for item in items if item.urgency == "red" or item.status == "new"][:10]
+    return {"cards": board_cards(items), "section_pressure": section_pressure, "priority_items": priority_items}
+
+
+@app.get("/api/consult-board")
+def consult_board(session: Session = Depends(get_session)):
+    items = [i for i in session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all() if i.section_name == "Consults"]
+    room_states = session.exec(select(RoomState).where(RoomState.department == "Consults")).all()
+    groups = []
+    for group in room_groups_for(items):
+        room_state = next((state for state in room_states if state.room_name == group["room_name"]), None)
+        group["state"] = room_state.state if room_state else "unknown"
+        group["current_episode_ref"] = room_state.current_episode_ref if room_state else None
+        group["next_episode_ref"] = room_state.next_episode_ref if room_state else None
+        groups.append(group)
+    return {"cards": board_cards(items), "room_groups": groups}
+
+
+@app.get("/api/ward-board")
+def ward_board(session: Session = Depends(get_session)):
+    items = [i for i in session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all() if i.section_name in {"Wards", "ICU"}]
+    return {"cards": board_cards(items), "room_groups": room_groups_for(items)}
+
+
+@app.get("/api/theatre-board")
+def theatre_board(session: Session = Depends(get_session)):
+    items = [i for i in session.exec(select(WorkItem).order_by(WorkItem.created_at.desc())).all() if i.section_name in {"Theatres", "Recovery"}]
+    return {"cards": board_cards(items), "room_groups": room_groups_for(items)}
+
+
 @app.post("/api/work-items")
 def create_work_item(payload: WorkItemCreate, session: Session = Depends(get_session)):
     item = WorkItem(**payload.model_dump())
@@ -301,13 +365,10 @@ def generate_schedule(payload: ScheduleGenerateRequest, session: Session = Depen
     procedure = session.get(ProcedureType, payload.procedure_type_id)
     if not episode or not procedure:
         raise HTTPException(status_code=404, detail="Episode or procedure not found")
-
-    # remove existing planned blocks for a cleaner demo flow
     case_proc = CaseProcedure(episode_id=episode.id, procedure_type_id=procedure.id, scheduled_start=payload.start_time)
     session.add(case_proc)
     session.commit()
     session.refresh(case_proc)
-
     blocks = []
     current = payload.start_time
     for name, minutes in [("prep", procedure.prep_min), ("anaesthesia", procedure.anaesthesia_min), ("procedure", procedure.default_duration_min), ("recovery", procedure.recovery_min), ("cleaning", procedure.cleaning_min)]:
