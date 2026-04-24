@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlmodel import Session, select
 
 from app.models import (
@@ -13,6 +15,8 @@ from app.models import (
     ResultReview,
     Room,
     RoomState,
+    Shift,
+    StaffMember,
     User,
     WorkItem,
 )
@@ -66,11 +70,26 @@ def seed_data(session: Session) -> None:
     ]
     for room in rooms:
         session.add(room)
-
     session.commit()
 
     saved_users = session.exec(select(User)).all()
     user_by_role = {user.role: user for user in saved_users}
+
+    staff = [
+        StaffMember(user_id=user_by_role["ops_manager"].id, name="Lucy Ops", role="ops_manager", skills="flow, escalation, theatre, ward"),
+        StaffMember(user_id=user_by_role["nurse"].id, name="Nina Nurse", role="nurse", skills="ward, ICU, recovery, discharge"),
+        StaffMember(user_id=user_by_role["clinician"].id, name="Cal Clinician", role="clinician", skills="consult, imaging, surgery, review"),
+        StaffMember(user_id=user_by_role["admin"].id, name="Ari Admin", role="admin", skills="reception, owner_comms, discharge"),
+    ]
+    for member in staff:
+        session.add(member)
+    session.commit()
+
+    saved_staff = session.exec(select(StaffMember)).all()
+    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    for member in saved_staff:
+        session.add(Shift(staff_member_id=member.id, department="Hospital", starts_at=now - timedelta(hours=1), ends_at=now + timedelta(hours=10), shift_type="standard", status="active"))
+    session.commit()
 
     patients = [
         Patient(patient_name="Milo", species="Dog", owner_name="Sarah Reed", owner_phone="07111111111", weight_kg=24.5),
@@ -87,9 +106,7 @@ def seed_data(session: Session) -> None:
         session.add(patient)
     session.commit()
 
-    saved_patients = session.exec(select(Patient)).all()
-    patient_by_name = {patient.patient_name: patient for patient in saved_patients}
-
+    patient_by_name = {patient.patient_name: patient for patient in session.exec(select(Patient)).all()}
     episodes = [
         Episode(episode_ref="EP-1042", patient_id=patient_by_name["Milo"].id, current_section_name="Wards", current_room_name="Ward Dogs", current_phase="ward"),
         Episode(episode_ref="EP-1051", patient_id=patient_by_name["Nova"].id, current_section_name="ICU", current_room_name="ICU Bay Area", current_phase="critical_care"),
@@ -106,39 +123,31 @@ def seed_data(session: Session) -> None:
         session.add(episode)
     session.commit()
 
-    saved_episodes = session.exec(select(Episode)).all()
-    episode_by_ref = {episode.episode_ref: episode for episode in saved_episodes}
+    episode_by_ref = {episode.episode_ref: episode for episode in session.exec(select(Episode)).all()}
 
-    admissions = [
+    for admission in [
         Admission(episode_id=episode_by_ref["EP-1042"].id, admitted_to="Wards"),
         Admission(episode_id=episode_by_ref["EP-1051"].id, admitted_to="ICU"),
         Admission(episode_id=episode_by_ref["EP-1053"].id, admitted_to="Wards"),
-    ]
-    for admission in admissions:
+    ]:
         session.add(admission)
 
-    handovers = [
+    for handover in [
         Handover(episode_id=episode_by_ref["EP-1055"].id, from_owner="theatre_team", to_owner="recovery_nurse", note="Post-op handoff pending full recovery checklist.", acknowledged=False),
         Handover(episode_id=episode_by_ref["EP-1042"].id, from_owner="clinician", to_owner="ward_nurse", note="Owner update still to be completed before discharge prep.", acknowledged=True),
-    ]
-    for handover in handovers:
+    ]:
         session.add(handover)
 
-    results = [
-        ResultReview(episode_id=episode_by_ref["EP-1045"].id, result_type="imaging", review_owner="Cal Clinician", status="pending_review", required_action="Review scan and contact owner"),
-    ]
-    for result in results:
-        session.add(result)
+    session.add(ResultReview(episode_id=episode_by_ref["EP-1045"].id, result_type="imaging", review_owner="Cal Clinician", status="pending_review", required_action="Review scan and contact owner"))
 
-    procedures = [
+    for procedure in [
         ProcedureType(name="TPLO", department="Theatres", default_duration_min=90, prep_min=20, anaesthesia_min=15, recovery_min=45, cleaning_min=20, required_role="clinician", required_room_type="theatre"),
         ProcedureType(name="MRI", department="Imaging", default_duration_min=60, prep_min=15, anaesthesia_min=10, recovery_min=20, cleaning_min=15, required_role="clinician", required_room_type="imaging"),
         ProcedureType(name="Dental", department="Theatres", default_duration_min=50, prep_min=15, anaesthesia_min=10, recovery_min=25, cleaning_min=15, required_role="clinician", required_room_type="theatre"),
-    ]
-    for procedure in procedures:
+    ]:
         session.add(procedure)
 
-    room_states = [
+    for room_state in [
         RoomState(room_name="Consult Room 1", room_type="consult", department="Consults", state="occupied", current_episode_ref="EP-1057", next_episode_ref="EP-1059"),
         RoomState(room_name="Consult Room 2", room_type="consult", department="Consults", state="occupied", current_episode_ref="EP-1058"),
         RoomState(room_name="Theatre 1", room_type="theatre", department="Theatres", state="occupied", current_episode_ref="EP-1056", cleaning_due_minutes=20),
@@ -148,8 +157,7 @@ def seed_data(session: Session) -> None:
         RoomState(room_name="Ward Dogs", room_type="ward", department="Wards", state="occupied", current_episode_ref="EP-1042"),
         RoomState(room_name="Ward Cats", room_type="ward", department="Wards", state="occupied", current_episode_ref="EP-1053"),
         RoomState(room_name="Imaging Room", room_type="imaging", department="Imaging", state="occupied", current_episode_ref="EP-1045"),
-    ]
-    for room_state in room_states:
+    ]:
         session.add(room_state)
 
     items = [
@@ -166,7 +174,6 @@ def seed_data(session: Session) -> None:
     ]
     for item in items:
         session.add(item)
-
     session.commit()
 
     threads = [
@@ -177,19 +184,14 @@ def seed_data(session: Session) -> None:
         session.add(thread)
     session.commit()
 
-    saved_threads = session.exec(select(MessageThread)).all()
-    thread_by_subject = {thread.subject: thread for thread in saved_threads}
-
-    entries = [
+    thread_by_subject = {thread.subject: thread for thread in session.exec(select(MessageThread)).all()}
+    for entry in [
         MessageEntry(thread_id=thread_by_subject["Imaging report for Luna"].id, sender_name="Imaging", direction="inbound", body="MRI report returned and requires clinician review.", material_decision_flag=True),
         MessageEntry(thread_id=thread_by_subject["Owner update for Milo discharge"].id, sender_name="Ward Nurse", direction="outbound", body="Owner updated that discharge is delayed pending clinician review.", material_decision_flag=True),
-    ]
-    for entry in entries:
+    ]:
         session.add(entry)
 
     session.commit()
-
-    created_items = session.exec(select(WorkItem)).all()
-    for item in created_items:
+    for item in session.exec(select(WorkItem)).all():
         session.add(AuditEvent(actor_name="System", action="seeded", entity_type="work_item", entity_id=item.id or 0, summary=f"Seeded work item: {item.title}"))
     session.commit()
