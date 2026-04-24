@@ -100,6 +100,25 @@ class MessageEntry(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class StaffMember(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    name: str
+    role: str
+    skills: str
+    active: bool = True
+
+
+class Shift(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    staff_member_id: int = Field(foreign_key="staffmember.id")
+    department: str
+    starts_at: datetime
+    ends_at: datetime
+    shift_type: str = "standard"
+    status: str = "planned"
+
+
 class ProcedureType(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -143,6 +162,16 @@ class RoomState(SQLModel, table=True):
     current_episode_ref: Optional[str] = None
     next_episode_ref: Optional[str] = None
     cleaning_due_minutes: Optional[int] = None
+
+
+class ConflictAction(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    conflict_type: str
+    severity: str
+    detail: str
+    status: str = "open"
+    linked_work_item_id: Optional[int] = Field(default=None, foreign_key="workitem.id")
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class WorkItem(SQLModel, table=True):
