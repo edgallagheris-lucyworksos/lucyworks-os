@@ -1,187 +1,116 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
-type Episode = {
-  id: number;
-  episode_ref: string;
-  patient_id: number;
-  status: string;
-  current_section_name?: string | null;
-  current_room_name?: string | null;
-  current_phase: string;
+type EpisodeCommand = {
+  episode: any;
+  patient: any;
+  admissions: any[];
+  handovers: any[];
+  results: any[];
+  schedule_blocks: any[];
+  message_threads: any[];
+  work_items: any[];
+  room_state?: any | null;
+  conflicts: any[];
 };
 
-type Patient = {
-  id: number;
-  patient_name: string;
-  species: string;
-  owner_name: string;
-  owner_phone?: string | null;
-  weight_kg?: number | null;
-};
-
-type Admission = {
-  id: number;
-  episode_id: number;
-  admitted_to: string;
-  admitted_at: string;
-  status: string;
-};
-
-type Handover = {
-  id: number;
-  episode_id: number;
-  from_owner: string;
-  to_owner: string;
-  note: string;
-  acknowledged: boolean;
-};
-
-type ResultReview = {
-  id: number;
-  episode_id: number;
-  result_type: string;
-  review_owner: string;
-  status: string;
-};
-
-type RoomState = {
-  id: number;
-  room_name: string;
-  room_type: string;
-  department: string;
-  state: string;
-  current_episode_ref?: string | null;
-  next_episode_ref?: string | null;
-  cleaning_due_minutes?: number | null;
-};
-
-type WorkItem = {
-  id: number;
-  title: string;
-  urgency: string;
-  owner_role: string;
-  status: string;
-  section_name?: string | null;
-  room_name?: string | null;
-  patient_location_label?: string | null;
-  linked_episode_ref?: string | null;
-};
+function time(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function EpisodeDetailPage() {
   const params = useParams<{ episodeRef: string }>();
   const episodeRef = params.episodeRef;
-
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [admissions, setAdmissions] = useState<Admission[]>([]);
-  const [handovers, setHandovers] = useState<Handover[]>([]);
-  const [results, setResults] = useState<ResultReview[]>([]);
-  const [roomStates, setRoomStates] = useState<RoomState[]>([]);
-  const [workItems, setWorkItems] = useState<WorkItem[]>([]);
+  const [data, setData] = useState<EpisodeCommand | null>(null);
 
   useEffect(() => {
     async function load() {
-      const [episodesRes, patientsRes, admissionsRes, handoversRes, resultsRes, roomStatesRes, workItemsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/episodes`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/patients`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/admissions`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/handovers`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/results`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/room-states`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/work-items`, { cache: "no-store" }),
-      ]);
-      setEpisodes(await episodesRes.json());
-      setPatients(await patientsRes.json());
-      setAdmissions(await admissionsRes.json());
-      setHandovers(await handoversRes.json());
-      setResults(await resultsRes.json());
-      setRoomStates(await roomStatesRes.json());
-      setWorkItems(await workItemsRes.json());
+      const res = await fetch(`${API_BASE}/api/episode-command/${episodeRef}`, { cache: "no-store" });
+      setData(await res.json());
     }
     load();
-  }, []);
-
-  const episode = useMemo(() => episodes.find((item) => item.episode_ref === episodeRef), [episodes, episodeRef]);
-  const patient = useMemo(() => patients.find((item) => item.id === episode?.patient_id), [patients, episode]);
-  const episodeAdmissions = admissions.filter((item) => item.episode_id === episode?.id);
-  const episodeHandovers = handovers.filter((item) => item.episode_id === episode?.id);
-  const episodeResults = results.filter((item) => item.episode_id === episode?.id);
-  const episodeWorkItems = workItems.filter((item) => item.linked_episode_ref === episodeRef);
-  const episodeRoomState = roomStates.find((item) => item.current_episode_ref === episodeRef || item.next_episode_ref === episodeRef);
+  }, [episodeRef]);
 
   return (
     <AuthGuard allowedRoles={["ops_manager", "clinician", "nurse", "admin"]}>
       {() => (
-        <HospitalShell title="Episode detail" subtitle={episodeRef}>
-          {!episode ? <p>Loading episode...</p> : null}
-          {episode ? (
+        <HospitalShell title="Episode Command" subtitle={episodeRef}>
+          {!data ? <p>Loading episode command...</p> : null}
+          {data ? (
             <div style={{ display: "grid", gap: 16 }}>
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}>
-                <h2 style={{ marginTop: 0 }}>Case truth</h2>
-                <div style={{ color: "#94a3b8" }}>
-                  {patient ? `${patient.patient_name} (${patient.species}) • owner ${patient.owner_name} • ${patient.owner_phone || "no phone"}` : "patient loading"}
-                </div>
-                <div style={{ color: "#94a3b8", marginTop: 6 }}>
-                  phase {episode.current_phase} • status {episode.status} • section {episode.current_section_name || "-"} • room {episode.current_room_name || "-"}
-                </div>
+                <h2 style={{ marginTop: 0 }}>Case control</h2>
+                <div style={{ color: "#f8fafc", fontSize: 20 }}>{data.patient?.patient_name} • {data.patient?.species}</div>
+                <div style={{ color: "#94a3b8", marginTop: 6 }}>Owner {data.patient?.owner_name} • {data.patient?.owner_phone || "no phone"}</div>
+                <div style={{ color: "#94a3b8", marginTop: 6 }}>Phase {data.episode.current_phase} • status {data.episode.status} • {data.episode.current_section_name || "-"} / {data.episode.current_room_name || "-"}</div>
               </section>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <div style={{ border: "1px solid #7f1d1d", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Conflicts</div><div style={{ fontSize: 32 }}>{data.conflicts.length}</div></div>
+                <div style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Schedule blocks</div><div style={{ fontSize: 32 }}>{data.schedule_blocks.length}</div></div>
+                <div style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Results</div><div style={{ fontSize: 32 }}>{data.results.length}</div></div>
+                <div style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Messages</div><div style={{ fontSize: 32 }}>{data.message_threads.length}</div></div>
+              </div>
 
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}>
                 <h3 style={{ marginTop: 0 }}>Room state</h3>
-                <div style={{ color: "#94a3b8" }}>
-                  {episodeRoomState ? `${episodeRoomState.room_name} • ${episodeRoomState.state} • next ${episodeRoomState.next_episode_ref || "-"} • cleaning due ${episodeRoomState.cleaning_due_minutes ?? "-"}` : "No room state found"}
-                </div>
+                <div style={{ color: "#94a3b8" }}>{data.room_state ? `${data.room_state.room_name} • ${data.room_state.state} • next ${data.room_state.next_episode_ref || "-"}` : "No room state found"}</div>
               </section>
 
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Admissions</div>
-                {episodeAdmissions.map((item) => (
-                  <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <div>{item.admitted_to}</div>
-                    <div style={{ color: "#94a3b8" }}>{item.status} • {new Date(item.admitted_at).toLocaleString()}</div>
+                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Timeline</div>
+                {data.schedule_blocks.map((block) => (
+                  <div key={block.id} style={{ padding: 16, borderTop: "1px solid #1f2937", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <strong>{time(block.starts_at)} → {time(block.ends_at)} • {block.block_type}</strong>
+                    <span>{block.room_name || "unassigned"} • {block.owner_role || "no owner"}</span>
                   </div>
                 ))}
+                {!data.schedule_blocks.length ? <div style={{ padding: 16, color: "#94a3b8" }}>No schedule blocks linked yet.</div> : null}
               </section>
 
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Handovers</div>
-                {episodeHandovers.map((item) => (
-                  <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <div>{item.from_owner} → {item.to_owner}</div>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.note}</div>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>acknowledged {String(item.acknowledged)}</div>
+                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Conflicts affecting this episode</div>
+                {data.conflicts.map((conflict, index) => (
+                  <div key={`${conflict.type}-${index}`} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                    <strong>{conflict.type}</strong>
+                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{conflict.severity} • {conflict.detail}</div>
                   </div>
                 ))}
+                {!data.conflicts.length ? <div style={{ padding: 16, color: "#94a3b8" }}>No conflicts linked to this episode.</div> : null}
               </section>
 
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
                 <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Results</div>
-                {episodeResults.map((item) => (
+                {data.results.map((item) => (
                   <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <div>{item.result_type}</div>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.status} • review owner {item.review_owner}</div>
+                    <strong>{item.result_type}</strong>
+                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.status} • owner {item.review_owner} • action {item.required_action || "-"}</div>
                   </div>
                 ))}
               </section>
 
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Work items</div>
-                {episodeWorkItems.map((item) => (
+                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Messages</div>
+                {data.message_threads.map((thread) => (
+                  <div key={thread.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                    <strong>{thread.subject}</strong>
+                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{thread.source_type} • {thread.status} • {thread.owner_role}</div>
+                  </div>
+                ))}
+              </section>
+
+              <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
+                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Work</div>
+                {data.work_items.map((item) => (
                   <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <strong>{item.title}</strong>
-                      <span>{item.urgency.toUpperCase()} / {item.status}</span>
-                    </div>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>
-                      {item.section_name || "-"} • {item.room_name || "-"} • {item.patient_location_label || "-"} • owner {item.owner_role}
-                    </div>
+                    <strong>{item.title}</strong>
+                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.urgency} • {item.status} • owner {item.owner_role}</div>
                   </div>
                 ))}
               </section>
