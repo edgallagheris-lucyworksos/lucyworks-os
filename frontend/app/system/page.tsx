@@ -3,8 +3,10 @@ import Link from "next/link";
 const modules = [
   ["Access / Login", "/login", "Role-based demo access for ops, clinician, nurse and admin views."],
   ["Command", "/command", "Whole-hospital pressure, section load, red alerts and priority work."],
+  ["Admissions", "/admissions", "Admitted patient flow, inpatient ownership and current ward/ICU load."],
   ["Episodes", "/episodes", "Case spine linking patient, owner, room, phase, results, messages and work."],
   ["Schedule", "/schedule", "Procedure blocks: prep, anaesthesia, procedure, recovery and cleaning."],
+  ["Rota", "/rota", "Shift coverage, role pressure and staff load warnings."],
   ["Staff", "/staff", "Live staff load, shift state and assigned schedule blocks."],
   ["Rooms", "/rooms", "Room states across consults, wards, ICU, theatre, recovery and diagnostics."],
   ["Conflicts", "/conflicts", "Operational failures turned into work and tracked through resolution."],
@@ -28,6 +30,7 @@ export default function SystemPage() {
           <p style={{ color: "#94a3b8", maxWidth: 850 }}>A single map of the current demo system: what exists, where it lives, and what each surface is meant to control.</p>
           <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link href="/command" style={{ background: "#14b8a6", color: "#020617", padding: "10px 14px", borderRadius: 12, fontWeight: 800 }}>Open Command</Link>
+            <Link href="/admissions" style={{ border: "1px solid #334155", padding: "10px 14px", borderRadius: 12 }}>Open Admissions</Link>
             <Link href="/episodes/EP-1042" style={{ border: "1px solid #334155", padding: "10px 14px", borderRadius: 12 }}>Open Demo Episode</Link>
           </div>
         </section>
