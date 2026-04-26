@@ -4,10 +4,16 @@ const links = [
   ["/system", "System Map"],
   ["/product", "Product"],
   ["/login", "Access"],
+  ["/pulse", "Pulse"],
+  ["/ethics", "Ethics"],
   ["/command", "Command"],
+  ["/triage", "Triage"],
   ["/admissions", "Admissions"],
   ["/schedule", "Schedule"],
   ["/rota", "Rota"],
+  ["/discharge", "Discharge"],
+  ["/pharmacy", "Pharmacy"],
+  ["/stock", "Stock"],
   ["/episodes", "Episodes"],
   ["/staff", "Staff"],
   ["/conflicts", "Conflicts"],
@@ -30,20 +36,23 @@ export default function HomePage() {
           <h1 style={{ fontSize: 52, lineHeight: 1, margin: "14px 0 0", letterSpacing: "-0.04em" }}>LucyWorks OS</h1>
           <p style={{ marginTop: 16, color: "#cbd5e1", fontSize: 20, maxWidth: 820 }}>Run the hospital. Not just the schedule.</p>
           <p style={{ marginTop: 10, color: "#94a3b8", maxWidth: 900 }}>
-            Case-driven operational control for specialist veterinary hospitals: admissions, episodes, rooms, schedule blocks, rota, conflicts, results, comms, work ownership, staff availability, and audit trail.
+            Case-driven operational control for specialist veterinary hospitals: Pulse, Ethics, triage, admissions, episodes, rooms, schedule blocks, rota, discharge, pharmacy, stock, conflicts, results, comms, work ownership, staff availability, and audit trail.
           </p>
           <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Link href="/command" style={{ background: "#14b8a6", color: "#020617", padding: "12px 16px", borderRadius: 12, fontWeight: 700 }}>Open Command</Link>
+            <Link href="/pulse" style={{ background: "#14b8a6", color: "#020617", padding: "12px 16px", borderRadius: 12, fontWeight: 700 }}>Open Pulse</Link>
+            <Link href="/ethics" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Ethics</Link>
+            <Link href="/command" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Command</Link>
             <Link href="/system" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open System Map</Link>
-            <Link href="/admissions" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Admissions</Link>
             <Link href="/episodes/EP-1042" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Example Case</Link>
           </div>
         </section>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
           {[
+            ["Pulse", "Whole-hospital pressure, risk, capacity, staffing and execution state."],
+            ["Ethics", "Welfare, consent, owner communication, financial constraint and escalation risk."],
+            ["Triage", "Front-door routing, red flags, urgent inputs and escalation."],
             ["Admissions", "Admitted patient flow, inpatient ownership and current ward/ICU load."],
-            ["Cases", "One episode spine linking timeline, room, comms, results, conflicts, and work."],
             ["Schedule", "Prep → anaesthesia → procedure → recovery → cleaning as operational blocks."],
             ["Rota", "Shift coverage, staff pressure and assigned block warnings."],
             ["Conflicts", "Room, chain, handoff, and review problems surfaced as action."],
