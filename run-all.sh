@@ -3,7 +3,7 @@ set -e
 
 cd backend
 python -m pip install -r requirements.txt
-uvicorn app.main_fixed:app --host 0.0.0.0 --port 8000 &
+uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 
 cd ../frontend
 npm install
