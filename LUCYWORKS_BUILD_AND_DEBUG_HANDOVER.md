@@ -1,9 +1,15 @@
-# LucyWorks OS — Full Build + Debug Handover Pack
+# LucyWorks OS — Build + Debug Handover Pack
 
-## Purpose of this file
-This document is the clean handover pack for debugging and continuing LucyWorks OS with another LLM, developer, or automation agent.
+## Current status
+This file is the current source-of-truth handover for LucyWorks OS after the backend stabilisation pass.
 
-It exists because the build history became messy. Use this file as the stable source of truth instead of trying to reconstruct decisions from chat.
+The project now uses a safer backend entrypoint:
+
+```text
+backend/app/main_fixed.py
+```
+
+The older `backend/app/main.py` still exists, but the smoke test and full run script now target `main_fixed.py`.
 
 ---
 
@@ -18,9 +24,7 @@ Hospital operations engine for specialist veterinary hospitals.
 ## Core positioning
 **Run the hospital. Not just the schedule.**
 
-LucyWorks OS is not a generic dashboard, task board, CRM, reception tool, or SaaS toy. It is intended to be an operational control system for high-throughput specialist veterinary environments.
-
-## What it should coordinate
+LucyWorks OS coordinates:
 - Episodes / cases
 - Patients and owners
 - Rooms
@@ -34,20 +38,30 @@ LucyWorks OS is not a generic dashboard, task board, CRM, reception tool, or Saa
 - Handover
 - Audit trail
 
+Core loop:
+
+```text
+Episode → Schedule → Rooms → Staff → Conflicts → Results → Messages → Work → Audit
+```
+
 ---
 
 # 2. Repository
 
-## GitHub repository
-`edgallagheris-lucyworksos/lucyworks-os`
+GitHub repository:
 
-## Current expected structure
+```text
+edgallagheris-lucyworksos/lucyworks-os
+```
+
+Expected structure:
 
 ```text
 lucyworks-os/
   backend/
     app/
       main.py
+      main_fixed.py
       models.py
       schemas.py
       database.py
@@ -62,6 +76,7 @@ lucyworks-os/
       episodes/
       schedule/
       conflicts/
+      staff/
       rooms/
       results/
       mail/
@@ -87,23 +102,33 @@ lucyworks-os/
 
 # 3. Backend Stack
 
-## Framework
-FastAPI
+Framework: FastAPI
 
-## ORM / DB
-SQLModel with SQLite for development.
+ORM / DB: SQLModel with SQLite for development.
 
-## Backend default DB
-Defined in `backend/app/database.py`:
+Default DB is defined in `backend/app/database.py`:
 
 ```python
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./lucyworks.db")
 ```
 
+## Current backend entrypoint
+Use:
+
+```text
+backend/app/main_fixed.py
+```
+
+Run target:
+
+```bash
+uvicorn app.main_fixed:app --host 0.0.0.0 --port 8000
+```
+
 ## Main backend files
 
 ### `backend/app/models.py`
-Defines the core database entities:
+Core entities:
 - `User`
 - `HospitalSection`
 - `Room`
@@ -124,110 +149,25 @@ Defines the core database entities:
 - `WorkItem`
 - `AuditEvent`
 
-### `backend/app/schemas.py`
-Defines request payloads:
-- `LoginDemoRequest`
-- `WorkItemCreate`
-- `WorkItemAssign`
-- `WorkItemStatusUpdate`
-- `ScheduleGenerateRequest`
-- `ScheduleShiftRequest`
-- `ResultActionRequest`
-- `MessageThreadCreate`
-- `MessageEntryCreate`
-- `StaffAllocateRequest`
+Important current fix:
 
-### `backend/app/seed.py`
-Seeds demo data:
-- users
-- hospital sections
-- rooms
-- staff
-- shifts
-- patients
-- episodes
-- admissions
-- handovers
-- results
-- procedure types
-- room states
-- work items
-- message threads
-- message entries
-- audit events
-
-### `backend/app/main.py`
-Main API router and system logic.
-
----
-
-# 4. Frontend Stack
-
-## Framework
-Next.js 15 + React 19
-
-## Main frontend surfaces
-
-### Product landing
-`frontend/app/page.tsx`
-
-Should present LucyWorks OS as:
-- Hospital Operations Engine
-- “Run the hospital. Not just the schedule.”
-
-Should link to:
-- `/login`
-- `/command`
-- `/episodes`
-- `/episodes/EP-1042`
-- `/schedule`
-- `/conflicts`
-- `/rooms`
-- `/results`
-- `/mail`
-- `/consult`
-- `/ward`
-- `/theatre`
-- `/queues`
-- `/audit`
-
-### Shared shell
-`frontend/components/hospital-shell.tsx`
-
-Purpose:
-- shared navigation
-- alert summary
-- role-based links
-- consistent product frame
-
-### Episode command view
-`frontend/app/episodes/[episodeRef]/page.tsx`
-
-This should use:
-
-```text
-GET /api/episode-command/{episode_ref}
+```python
+ScheduleBlock.assigned_staff_member_id
 ```
 
-Not multiple scattered endpoint calls.
+This means schedule blocks can now store the actual assigned staff member, not just the role.
 
-It should show:
-- case / patient / owner
-- current phase
-- room state
-- schedule blocks
-- conflicts
-- results
-- message threads
-- work items
-- controls for shifting schedule blocks
-- controls for staff allocation
-- controls for converting conflict to work
-- controls for marking results reviewed
+`ConflictAction` now also supports resolution state:
+
+```python
+status
+resolved_at
+resolution_note
+```
 
 ---
 
-# 5. Critical Backend Endpoints
+# 4. Critical Backend Endpoints
 
 ## Health
 ```text
@@ -239,6 +179,7 @@ GET /api/health
 GET /api/users
 GET /api/staff
 GET /api/shifts
+GET /api/staff-load
 ```
 
 ## Patients / episodes
@@ -249,8 +190,6 @@ GET /api/episode-command/{episode_ref}
 ```
 
 ## Boards required by frontend
-These must exist or frontend pages will break:
-
 ```text
 GET /api/director-board
 GET /api/consult-board
@@ -272,10 +211,19 @@ POST /api/schedule/block/{block_id}/shift
 POST /api/staff/allocate
 ```
 
+This now writes:
+
+```text
+assigned_staff_member_id
+owner_role
+```
+
 ## Conflicts
 ```text
 GET  /api/conflicts
 POST /api/conflicts/to-work
+GET  /api/conflict-actions
+POST /api/conflict-actions/{action_id}/resolve
 ```
 
 ## Results
@@ -306,7 +254,66 @@ GET /api/audit
 
 ---
 
-# 6. Current Run Scripts
+# 5. Frontend Stack
+
+Framework: Next.js 15 + React 19
+
+## Product landing
+`frontend/app/page.tsx`
+
+Should position LucyWorks OS as:
+
+```text
+Hospital Operations Engine
+Run the hospital. Not just the schedule.
+```
+
+## Shared shell
+`frontend/components/hospital-shell.tsx`
+
+Includes role navigation and now links to `/staff` for ops manager, clinician, and nurse roles.
+
+## Episode command view
+`frontend/app/episodes/[episodeRef]/page.tsx`
+
+Uses:
+
+```text
+GET /api/episode-command/{episode_ref}
+GET /api/staff-load
+```
+
+Current controls:
+- shift schedule block by -15 / +15 minutes
+- assign staff to a block
+- convert conflict to work
+- mark result reviewed
+- show assigned staff name using `assigned_staff_member_id`
+- show staff load cards
+
+## Conflicts page
+`frontend/app/conflicts/page.tsx`
+
+Current controls:
+- show detected conflicts
+- convert detected conflict to work
+- show conflict actions
+- resolve conflict actions
+
+## Staff page
+`frontend/app/staff/page.tsx`
+
+Shows:
+- staff member
+- role
+- on shift / off shift
+- active assigned blocks
+- assigned block IDs
+- skills
+
+---
+
+# 6. Run Scripts
 
 ## Backend smoke check
 File:
@@ -315,16 +322,11 @@ File:
 run-backend-check.sh
 ```
 
-Expected command:
+Command:
 
 ```bash
 bash run-backend-check.sh
 ```
-
-Current content should:
-- enter backend
-- install requirements
-- run smoke test
 
 ## Full development run
 File:
@@ -333,206 +335,140 @@ File:
 run-all.sh
 ```
 
-Expected command:
+Command:
 
 ```bash
 bash run-all.sh
 ```
 
-Current content should:
-- install backend requirements
-- start backend on port 8000
-- install frontend packages
-- start frontend on port 3000
+Important: this now runs:
+
+```bash
+uvicorn app.main_fixed:app --host 0.0.0.0 --port 8000
+```
 
 ---
 
 # 7. Smoke Test
 
-## File
-`backend/smoke_test.py`
+File:
 
-## Current intended behaviour
-The smoke test should:
-1. Use an isolated clean SQLite database every run.
-2. Import the FastAPI app after setting `DATABASE_URL`.
-3. Trigger app startup through `TestClient`.
-4. Check `/api/health`.
-5. Check seeded episodes exist.
-6. Check `EP-1042` episode command endpoint.
-7. Check director, consult, ward, and theatre board endpoints.
-8. Generate a schedule.
-9. Confirm schedule blocks exist.
-10. Shift a schedule block.
-11. Confirm staff exists.
-12. Test staff allocation endpoint.
-13. Test conflicts endpoint.
-14. Test conflict-to-work endpoint.
-15. Recheck episode command after actions.
+```text
+backend/smoke_test.py
+```
 
-## Expected pass output
+It imports:
+
+```python
+from app.main_fixed import app
+```
+
+It uses an isolated clean SQLite database every run.
+
+It validates:
+1. `/api/health`
+2. seeded episodes
+3. `EP-1042` episode command
+4. director, consult, ward, and theatre boards
+5. schedule generation
+6. schedule block chain
+7. schedule shifting
+8. staff list
+9. staff allocation
+10. `/api/staff-load`
+11. `/api/conflicts`
+12. conflict-to-work
+13. `/api/conflict-actions`
+14. conflict resolution
+15. episode command after actions
+
+Expected pass output:
 
 ```text
 --- ALL TESTS PASSED ---
 ```
 
-## Important note
-If this test fails, fix the backend before touching the frontend.
-
 ---
 
-# 8. Known Current Risks / Weak Points
+# 8. Current Known Risks
 
-## Risk 1 — No migrations
-There is no Alembic migration system yet. SQLite tables are created with SQLModel metadata.
+## Risk 1 — frontend build still needs external verification
+The backend has been hardened, but the frontend build has not been executed inside this assistant runtime.
 
-For development, isolated DB testing is okay. For production, migrations are required.
+Required check:
 
-## Risk 2 — Staff allocation is not properly stored
-Current `ScheduleBlock` has:
-
-```python
-owner_role: Optional[str]
+```bash
+cd frontend
+npm install
+NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run build
 ```
 
-But it does **not** currently have:
+## Risk 2 — no migration system
+There is still no Alembic migration system. Development uses SQLite + SQLModel create_all.
 
-```python
-assigned_staff_member_id: Optional[int]
-```
+Production requires migrations.
 
-This means staff allocation is not fully traceable yet.
+## Risk 3 — schedule duplication policy not resolved
+`/api/schedule/generate` creates a new case procedure and new block chain every call.
 
-### Required fix
-Add to `ScheduleBlock`:
+Need a product decision:
+- allow multiple procedures per episode, or
+- replace/void prior planned blocks for same episode/procedure.
 
-```python
-assigned_staff_member_id: Optional[int] = Field(default=None, foreign_key="staffmember.id")
-```
+## Risk 4 — old `main.py` remains
+The safer app is `main_fixed.py`. The older `main.py` is not the recommended run target.
 
-Then update `/api/staff/allocate` to store that field.
+Future cleanup should either:
+- replace `main.py` with `main_fixed.py`, or
+- keep `main_fixed.py` as stable entrypoint and document it clearly.
 
-## Risk 3 — Conflict lifecycle incomplete
-Current system can:
-- detect conflict
-- convert conflict to work item
-
-But does not fully:
-- persist every detected conflict
-- mark source conflict resolved
-- link resolution state back into schedule
-
-### Required fix
-Improve `ConflictAction` lifecycle:
-- `open`
-- `assigned`
-- `resolved`
-- `ignored`
-
-## Risk 4 — Schedule generation can duplicate schedules
-Current `/api/schedule/generate` creates a new `CaseProcedure` and block chain every time.
-
-### Required fix options
-Option A: allow multiple procedures per episode intentionally.
-Option B: delete/void prior planned procedure blocks for same episode/procedure before new schedule.
-
-Need explicit decision.
-
-## Risk 5 — Frontend build not externally verified here
-The repo has Next.js and TypeScript, but the assistant has not executed a real `npm run build` in the Codespaces environment.
-
-Potential risks:
-- route typing issues
-- strict TS edge cases
-- CSS/layout roughness
-- missing pages referenced in navigation
-
-## Risk 6 — GitHub Actions workflow missing
-An attempt to create `.github/workflows/smoke.yml` was blocked by the connector. CI is not currently committed.
-
-### Required fix
-Manually create GitHub Actions workflow or retry through direct repo editing.
-
----
-
-# 9. Branding / Marketing State
-
-## Current brand direction
-
-### Name
-LucyWorks OS
-
-### Tagline
-Run the hospital. Not just the schedule.
-
-### Category
-Hospital Operations Engine
-
-### Product description
-Case-driven operational control for specialist veterinary hospitals: episodes, rooms, schedule blocks, conflicts, results, comms, work ownership, staff availability, and audit trail.
-
-## Visual direction
-- dark operational UI
-- clinical / command-centre feel
-- accent colour: teal `#14b8a6`
-- background: dark slate / near black
-- avoid soft “cute vet app” design
-- should feel like control infrastructure
-
-## Current marketing surface
-`frontend/app/page.tsx` has been reworked into a product landing/front-door.
-
-## Missing marketing assets
-- proper logo component
-- pitch page
-- investor/demo explanation
-- screenshots / demo story
-- one-page product PDF
-- feature matrix
+## Risk 5 — UI is functional but not polished
+Current UI is operational and dark-command styled, but still needs:
+- stronger logo component
+- product/pitch page
+- demo story
+- screenshots
 - pricing hypothesis
 - technical architecture diagram
 
 ---
 
-# 10. Recommended Next Build Order
+# 9. Branding / Marketing State
 
-## Step 1 — Make backend test pass reliably
-Run or simulate `backend/smoke_test.py`. Fix any backend failure first.
+Name: LucyWorks OS
 
-## Step 2 — Add proper staff assignment field
-Add `assigned_staff_member_id` to `ScheduleBlock` and update API + UI.
+Category: Hospital Operations Engine
 
-## Step 3 — Add staff load endpoint
-Suggested endpoint:
+Tagline:
 
 ```text
-GET /api/staff-load
+Run the hospital. Not just the schedule.
 ```
 
-Should return:
+Visual direction:
+- dark operational UI
+- clinical / command-centre feel
+- teal accent `#14b8a6`
+- near-black background `#020617`
+- no cute vet branding
+- no SaaS fluff
 
-```json
-[
-  {
-    "staff_member_id": 1,
-    "name": "Nina Nurse",
-    "role": "nurse",
-    "active_blocks": 3,
-    "on_shift": true,
-    "conflicts": []
-  }
-]
+---
+
+# 10. Next Build Order
+
+Do not add new concepts until validation is done.
+
+## Step 1 — backend verification
+Run:
+
+```bash
+bash run-backend-check.sh
 ```
 
-## Step 4 — Improve conflict lifecycle
-Add:
+Fix any failure.
 
-```text
-GET  /api/conflict-actions
-POST /api/conflict-actions/{id}/resolve
-```
-
-## Step 5 — Frontend build verification
+## Step 2 — frontend build verification
 Run:
 
 ```bash
@@ -541,63 +477,27 @@ npm install
 NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run build
 ```
 
-Fix all build errors.
+Fix any build errors.
 
-## Step 6 — Add CI
-Add `.github/workflows/smoke.yml` manually if needed.
+## Step 3 — product cleanup
+- decide schedule duplication policy
+- replace/retire old `main.py`
+- add CI workflow manually if GitHub connector blocks it
+- add product/pitch page
+- add better logo/brand component
 
-## Step 7 — Add pitch / brand page
-Suggested route:
+---
+
+# 11. Prompt for another LLM
 
 ```text
-/frontend/app/product/page.tsx
+You are debugging LucyWorks OS in repo edgallagheris-lucyworksos/lucyworks-os.
+Use LUCYWORKS_BUILD_AND_DEBUG_HANDOVER.md as source of truth.
+Use backend/app/main_fixed.py as the current stable backend entrypoint.
+Do not guess from chat.
+First make backend/smoke_test.py pass on a clean isolated DB.
+Then make frontend npm build pass.
+Do not add new concepts until validation passes.
+Product direction: LucyWorks OS is a hospital operations engine, not a dashboard.
+Core loop: Episode → Schedule → Rooms → Staff → Conflicts → Results → Messages → Work → Audit.
 ```
-
-Should explain:
-- problem
-- solution
-- operational loop
-- feature map
-- demo flow
-- why it matters
-
----
-
-# 11. Debug Instructions for Another LLM
-
-If another LLM receives this file, it should:
-
-1. Open `backend/app/main.py`, `models.py`, `schemas.py`, `seed.py`, and `smoke_test.py`.
-2. Check imports and model/schema compatibility.
-3. Confirm all endpoints listed above exist.
-4. Confirm frontend pages call only existing endpoints.
-5. Prioritise backend smoke test before UI changes.
-6. Do not add new features until the smoke test and frontend build pass.
-7. Keep changes small and verifiable.
-8. Avoid overwriting full files unless absolutely necessary.
-9. If overwriting, preserve all endpoint coverage.
-10. Update this file after major changes.
-
----
-
-# 12. Short Prompt To Give Another LLM
-
-Copy this prompt:
-
-```text
-You are debugging and continuing LucyWorks OS in the GitHub repo edgallagheris-lucyworksos/lucyworks-os. Read LUCYWORKS_BUILD_AND_DEBUG_HANDOVER.md first. Do not guess from chat history. First verify backend/app/models.py, schemas.py, seed.py, main.py, and backend/smoke_test.py are compatible. Make the backend smoke test pass using a clean isolated database. Then verify frontend endpoint usage matches backend endpoints. Do not add new features until backend smoke and frontend build pass. Preserve the product direction: LucyWorks OS is a hospital operations engine, not a generic dashboard. Core concept: Episode → Schedule → Rooms → Staff → Conflicts → Results → Messages → Work → Audit. Fix staff assignment properly by adding assigned_staff_member_id to ScheduleBlock, improve conflict lifecycle, then add staff load and product branding page.
-```
-
----
-
-# 13. Current Human Next Step
-
-The next useful step is not more feature building. It is:
-
-1. Run or simulate `bash run-backend-check.sh`.
-2. Fix any failure.
-3. Run frontend build.
-4. Fix build errors.
-5. Then continue with staff assignment and conflict lifecycle.
-
-This file should be treated as the handover baseline.
