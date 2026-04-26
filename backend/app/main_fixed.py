@@ -17,7 +17,7 @@ from app.schemas import (
 )
 from app.seed import seed_data
 
-app = FastAPI(title="LucyWorks OS API", version="0.8.0-fixed")
+app = FastAPI(title="LucyWorks OS API", version="0.8.1-fixed")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
@@ -67,6 +67,17 @@ def compute_conflicts(session: Session):
             out.append({"type": "handover_conflict", "severity": "high", "detail": h.note, "episode_ids": [h.episode_id]})
     return out
 
+def alerts_for(session: Session):
+    conflicts = compute_conflicts(session)
+    items = session.exec(select(WorkItem)).all()
+    alerts = list(conflicts)
+    for item in items:
+        if item.input_type == "discharge_blocker" and item.status != "done":
+            alerts.append({"type": "blocked_discharge", "severity": "high", "detail": item.title, "episode_ids": []})
+    if any(i.section_name == "ICU" and i.status != "done" for i in items):
+        alerts.append({"type": "icu_pressure", "severity": "high", "detail": "Active ICU pressure detected", "episode_ids": []})
+    return alerts
+
 def board_cards(items):
     return [
         {"key": "red_alerts", "label": "Red alerts", "value": len([i for i in items if i.urgency == "red"]), "tone": "critical"},
@@ -86,6 +97,10 @@ def room_groups(items):
 def root(): return {"product": "LucyWorks OS", "status": "running", "entrypoint": "main_fixed"}
 @app.get("/api/health")
 def health(): return {"ok": True, "service": "backend", "product": "LucyWorks OS", "entrypoint": "main_fixed"}
+@app.get("/api/alerts")
+def alerts(session: Session = Depends(get_session)):
+    rows = alerts_for(session)
+    return {"total_alerts": len(rows), "high_alerts": len([a for a in rows if a["severity"] == "high"]), "alerts": rows}
 @app.get("/api/users")
 def users(session: Session = Depends(get_session)): return session.exec(select(User)).all()
 @app.get("/api/staff")
