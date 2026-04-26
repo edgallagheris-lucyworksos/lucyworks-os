@@ -8,7 +8,7 @@ if TEST_DB.exists():
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 
 from fastapi.testclient import TestClient
-from app.main_fixed import app
+from app.main import app
 
 print("\n--- RUNNING BACKEND SMOKE TEST ---\n")
 
