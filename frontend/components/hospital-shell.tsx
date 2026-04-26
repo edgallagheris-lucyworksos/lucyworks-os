@@ -15,6 +15,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
     { href: "/system", label: "System" },
     { href: "/command", label: "Command" },
+    { href: "/admissions", label: "Admissions" },
     { href: "/schedule", label: "Schedule" },
     { href: "/rota", label: "Rota" },
     { href: "/conflicts", label: "Conflicts" },
@@ -32,6 +33,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   clinician: [
     { href: "/system", label: "System" },
     { href: "/command", label: "Command" },
+    { href: "/admissions", label: "Admissions" },
     { href: "/schedule", label: "Schedule" },
     { href: "/rota", label: "Rota" },
     { href: "/conflicts", label: "Conflicts" },
@@ -47,6 +49,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   nurse: [
     { href: "/system", label: "System" },
+    { href: "/admissions", label: "Admissions" },
     { href: "/episodes", label: "Episodes" },
     { href: "/schedule", label: "Schedule" },
     { href: "/rota", label: "Rota" },
@@ -61,6 +64,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   admin: [
     { href: "/system", label: "System" },
+    { href: "/admissions", label: "Admissions" },
     { href: "/episodes", label: "Episodes" },
     { href: "/mail", label: "Mail Ops" },
     { href: "/consult", label: "Consult" },
