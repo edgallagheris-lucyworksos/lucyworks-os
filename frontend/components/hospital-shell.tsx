@@ -13,6 +13,7 @@ type AlertSummary = {
 
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
+    { href: "/system", label: "System" },
     { href: "/command", label: "Command" },
     { href: "/schedule", label: "Schedule" },
     { href: "/conflicts", label: "Conflicts" },
@@ -28,6 +29,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: "/audit", label: "Audit" },
   ],
   clinician: [
+    { href: "/system", label: "System" },
     { href: "/command", label: "Command" },
     { href: "/schedule", label: "Schedule" },
     { href: "/conflicts", label: "Conflicts" },
@@ -42,6 +44,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: "/alerts", label: "Alerts" },
   ],
   nurse: [
+    { href: "/system", label: "System" },
     { href: "/episodes", label: "Episodes" },
     { href: "/schedule", label: "Schedule" },
     { href: "/conflicts", label: "Conflicts" },
@@ -54,6 +57,7 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: "/input", label: "Input" },
   ],
   admin: [
+    { href: "/system", label: "System" },
     { href: "/episodes", label: "Episodes" },
     { href: "/mail", label: "Mail Ops" },
     { href: "/consult", label: "Consult" },
