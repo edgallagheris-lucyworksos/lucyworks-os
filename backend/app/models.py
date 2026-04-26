@@ -148,6 +148,7 @@ class ScheduleBlock(SQLModel, table=True):
     block_type: str
     room_name: Optional[str] = None
     owner_role: Optional[str] = None
+    assigned_staff_member_id: Optional[int] = Field(default=None, foreign_key="staffmember.id")
     starts_at: datetime
     ends_at: datetime
     status: str = "planned"
@@ -171,6 +172,8 @@ class ConflictAction(SQLModel, table=True):
     detail: str
     status: str = "open"
     linked_work_item_id: Optional[int] = Field(default=None, foreign_key="workitem.id")
+    resolved_at: Optional[datetime] = None
+    resolution_note: Optional[str] = None
     created_at: datetime = Field(default_factory=utc_now)
 
 
