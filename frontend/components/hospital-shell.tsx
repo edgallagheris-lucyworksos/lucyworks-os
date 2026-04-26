@@ -14,6 +14,8 @@ type AlertSummary = {
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
     { href: "/system", label: "System" },
+    { href: "/pulse", label: "Pulse" },
+    { href: "/ethics", label: "Ethics" },
     { href: "/command", label: "Command" },
     { href: "/triage", label: "Triage" },
     { href: "/admissions", label: "Admissions" },
@@ -36,6 +38,8 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   clinician: [
     { href: "/system", label: "System" },
+    { href: "/pulse", label: "Pulse" },
+    { href: "/ethics", label: "Ethics" },
     { href: "/command", label: "Command" },
     { href: "/triage", label: "Triage" },
     { href: "/admissions", label: "Admissions" },
@@ -56,6 +60,8 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   nurse: [
     { href: "/system", label: "System" },
+    { href: "/pulse", label: "Pulse" },
+    { href: "/ethics", label: "Ethics" },
     { href: "/triage", label: "Triage" },
     { href: "/admissions", label: "Admissions" },
     { href: "/episodes", label: "Episodes" },
@@ -75,6 +81,8 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   admin: [
     { href: "/system", label: "System" },
+    { href: "/pulse", label: "Pulse" },
+    { href: "/ethics", label: "Ethics" },
     { href: "/triage", label: "Triage" },
     { href: "/admissions", label: "Admissions" },
     { href: "/discharge", label: "Discharge" },
