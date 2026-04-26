@@ -18,6 +18,14 @@ with TestClient(app) as client:
     assert r.json().get("entrypoint") == "main_fixed"
     print("Health OK")
 
+    r = client.get("/api/alerts")
+    assert r.status_code == 200, r.text
+    alerts = r.json()
+    assert "total_alerts" in alerts
+    assert "high_alerts" in alerts
+    assert "alerts" in alerts
+    print("Alerts OK")
+
     r = client.get("/api/episodes")
     assert r.status_code == 200, r.text
     episodes = r.json()
