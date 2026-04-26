@@ -1,10 +1,13 @@
 import Link from "next/link";
 
 const links = [
+  ["/system", "System Map"],
+  ["/product", "Product"],
   ["/login", "Access"],
   ["/command", "Command"],
   ["/schedule", "Schedule"],
   ["/episodes", "Episodes"],
+  ["/staff", "Staff"],
   ["/conflicts", "Conflicts"],
   ["/rooms", "Rooms"],
   ["/results", "Results"],
@@ -31,6 +34,7 @@ export default function HomePage() {
           </p>
           <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link href="/command" style={{ background: "#14b8a6", color: "#020617", padding: "12px 16px", borderRadius: 12, fontWeight: 700 }}>Open Command</Link>
+            <Link href="/system" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open System Map</Link>
             <Link href="/episodes/EP-1042" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Example Case</Link>
             <Link href="/schedule" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Schedule</Link>
           </div>
@@ -40,6 +44,7 @@ export default function HomePage() {
           {[
             ["Cases", "One episode spine linking timeline, room, comms, results, conflicts, and work."],
             ["Schedule", "Prep → anaesthesia → procedure → recovery → cleaning as operational blocks."],
+            ["Staff", "Shift state, load and assigned schedule blocks tied to live operations."],
             ["Conflicts", "Room, chain, handoff, and review problems surfaced as action."],
             ["Audit", "Every action becomes a traceable operational record."],
           ].map(([title, text]) => (
