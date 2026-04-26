@@ -8,13 +8,14 @@ if TEST_DB.exists():
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 
 from fastapi.testclient import TestClient
-from app.main import app
+from app.main_fixed import app
 
 print("\n--- RUNNING BACKEND SMOKE TEST ---\n")
 
 with TestClient(app) as client:
     r = client.get("/api/health")
     assert r.status_code == 200, r.text
+    assert r.json().get("entrypoint") == "main_fixed"
     print("Health OK")
 
     r = client.get("/api/episodes")
@@ -32,31 +33,23 @@ with TestClient(app) as client:
     assert command["patient"] is not None
     print("Episode command OK")
 
-    r = client.get("/api/director-board")
-    assert r.status_code == 200, r.text
-    assert "cards" in r.json()
-    print("Director board OK")
-
-    r = client.get("/api/consult-board")
-    assert r.status_code == 200, r.text
-    assert "room_groups" in r.json()
-    print("Consult board OK")
-
-    r = client.get("/api/ward-board")
-    assert r.status_code == 200, r.text
-    assert "room_groups" in r.json()
-    print("Ward board OK")
-
-    r = client.get("/api/theatre-board")
-    assert r.status_code == 200, r.text
-    assert "room_groups" in r.json()
-    print("Theatre board OK")
+    for endpoint, label in [
+        ("/api/director-board", "Director board"),
+        ("/api/consult-board", "Consult board"),
+        ("/api/ward-board", "Ward board"),
+        ("/api/theatre-board", "Theatre board"),
+    ]:
+        r = client.get(endpoint)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert "cards" in body
+        print(f"{label} OK")
 
     r = client.post("/api/schedule/generate", json={
         "episode_ref": ep_ref,
         "procedure_type_id": 1,
         "room_name": "Theatre 1",
-        "start_time": "2026-04-24T10:00:00",
+        "start_time": "2026-04-24T10:00:00+00:00",
         "actor_name": "Smoke Test"
     })
     assert r.status_code == 200, r.text
@@ -88,7 +81,14 @@ with TestClient(app) as client:
     assert r.status_code == 200, r.text
     allocation = r.json()
     assert allocation["status"] in {"allocated", "conflict"}
+    if allocation["status"] == "allocated":
+        assert allocation.get("staff_member_id") == staff_id
     print("Staff allocation endpoint OK")
+
+    r = client.get("/api/staff-load")
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list)
+    print("Staff load OK")
 
     r = client.get("/api/conflicts")
     assert r.status_code == 200, r.text
@@ -97,8 +97,21 @@ with TestClient(app) as client:
 
     r = client.post("/api/conflicts/to-work?conflict_type=smoke_test&severity=high&detail=Smoke%20test%20conflict")
     assert r.status_code == 200, r.text
-    assert "work_item" in r.json()
+    created = r.json()
+    assert "work_item" in created
+    assert "conflict_action" in created
+    action_id = created["conflict_action"]["id"]
     print("Conflict to work OK")
+
+    r = client.get("/api/conflict-actions")
+    assert r.status_code == 200, r.text
+    assert len(r.json()) > 0
+    print("Conflict actions list OK")
+
+    r = client.post(f"/api/conflict-actions/{action_id}/resolve?note=Smoke%20resolved")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "resolved"
+    print("Conflict resolve OK")
 
     r = client.get(f"/api/episode-command/{ep_ref}")
     assert r.status_code == 200, r.text
