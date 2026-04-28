@@ -180,6 +180,65 @@ class PulseSignal(SQLModel, table=True):
     resolved_at: Optional[datetime] = None
 
 
+class DischargeReadiness(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: int = Field(foreign_key="episode.id")
+    clinician_signoff: bool = False
+    medication_ready: bool = False
+    owner_updated: bool = False
+    admin_ready: bool = False
+    results_reviewed: bool = False
+    care_instructions_ready: bool = False
+    blocker_summary: str = ""
+    readiness_state: str = "blocked"
+    owner_role: str = "clinician"
+    urgency: str = "amber"
+    status: str = "open"
+    created_at: datetime = Field(default_factory=utc_now)
+    completed_at: Optional[datetime] = None
+
+
+class PharmacyRequest(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    medication_name: str
+    request_type: str = "dispense"
+    controlled_or_legal_status: str = "standard"
+    authorised_supplier_required: bool = True
+    quantity: Optional[str] = None
+    urgency: str = "amber"
+    owner_role: str = "nurse"
+    status: str = "requested"
+    compliance_note: str = ""
+    created_at: datetime = Field(default_factory=utc_now)
+    completed_at: Optional[datetime] = None
+
+
+class StockItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    category: str
+    location: str
+    current_quantity: int = 0
+    reorder_threshold: int = 1
+    authorised_supplier: Optional[str] = None
+    compliance_note: str = ""
+    active: bool = True
+
+
+class StockOrder(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    stock_item_id: Optional[int] = Field(default=None, foreign_key="stockitem.id")
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    item_name: str
+    reason: str
+    urgency: str = "amber"
+    supplier: Optional[str] = None
+    status: str = "needed"
+    created_at: datetime = Field(default_factory=utc_now)
+    completed_at: Optional[datetime] = None
+
+
 class Admission(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     episode_id: int = Field(foreign_key="episode.id")
