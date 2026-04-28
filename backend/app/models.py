@@ -51,6 +51,135 @@ class Episode(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class TriageAssessment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    species: str
+    presenting_signs: str
+    urgency: str
+    route: str
+    confidence: float = 0.75
+    reasoning: str
+    red_flags: str = ""
+    advice_mode: str = "information_only"
+    handoff_required: bool = False
+    ethics_triggered: bool = False
+    owner_contact_required: bool = False
+    decision_required: bool = False
+    assigned_owner_role: str = "clinician"
+    status: str = "open"
+    created_at: datetime = Field(default_factory=utc_now)
+    resolved_at: Optional[datetime] = None
+
+
+class EthicsFlag(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    flag_type: str
+    severity: str
+    detail: str
+    clinical_reasoning: str = ""
+    owner_state: str = "unknown"
+    decision_required: str = "senior_clinician_review"
+    escalation_path: str = "clinician_to_ops_manager"
+    owner_role: str = "clinician"
+    status: str = "open"
+    escalation_required: bool = True
+    linked_work_item_id: Optional[int] = Field(default=None, foreign_key="workitem.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    resolved_at: Optional[datetime] = None
+    resolution_note: Optional[str] = None
+
+
+class DecisionRecord(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    decision_type: str
+    decision_needed: str
+    owner_role: str
+    owner_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    section_name: Optional[str] = None
+    status: str = "open"
+    urgency: str = "amber"
+    source: str = "manual"
+    linked_work_item_id: Optional[int] = Field(default=None, foreign_key="workitem.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    resolved_at: Optional[datetime] = None
+    resolution: Optional[str] = None
+
+
+class Blocker(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    blocker_type: str
+    section_name: str
+    detail: str
+    impact: str
+    urgency: str = "amber"
+    owner_role: str
+    status: str = "open"
+    linked_decision_id: Optional[int] = Field(default=None, foreign_key="decisionrecord.id")
+    linked_work_item_id: Optional[int] = Field(default=None, foreign_key="workitem.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    resolved_at: Optional[datetime] = None
+
+
+class EscalationEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    escalation_type: str
+    severity: str
+    reason: str
+    from_role: str
+    to_role: str
+    status: str = "open"
+    linked_blocker_id: Optional[int] = Field(default=None, foreign_key="blocker.id")
+    linked_ethics_flag_id: Optional[int] = Field(default=None, foreign_key="ethicsflag.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    resolved_at: Optional[datetime] = None
+
+
+class LucyCareTask(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: int = Field(foreign_key="episode.id")
+    task_type: str
+    care_area: str
+    detail: str
+    owner_role: str
+    owner_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    due_at: Optional[datetime] = None
+    status: str = "open"
+    escalation_required: bool = False
+    created_at: datetime = Field(default_factory=utc_now)
+    completed_at: Optional[datetime] = None
+
+
+class OwnerCommsRequirement(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    reason: str
+    required_message: str
+    owner_role: str = "clinician"
+    urgency: str = "amber"
+    status: str = "due"
+    linked_message_thread_id: Optional[int] = Field(default=None, foreign_key="messagethread.id")
+    created_at: datetime = Field(default_factory=utc_now)
+    completed_at: Optional[datetime] = None
+
+
+class PulseSignal(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    signal_type: str
+    section_name: str
+    severity: str
+    detail: str
+    episode_id: Optional[int] = Field(default=None, foreign_key="episode.id")
+    source: str
+    status: str = "open"
+    created_at: datetime = Field(default_factory=utc_now)
+    resolved_at: Optional[datetime] = None
+
+
 class Admission(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     episode_id: int = Field(foreign_key="episode.id")
