@@ -14,6 +14,13 @@ type EpisodeCommand = {
   handovers: any[];
   results: any[];
   schedule_blocks: any[];
+  triage: any[];
+  ethics_flags: any[];
+  decisions: any[];
+  blockers: any[];
+  escalations: any[];
+  care_tasks: any[];
+  owner_comms_requirements: any[];
   message_threads: any[];
   work_items: any[];
   room_state?: any | null;
@@ -34,6 +41,16 @@ function time(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function SpineSection({ title, items, empty, render }: { title: string; items: any[]; empty: string; render: (item: any) => React.ReactNode }) {
+  return (
+    <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>{title}</div>
+      {items.map(render)}
+      {!items.length ? <div style={{ padding: 16, color: "#94a3b8" }}>{empty}</div> : null}
+    </section>
+  );
+}
+
 export default function EpisodeDetailPage() {
   const params = useParams<{ episodeRef: string }>();
   const episodeRef = params.episodeRef;
@@ -50,9 +67,7 @@ export default function EpisodeDetailPage() {
     setStaffLoad(await staffRes.json());
   }
 
-  useEffect(() => {
-    load();
-  }, [episodeRef]);
+  useEffect(() => { load(); }, [episodeRef]);
 
   const staffById = useMemo(() => {
     const map: Record<number, StaffLoad> = {};
@@ -62,23 +77,14 @@ export default function EpisodeDetailPage() {
 
   async function shiftBlock(blockId: number, minutes: number) {
     setStatus(`Shifting block chain ${minutes} minutes...`);
-    await fetch(`${API_BASE}/api/schedule/block/${blockId}/shift`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ minutes, actor_name: "Episode Command" }),
-    });
-    setStatus("Schedule updated.");
-    await load();
+    await fetch(`${API_BASE}/api/schedule/block/${blockId}/shift`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ minutes, actor_name: "Episode Command" }) });
+    setStatus("Schedule updated."); await load();
   }
 
   async function allocateStaff(blockId: number, staffId: string) {
     if (!staffId) return;
     setStatus("Assigning staff...");
-    const res = await fetch(`${API_BASE}/api/staff/allocate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ schedule_block_id: blockId, staff_member_id: Number(staffId), actor_name: "Episode Command" }),
-    });
+    const res = await fetch(`${API_BASE}/api/staff/allocate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schedule_block_id: blockId, staff_member_id: Number(staffId), actor_name: "Episode Command" }) });
     const body = await res.json();
     setStatus(body.status === "conflict" ? `Staff conflict: ${body.detail}` : `Assigned ${body.staff}.`);
     await load();
@@ -87,18 +93,19 @@ export default function EpisodeDetailPage() {
   async function convertConflict(conflict: any) {
     setStatus("Creating work from conflict...");
     await fetch(`${API_BASE}/api/conflicts/to-work?conflict_type=${encodeURIComponent(conflict.type)}&severity=${encodeURIComponent(conflict.severity)}&detail=${encodeURIComponent(conflict.detail)}`, { method: "POST" });
-    setStatus("Conflict converted to work.");
-    await load();
+    setStatus("Conflict converted to work."); await load();
   }
 
   async function markResultReviewed(resultId: number) {
     setStatus("Marking result reviewed...");
-    await fetch(`${API_BASE}/api/results/${resultId}/action`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "reviewed", actor_name: "Episode Command", required_action: "Reviewed from episode command" }),
-    });
-    setStatus("Result reviewed.");
+    await fetch(`${API_BASE}/api/results/${resultId}/action`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "reviewed", actor_name: "Episode Command", required_action: "Reviewed from episode command" }) });
+    setStatus("Result reviewed."); await load();
+  }
+
+  async function postAction(url: string, done: string) {
+    setStatus("Updating...");
+    await fetch(url, { method: "POST" });
+    setStatus(done);
     await load();
   }
 
@@ -117,96 +124,101 @@ export default function EpisodeDetailPage() {
                 <div style={{ color: "#94a3b8", marginTop: 6 }}>Phase {data.episode.current_phase} • status {data.episode.status} • {data.episode.current_section_name || "-"} / {data.episode.current_room_name || "-"}</div>
               </section>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                <div style={{ border: "1px solid #7f1d1d", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Conflicts</div><div style={{ fontSize: 32 }}>{data.conflicts.length}</div></div>
-                <div style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Schedule blocks</div><div style={{ fontSize: 32 }}>{data.schedule_blocks.length}</div></div>
-                <div style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Results</div><div style={{ fontSize: 32 }}>{data.results.length}</div></div>
-                <div style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>Messages</div><div style={{ fontSize: 32 }}>{data.message_threads.length}</div></div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                {[
+                  ["LucyFlow", data.triage.length], ["Ethics", data.ethics_flags.length], ["Decisions", data.decisions.length], ["Blockers", data.blockers.length], ["Escalations", data.escalations.length], ["Lucy Care", data.care_tasks.length], ["Owner Comms", data.owner_comms_requirements.length], ["Conflicts", data.conflicts.length],
+                ].map(([label, value]) => <div key={String(label)} style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>{label}</div><div style={{ fontSize: 32 }}>{value}</div></div>)}
               </div>
+
+              <SpineSection title="LucyFlow triage" items={data.triage} empty="No LucyFlow assessments linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <strong>{item.urgency?.toUpperCase()} → {item.route}</strong>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.presenting_signs}</div>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.reasoning} • flags {item.red_flags || "none"} • handoff {item.handoff_required ? "yes" : "no"}</div>
+                  {item.status !== "resolved" ? <button onClick={() => postAction(`${API_BASE}/api/lucyflow/triage/${item.id}/resolve?note=Resolved%20from%20episode`, "LucyFlow resolved.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Resolve</button> : null}
+                </div>
+              )} />
+
+              <SpineSection title="Lucy Ethics" items={data.ethics_flags} empty="No ethics flags linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <strong>{item.flag_type} • {item.severity?.toUpperCase()} • {item.status}</strong>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.detail}</div>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.clinical_reasoning} • decision {item.decision_required} • escalation {item.escalation_path}</div>
+                  {item.status !== "resolved" ? <button onClick={() => postAction(`${API_BASE}/api/lucy-ethics/${item.id}/resolve?note=Resolved%20from%20episode`, "Ethics flag resolved.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Resolve</button> : null}
+                </div>
+              )} />
+
+              <SpineSection title="Decisions" items={data.decisions} empty="No open decisions linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <strong>{item.decision_type} • {item.urgency} • {item.status}</strong>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.decision_needed} • owner {item.owner_role} • source {item.source}</div>
+                  {item.status !== "resolved" ? <button onClick={() => postAction(`${API_BASE}/api/decisions/${item.id}/resolve?resolution=Resolved%20from%20episode`, "Decision resolved.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Resolve</button> : null}
+                </div>
+              )} />
+
+              <SpineSection title="Blockers" items={data.blockers} empty="No blockers linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <strong>{item.blocker_type} • {item.urgency} • {item.status}</strong>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.detail} • impact {item.impact} • owner {item.owner_role}</div>
+                  {item.status !== "resolved" ? <button onClick={() => postAction(`${API_BASE}/api/blockers/${item.id}/resolve`, "Blocker resolved.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Resolve</button> : null}
+                </div>
+              )} />
+
+              <SpineSection title="Escalations" items={data.escalations} empty="No escalations linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <strong>{item.escalation_type} • {item.severity} • {item.status}</strong>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.reason} • {item.from_role} → {item.to_role}</div>
+                  {item.status !== "resolved" ? <button onClick={() => postAction(`${API_BASE}/api/escalations/${item.id}/resolve`, "Escalation resolved.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Resolve</button> : null}
+                </div>
+              )} />
+
+              <SpineSection title="Lucy Care" items={data.care_tasks} empty="No Lucy Care tasks linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <strong>{item.care_area} • {item.task_type} • {item.status}</strong>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.detail} • owner {item.owner_role} • escalation {item.escalation_required ? "yes" : "no"}</div>
+                  {item.status !== "done" ? <button onClick={() => postAction(`${API_BASE}/api/lucy-care/tasks/${item.id}/complete`, "Lucy Care task completed.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Complete</button> : null}
+                </div>
+              )} />
+
+              <SpineSection title="Owner Comms requirements" items={data.owner_comms_requirements} empty="No owner comms requirements linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <strong>{item.reason} • {item.urgency} • {item.status}</strong>
+                  <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.required_message} • owner {item.owner_role}</div>
+                  {item.status !== "complete" ? <button onClick={() => postAction(`${API_BASE}/api/owner-comms-requirements/${item.id}/complete`, "Owner comms requirement completed.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Complete</button> : null}
+                </div>
+              )} />
 
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}>
                 <h3 style={{ marginTop: 0 }}>Staff load</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-                  {staffLoad.map((s) => (
-                    <div key={s.staff_member_id} style={{ border: "1px solid #334155", borderRadius: 12, padding: 12 }}>
-                      <strong>{s.name}</strong>
-                      <div style={{ color: "#94a3b8", marginTop: 4 }}>{s.role} • {s.on_shift ? "on shift" : "off shift"} • {s.active_blocks} blocks</div>
-                    </div>
-                  ))}
+                  {staffLoad.map((s) => <div key={s.staff_member_id} style={{ border: "1px solid #334155", borderRadius: 12, padding: 12 }}><strong>{s.name}</strong><div style={{ color: "#94a3b8", marginTop: 4 }}>{s.role} • {s.on_shift ? "on shift" : "off shift"} • {s.active_blocks} blocks</div></div>)}
                 </div>
-              </section>
-
-              <section style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}>
-                <h3 style={{ marginTop: 0 }}>Room state</h3>
-                <div style={{ color: "#94a3b8" }}>{data.room_state ? `${data.room_state.room_name} • ${data.room_state.state} • next ${data.room_state.next_episode_ref || "-"}` : "No room state found"}</div>
               </section>
 
               <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
                 <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Timeline controls</div>
                 {data.schedule_blocks.map((block) => {
                   const assigned = block.assigned_staff_member_id ? staffById[block.assigned_staff_member_id] : null;
-                  return (
-                    <div key={block.id} style={{ padding: 16, borderTop: "1px solid #1f2937", display: "grid", gap: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <strong>{time(block.starts_at)} → {time(block.ends_at)} • {block.block_type}</strong>
-                        <span>{block.room_name || "unassigned"} • {assigned ? `assigned ${assigned.name}` : block.owner_role || "no owner"}</span>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button onClick={() => shiftBlock(block.id, -15)} style={{ padding: "8px 10px", borderRadius: 10 }}>-15 min</button>
-                        <button onClick={() => shiftBlock(block.id, 15)} style={{ padding: "8px 10px", borderRadius: 10 }}>+15 min</button>
-                        <select onChange={(e) => allocateStaff(block.id, e.target.value)} defaultValue="" style={{ padding: "8px 10px", borderRadius: 10 }}>
-                          <option value="">Assign staff</option>
-                          {staffLoad.map((s) => <option key={s.staff_member_id} value={s.staff_member_id}>{s.name} • {s.role} • {s.active_blocks} active</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  );
+                  return <div key={block.id} style={{ padding: 16, borderTop: "1px solid #1f2937", display: "grid", gap: 10 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><strong>{time(block.starts_at)} → {time(block.ends_at)} • {block.block_type}</strong><span>{block.room_name || "unassigned"} • {assigned ? `assigned ${assigned.name}` : block.owner_role || "no owner"}</span></div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button onClick={() => shiftBlock(block.id, -15)} style={{ padding: "8px 10px", borderRadius: 10 }}>-15 min</button><button onClick={() => shiftBlock(block.id, 15)} style={{ padding: "8px 10px", borderRadius: 10 }}>+15 min</button><select onChange={(e) => allocateStaff(block.id, e.target.value)} defaultValue="" style={{ padding: "8px 10px", borderRadius: 10 }}><option value="">Assign staff</option>{staffLoad.map((s) => <option key={s.staff_member_id} value={s.staff_member_id}>{s.name} • {s.role} • {s.active_blocks} active</option>)}</select></div></div>;
                 })}
                 {!data.schedule_blocks.length ? <div style={{ padding: 16, color: "#94a3b8" }}>No schedule blocks linked yet.</div> : null}
               </section>
 
-              <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Conflicts affecting this episode</div>
-                {data.conflicts.map((conflict, index) => (
-                  <div key={`${conflict.type}-${index}`} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <strong>{conflict.type}</strong>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{conflict.severity} • {conflict.detail}</div>
-                    <button onClick={() => convertConflict(conflict)} style={{ marginTop: 10, padding: "8px 10px", borderRadius: 10, background: "#14b8a6", color: "#020617", border: 0 }}>Convert to work</button>
-                  </div>
-                ))}
-                {!data.conflicts.length ? <div style={{ padding: 16, color: "#94a3b8" }}>No conflicts linked to this episode.</div> : null}
-              </section>
+              <SpineSection title="Conflicts affecting this episode" items={data.conflicts} empty="No conflicts linked to this episode." render={(conflict, index) => (
+                <div key={`${conflict.type}-${index}`} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{conflict.type}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{conflict.severity} • {conflict.detail}</div><button onClick={() => convertConflict(conflict)} style={{ marginTop: 10, padding: "8px 10px", borderRadius: 10, background: "#14b8a6", color: "#020617", border: 0 }}>Convert to work</button></div>
+              )} />
 
-              <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Results</div>
-                {data.results.map((item) => (
-                  <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <strong>{item.result_type}</strong>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.status} • owner {item.review_owner} • action {item.required_action || "-"}</div>
-                    {item.status !== "reviewed" ? <button onClick={() => markResultReviewed(item.id)} style={{ marginTop: 10, padding: "8px 10px", borderRadius: 10 }}>Mark reviewed</button> : null}
-                  </div>
-                ))}
-              </section>
+              <SpineSection title="Results" items={data.results} empty="No results linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{item.result_type}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.status} • owner {item.review_owner} • action {item.required_action || "-"}</div>{item.status !== "reviewed" ? <button onClick={() => markResultReviewed(item.id)} style={{ marginTop: 10, padding: "8px 10px", borderRadius: 10 }}>Mark reviewed</button> : null}</div>
+              )} />
 
-              <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Messages</div>
-                {data.message_threads.map((thread) => (
-                  <div key={thread.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <strong>{thread.subject}</strong>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{thread.source_type} • {thread.status} • {thread.owner_role}</div>
-                  </div>
-                ))}
-              </section>
+              <SpineSection title="Messages" items={data.message_threads} empty="No message threads linked." render={(thread) => (
+                <div key={thread.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{thread.subject}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{thread.source_type} • {thread.status} • {thread.owner_role}</div></div>
+              )} />
 
-              <section style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
-                <div style={{ padding: 16, background: "#0f172a", fontWeight: 700 }}>Work</div>
-                {data.work_items.map((item) => (
-                  <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
-                    <strong>{item.title}</strong>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>{item.urgency} • {item.status} • owner {item.owner_role}</div>
-                  </div>
-                ))}
-              </section>
+              <SpineSection title="Work" items={data.work_items} empty="No work items linked." render={(item) => (
+                <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{item.title}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.urgency} • {item.status} • owner {item.owner_role}</div></div>
+              )} />
             </div>
           ) : null}
         </HospitalShell>
