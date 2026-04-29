@@ -4,41 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
+import { DomainAutomationPanel } from "@/components/domain-automation-panel";
+import { DomainPressurePanel } from "@/components/domain-pressure-panel";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
-type DirectorCard = {
-  key: string;
-  label: string;
-  value: number;
-  tone: string;
-};
-
-type SectionPressure = {
-  section_name: string;
-  live: number;
-  red: number;
-  unowned: number;
-};
-
-type WorkItem = {
-  id: number;
-  title: string;
-  urgency: string;
-  owner_role: string;
-  status: string;
-  section_name?: string | null;
-  room_name?: string | null;
-  patient_location_label?: string | null;
-  linked_patient_name?: string | null;
-  linked_episode_ref?: string | null;
-};
-
-type DirectorBoard = {
-  cards: DirectorCard[];
-  section_pressure: SectionPressure[];
-  priority_items: WorkItem[];
-};
+type DirectorCard = { key: string; label: string; value: number; tone: string };
+type SectionPressure = { section_name: string; live: number; red: number; unowned: number };
+type WorkItem = { id: number; title: string; urgency: string; owner_role: string; status: string; section_name?: string | null; room_name?: string | null; patient_location_label?: string | null; linked_patient_name?: string | null; linked_episode_ref?: string | null };
+type DirectorBoard = { cards: DirectorCard[]; section_pressure: SectionPressure[]; priority_items: WorkItem[] };
 
 function toneBorder(tone: string): string {
   if (tone === "critical") return "1px solid #7f1d1d";
@@ -62,10 +36,12 @@ function CommandInner() {
   return (
     <HospitalShell title="Clinical Director / Command" subtitle="Whole-hospital visibility and priority work">
       {!board ? <p>Loading command board...</p> : null}
-
       {board ? (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
+          <DomainAutomationPanel />
+          <div style={{ marginTop: 16 }}><DomainPressurePanel /></div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12, marginTop: 16 }}>
             {board.cards.map((card) => (
               <div key={card.key} style={{ border: toneBorder(card.tone), borderRadius: 18, padding: 16, background: "#0f172a" }}>
                 <div style={{ color: "#94a3b8", fontSize: 14 }}>{card.label}</div>
@@ -91,11 +67,7 @@ function CommandInner() {
                       {item.linked_patient_name ? `patient: ${item.linked_patient_name} • ` : ""}
                       {item.linked_episode_ref ? `episode: ${item.linked_episode_ref}` : ""}
                     </div>
-                    {item.linked_episode_ref ? (
-                      <div style={{ marginTop: 8 }}>
-                        <Link href={`/episodes/${item.linked_episode_ref}`}>Open episode</Link>
-                      </div>
-                    ) : null}
+                    {item.linked_episode_ref ? <div style={{ marginTop: 8 }}><Link href={`/episodes/${item.linked_episode_ref}`}>Open episode</Link></div> : null}
                   </div>
                 ))}
               </div>
@@ -110,9 +82,7 @@ function CommandInner() {
                       <strong>{section.section_name}</strong>
                       <span>live {section.live}</span>
                     </div>
-                    <div style={{ color: "#94a3b8", marginTop: 6 }}>
-                      red {section.red} • unowned {section.unowned}
-                    </div>
+                    <div style={{ color: "#94a3b8", marginTop: 6 }}>red {section.red} • unowned {section.unowned}</div>
                   </div>
                 ))}
               </div>
