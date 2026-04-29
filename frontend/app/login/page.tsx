@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { saveSession } from "@/lib/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -14,6 +15,7 @@ type User = {
 };
 
 export default function LoginPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [status, setStatus] = useState<string>("");
@@ -38,6 +40,7 @@ export default function LoginPage() {
     const data = await res.json();
     saveSession(data.user, data.token);
     setStatus(`Active user: ${data.user.name} (${data.user.role})`);
+    router.push("/workspace");
   }
 
   return (
