@@ -6,16 +6,35 @@ import { clearSession } from "@/lib/session";
 
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
+    { href: "/system", label: "System Map" },
+    { href: "/pulse", label: "Lucy Pulse" },
     { href: "/command", label: "Clinical Director / Command" },
+    { href: "/episodes/EP-1042", label: "Demo Episode Command" },
+    { href: "/triage", label: "LucyFlow" },
+    { href: "/ethics", label: "Lucy Ethics" },
+    { href: "/discharge", label: "Discharge" },
+    { href: "/pharmacy", label: "Pharmacy" },
+    { href: "/stock", label: "Stock" },
     { href: "/consult", label: "Consult Rooms" },
     { href: "/ward", label: "Ward / ICU" },
     { href: "/theatre", label: "Theatre / Recovery" },
+    { href: "/schedule", label: "Schedule" },
+    { href: "/staff", label: "Staff" },
+    { href: "/rooms", label: "Rooms" },
+    { href: "/conflicts", label: "Conflicts" },
     { href: "/queues", label: "Queues" },
     { href: "/audit", label: "Audit" },
     { href: "/input", label: "New input" },
   ],
   clinician: [
+    { href: "/system", label: "System Map" },
+    { href: "/pulse", label: "Lucy Pulse" },
     { href: "/command", label: "Clinical Director / Command" },
+    { href: "/episodes/EP-1042", label: "Demo Episode Command" },
+    { href: "/triage", label: "LucyFlow" },
+    { href: "/ethics", label: "Lucy Ethics" },
+    { href: "/discharge", label: "Discharge" },
+    { href: "/pharmacy", label: "Pharmacy" },
     { href: "/consult", label: "Consult Rooms" },
     { href: "/ward", label: "Ward / ICU" },
     { href: "/theatre", label: "Theatre / Recovery" },
@@ -23,12 +42,24 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
     { href: "/audit", label: "Audit" },
   ],
   nurse: [
+    { href: "/system", label: "System Map" },
+    { href: "/pulse", label: "Lucy Pulse" },
+    { href: "/episodes/EP-1042", label: "Demo Episode Command" },
+    { href: "/triage", label: "LucyFlow" },
+    { href: "/discharge", label: "Discharge" },
+    { href: "/pharmacy", label: "Pharmacy" },
+    { href: "/stock", label: "Stock" },
     { href: "/ward", label: "Ward / ICU" },
     { href: "/theatre", label: "Theatre / Recovery" },
     { href: "/queues", label: "Queues" },
     { href: "/input", label: "New input" },
   ],
   admin: [
+    { href: "/system", label: "System Map" },
+    { href: "/pulse", label: "Lucy Pulse" },
+    { href: "/episodes/EP-1042", label: "Demo Episode Command" },
+    { href: "/discharge", label: "Discharge" },
+    { href: "/stock", label: "Stock" },
     { href: "/consult", label: "Consult Rooms" },
     { href: "/input", label: "New input" },
     { href: "/queues", label: "Queues" },
@@ -40,7 +71,7 @@ export default function WorkspacePage() {
   return (
     <AuthGuard>
       {(user) => (
-        <main style={{ padding: 24, maxWidth: 980, margin: "0 auto" }}>
+        <main style={{ padding: 24, maxWidth: 1180, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
             <div>
               <h1 style={{ marginTop: 0, fontSize: 36 }}>Workspace</h1>
