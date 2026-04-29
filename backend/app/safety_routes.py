@@ -9,6 +9,8 @@ from app.models import (
     DischargeReadiness,
     Episode,
     EthicsFlag,
+    MessageEntry,
+    MessageThread,
     OwnerCommsRequirement,
     PharmacyRequest,
     RoomState,
@@ -17,6 +19,28 @@ from app.models import (
 )
 
 router = APIRouter()
+
+
+@router.post("/api/messages/{thread_id}")
+def create_message_entry(thread_id: int, payload: dict, session: Session = Depends(get_session)):
+    thread = session.get(MessageThread, thread_id)
+    if not thread:
+        raise HTTPException(status_code=404, detail="Message thread not found")
+    entry = MessageEntry(
+        thread_id=thread_id,
+        sender_name=payload.get("sender_name", "LucyWorks User"),
+        direction=payload.get("direction", "outbound"),
+        body=payload.get("body", ""),
+        material_decision_flag=bool(payload.get("material_decision_flag", False)),
+    )
+    session.add(entry)
+    thread.status = "updated"
+    session.add(thread)
+    session.commit()
+    session.refresh(entry)
+    session.add(AuditEvent(actor_name=payload.get("actor_name", "Mail Ops"), action="message_created", entity_type="message_entry", entity_id=entry.id or 0, summary=f"Message added to thread {thread.subject}"))
+    session.commit()
+    return entry
 
 
 @router.post("/api/room-states/{room_state_id}/set")
