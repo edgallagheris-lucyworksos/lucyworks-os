@@ -71,6 +71,25 @@ export default function EpisodeDetailPage() {
   async function convertConflict(conflict: any) { setStatus("Creating work from conflict..."); await fetch(`${API_BASE}/api/conflicts/to-work?conflict_type=${encodeURIComponent(conflict.type)}&severity=${encodeURIComponent(conflict.severity)}&detail=${encodeURIComponent(conflict.detail)}`, { method: "POST" }); setStatus("Conflict converted to work."); await load(); }
   async function markResultReviewed(resultId: number) { setStatus("Marking result reviewed..."); await fetch(`${API_BASE}/api/results/${resultId}/action`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "reviewed", actor_name: "Episode Command", required_action: "Reviewed from episode command" }) }); setStatus("Result reviewed."); await load(); }
   async function postAction(url: string, done: string) { setStatus("Updating..."); await fetch(url, { method: "POST" }); setStatus(done); await load(); }
+  async function updateDischargeReadiness(item: DischargeReadiness) {
+    setStatus("Updating discharge readiness...");
+    await fetch(`${API_BASE}/api/discharge-readiness/${item.id}/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clinician_signoff: item.clinician_signoff,
+        medication_ready: item.medication_ready,
+        owner_updated: item.owner_updated,
+        admin_ready: item.admin_ready,
+        results_reviewed: item.results_reviewed,
+        care_instructions_ready: item.care_instructions_ready,
+        blocker_summary: item.blocker_summary,
+        urgency: item.urgency,
+      }),
+    });
+    setStatus("Discharge readiness refreshed.");
+    await load();
+  }
 
   return <AuthGuard allowedRoles={["ops_manager", "clinician", "nurse", "admin"]}>{() => (
     <HospitalShell title="Episode Command" subtitle={episodeRef}>
@@ -90,7 +109,7 @@ export default function EpisodeDetailPage() {
           {[["LucyFlow", data.triage.length], ["Ethics", data.ethics_flags.length], ["Decisions", data.decisions.length], ["Blockers", data.blockers.length], ["Escalations", data.escalations.length], ["Lucy Care", data.care_tasks.length], ["Owner Comms", data.owner_comms_requirements.length], ["Discharge", discharge.length], ["Pharmacy", pharmacy.length], ["Stock Orders", stockOrders.length], ["Conflicts", data.conflicts.length]].map(([label, value]) => <div key={String(label)} style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 16, background: "#0f172a" }}><div style={{ color: "#94a3b8" }}>{label}</div><div style={{ fontSize: 32 }}>{value}</div></div>)}
         </div>
 
-        <SpineSection title="Discharge readiness" items={discharge} empty="No discharge readiness linked." render={(item) => <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{item.readiness_state} • {item.urgency} • {item.status}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.blocker_summary || "No blocker summary"}</div><div style={{ color: "#94a3b8", marginTop: 6 }}>signoff {item.clinician_signoff ? "yes" : "no"} • meds {item.medication_ready ? "yes" : "no"} • owner {item.owner_updated ? "yes" : "no"} • admin {item.admin_ready ? "yes" : "no"} • results {item.results_reviewed ? "yes" : "no"} • instructions {item.care_instructions_ready ? "yes" : "no"}</div>{item.readiness_state !== "ready" ? <button onClick={() => postAction(`${API_BASE}/api/discharge-readiness/${item.id}/update`, "Discharge readiness updated.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Refresh</button> : null}</div>} />
+        <SpineSection title="Discharge readiness" items={discharge} empty="No discharge readiness linked." render={(item) => <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{item.readiness_state} • {item.urgency} • {item.status}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.blocker_summary || "No blocker summary"}</div><div style={{ color: "#94a3b8", marginTop: 6 }}>signoff {item.clinician_signoff ? "yes" : "no"} • meds {item.medication_ready ? "yes" : "no"} • owner {item.owner_updated ? "yes" : "no"} • admin {item.admin_ready ? "yes" : "no"} • results {item.results_reviewed ? "yes" : "no"} • instructions {item.care_instructions_ready ? "yes" : "no"}</div>{item.readiness_state !== "ready" ? <button onClick={() => updateDischargeReadiness(item)} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Refresh</button> : null}</div>} />
         <SpineSection title="Pharmacy requests" items={pharmacy} empty="No pharmacy requests linked." render={(item) => <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{item.medication_name} • {item.urgency} • {item.status}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.quantity || "no quantity"} • {item.controlled_or_legal_status}</div><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.compliance_note || "No compliance note"}</div>{item.status !== "complete" ? <button onClick={() => postAction(`${API_BASE}/api/pharmacy-requests/${item.id}/complete`, "Pharmacy request completed.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Complete</button> : null}</div>} />
         <SpineSection title="Stock orders" items={stockOrders} empty="No stock orders linked." render={(item) => <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{item.item_name} • {item.urgency} • {item.status}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.reason} • supplier {item.supplier || "-"}</div>{item.status !== "complete" ? <button onClick={() => postAction(`${API_BASE}/api/stock-orders/${item.id}/complete`, "Stock order completed.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Complete</button> : null}</div>} />
         <SpineSection title="LucyFlow triage" items={data.triage} empty="No LucyFlow assessments linked." render={(item) => <div key={item.id} style={{ padding: 16, borderTop: "1px solid #1f2937" }}><strong>{item.urgency?.toUpperCase()} → {item.route}</strong><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.presenting_signs}</div><div style={{ color: "#94a3b8", marginTop: 6 }}>{item.reasoning} • flags {item.red_flags || "none"} • handoff {item.handoff_required ? "yes" : "no"}</div>{item.status !== "resolved" ? <button onClick={() => postAction(`${API_BASE}/api/lucyflow/triage/${item.id}/resolve?note=Resolved%20from%20episode`, "LucyFlow resolved.")} style={{ marginTop: 10, borderRadius: 10, padding: "8px 10px" }}>Resolve</button> : null}</div>} />
