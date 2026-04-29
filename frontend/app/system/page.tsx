@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DomainAutomationPanel } from "@/components/domain-automation-panel";
+import { DomainPressurePanel } from "@/components/domain-pressure-panel";
 
 const modules = [
   ["Access / Login", "/login", "Role-based demo access for ops, clinician, nurse and admin views."],
@@ -41,6 +43,9 @@ export default function SystemPage() {
             <Link href="/episodes/EP-1042" style={{ border: "1px solid #334155", padding: "10px 14px", borderRadius: 12 }}>Open Demo Episode</Link>
           </div>
         </section>
+
+        <DomainAutomationPanel />
+        <DomainPressurePanel />
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
           {modules.map(([name, href, text]) => (
