@@ -41,28 +41,18 @@ with TestClient(app) as client:
         assert key in command, f"Missing episode command key: {key}"
     print("Episode command OK")
 
-    for endpoint, label in [
-        ("/api/director-board", "Director board"),
-        ("/api/consult-board", "Consult board"),
-        ("/api/ward-board", "Ward board"),
-        ("/api/theatre-board", "Theatre board"),
-    ]:
+    for endpoint, label in [("/api/director-board", "Director board"), ("/api/consult-board", "Consult board"), ("/api/ward-board", "Ward board"), ("/api/theatre-board", "Theatre board")]:
         r = client.get(endpoint)
         assert r.status_code == 200, r.text
         assert "cards" in r.json()
         print(f"{label} OK")
 
-    r = client.post("/api/lucyflow/triage", json={
-        "episode_id": episode_id,
-        "species": "dog",
-        "presenting_signs": "collapse, breathing difficulty and pain",
-    })
+    r = client.post("/api/lucyflow/triage", json={"episode_id": episode_id, "species": "dog", "presenting_signs": "collapse, breathing difficulty and pain"})
     assert r.status_code == 200, r.text
     triage_created = r.json()
     assert triage_created["triage"]["urgency"] == "red"
     assert triage_created["triage"]["handoff_required"] is True
-    assert "work_item" in triage_created
-    assert "decision" in triage_created
+    assert "work_item" in triage_created and "decision" in triage_created
     triage_id = triage_created["triage"]["id"]
     print("LucyFlow triage create OK")
 
@@ -76,65 +66,29 @@ with TestClient(app) as client:
     assert r.json()["status"] == "resolved"
     print("LucyFlow triage resolve OK")
 
-    r = client.post("/api/lucy-ethics", json={
-        "episode_id": episode_id,
-        "flag_type": "consent_delay",
-        "severity": "high",
-        "detail": "Owner consent delayed while patient remains painful",
-        "clinical_reasoning": "Pain and decision delay create welfare risk",
-        "owner_state": "consent_pending",
-        "decision_required": "senior clinician review",
-        "escalation_path": "clinician_to_ops_manager",
-        "owner_role": "clinician"
-    })
+    r = client.post("/api/lucy-ethics", json={"episode_id": episode_id, "flag_type": "consent_delay", "severity": "high", "detail": "Owner consent delayed while patient remains painful", "clinical_reasoning": "Pain and decision delay create welfare risk", "owner_state": "consent_pending", "decision_required": "senior clinician review", "escalation_path": "clinician_to_ops_manager", "owner_role": "clinician"})
     assert r.status_code == 200, r.text
     ethics_created = r.json()
     assert "ethics_flag" in ethics_created and "work_item" in ethics_created
     ethics_id = ethics_created["ethics_flag"]["id"]
     print("Lucy Ethics create OK")
 
-    r = client.get("/api/lucy-ethics")
-    assert r.status_code == 200, r.text
-    assert len(r.json()) > 0
-    print("Lucy Ethics list OK")
-
     r = client.post(f"/api/lucy-ethics/{ethics_id}/resolve?note=Smoke%20ethics%20resolved")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "resolved"
     print("Lucy Ethics resolve OK")
 
-    r = client.post("/api/lucy-care/tasks", json={
-        "episode_id": episode_id,
-        "task_type": "observation",
-        "care_area": "ICU",
-        "detail": "Repeat pain score and respiratory check",
-        "owner_role": "nurse",
-        "escalation_required": True
-    })
+    r = client.post("/api/lucy-care/tasks", json={"episode_id": episode_id, "task_type": "observation", "care_area": "ICU", "detail": "Repeat pain score and respiratory check", "owner_role": "nurse", "escalation_required": True})
     assert r.status_code == 200, r.text
-    care = r.json()
-    care_id = care["id"]
+    care_id = r.json()["id"]
     print("Lucy Care create OK")
-
-    r = client.get("/api/lucy-care/tasks")
-    assert r.status_code == 200, r.text
-    assert len(r.json()) > 0
-    print("Lucy Care list OK")
 
     r = client.post(f"/api/lucy-care/tasks/{care_id}/complete")
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "done"
     print("Lucy Care complete OK")
 
-    r = client.post("/api/decisions", json={
-        "episode_id": episode_id,
-        "decision_type": "diagnostics",
-        "decision_needed": "Confirm CT or ultrasound route",
-        "owner_role": "clinician",
-        "section_name": "Diagnostics",
-        "urgency": "amber",
-        "source": "Smoke Test"
-    })
+    r = client.post("/api/decisions", json={"episode_id": episode_id, "decision_type": "diagnostics", "decision_needed": "Confirm CT or ultrasound route", "owner_role": "clinician", "section_name": "Diagnostics", "urgency": "amber", "source": "Smoke Test"})
     assert r.status_code == 200, r.text
     decision_id = r.json()["id"]
     print("Decision create OK")
@@ -144,15 +98,7 @@ with TestClient(app) as client:
     assert r.json()["status"] == "resolved"
     print("Decision resolve OK")
 
-    r = client.post("/api/blockers", json={
-        "episode_id": episode_id,
-        "blocker_type": "discharge",
-        "section_name": "Discharge",
-        "detail": "Medication not ready",
-        "impact": "Patient cannot leave safely",
-        "urgency": "amber",
-        "owner_role": "nurse"
-    })
+    r = client.post("/api/blockers", json={"episode_id": episode_id, "blocker_type": "discharge", "section_name": "Discharge", "detail": "Medication not ready", "impact": "Patient cannot leave safely", "urgency": "amber", "owner_role": "nurse"})
     assert r.status_code == 200, r.text
     blocker_id = r.json()["id"]
     print("Blocker create OK")
@@ -162,14 +108,7 @@ with TestClient(app) as client:
     assert r.json()["status"] == "resolved"
     print("Blocker resolve OK")
 
-    r = client.post("/api/escalations", json={
-        "episode_id": episode_id,
-        "escalation_type": "welfare",
-        "severity": "high",
-        "reason": "Pain and consent delay",
-        "from_role": "nurse",
-        "to_role": "clinician"
-    })
+    r = client.post("/api/escalations", json={"episode_id": episode_id, "escalation_type": "welfare", "severity": "high", "reason": "Pain and consent delay", "from_role": "nurse", "to_role": "clinician"})
     assert r.status_code == 200, r.text
     escalation_id = r.json()["id"]
     print("Escalation create OK")
@@ -179,13 +118,7 @@ with TestClient(app) as client:
     assert r.json()["status"] == "resolved"
     print("Escalation resolve OK")
 
-    r = client.post("/api/owner-comms-requirements", json={
-        "episode_id": episode_id,
-        "reason": "Owner update due after result review",
-        "required_message": "Explain result and next treatment option",
-        "owner_role": "clinician",
-        "urgency": "amber"
-    })
+    r = client.post("/api/owner-comms-requirements", json={"episode_id": episode_id, "reason": "Owner update due after result review", "required_message": "Explain result and next treatment option", "owner_role": "clinician", "urgency": "amber"})
     assert r.status_code == 200, r.text
     owner_req_id = r.json()["id"]
     print("Owner comms create OK")
@@ -195,14 +128,69 @@ with TestClient(app) as client:
     assert r.json()["status"] == "complete"
     print("Owner comms complete OK")
 
-    r = client.post("/api/pulse-signals", json={
-        "signal_type": "theatre_delay",
-        "section_name": "Theatre",
-        "severity": "medium",
-        "detail": "Smoke test pulse signal",
-        "episode_id": episode_id,
-        "source": "Smoke Test"
-    })
+    r = client.post("/api/discharge-readiness", json={"episode_id": episode_id, "blocker_summary": "Medication and owner update incomplete", "urgency": "amber", "owner_role": "clinician"})
+    assert r.status_code == 200, r.text
+    discharge_id = r.json()["id"]
+    assert r.json()["readiness_state"] == "blocked"
+    print("Discharge readiness create OK")
+
+    r = client.get("/api/discharge-readiness")
+    assert r.status_code == 200, r.text
+    assert len(r.json()) > 0
+    print("Discharge readiness list OK")
+
+    r = client.post(f"/api/discharge-readiness/{discharge_id}/update", json={"clinician_signoff": True, "medication_ready": True, "owner_updated": True, "admin_ready": True, "results_reviewed": True, "care_instructions_ready": True})
+    assert r.status_code == 200, r.text
+    assert r.json()["readiness_state"] == "ready"
+    print("Discharge readiness update OK")
+
+    r = client.post("/api/pharmacy-requests", json={"episode_id": episode_id, "medication_name": "Methadone", "request_type": "dispense", "controlled_or_legal_status": "controlled", "authorised_supplier_required": True, "quantity": "1 vial", "urgency": "amber", "owner_role": "nurse", "compliance_note": "Controlled medicine process required"})
+    assert r.status_code == 200, r.text
+    pharmacy_id = r.json()["id"]
+    print("Pharmacy request create OK")
+
+    r = client.get("/api/pharmacy-requests")
+    assert r.status_code == 200, r.text
+    assert len(r.json()) > 0
+    print("Pharmacy request list OK")
+
+    r = client.post(f"/api/pharmacy-requests/{pharmacy_id}/complete")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "complete"
+    print("Pharmacy request complete OK")
+
+    r = client.post("/api/stock-items", json={"name": "IV catheter 22G", "category": "clinical", "location": "main stock", "current_quantity": 0, "reorder_threshold": 5, "authorised_supplier": "NVS", "compliance_note": "Clinical consumable"})
+    assert r.status_code == 200, r.text
+    stock_item_id = r.json()["id"]
+    print("Stock item create OK")
+
+    r = client.get("/api/stock-items")
+    assert r.status_code == 200, r.text
+    assert len(r.json()) > 0
+    print("Stock item list OK")
+
+    r = client.post("/api/stock-orders", json={"stock_item_id": stock_item_id, "episode_id": episode_id, "item_name": "IV catheter 22G", "reason": "Low stock will block procedure flow", "urgency": "amber", "supplier": "NVS"})
+    assert r.status_code == 200, r.text
+    stock_order_id = r.json()["id"]
+    print("Stock order create OK")
+
+    r = client.get("/api/stock-orders")
+    assert r.status_code == 200, r.text
+    assert len(r.json()) > 0
+    print("Stock order list OK")
+
+    r = client.post(f"/api/stock-orders/{stock_order_id}/complete")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "complete"
+    print("Stock order complete OK")
+
+    r = client.get("/api/domain-pressure")
+    assert r.status_code == 200, r.text
+    for key in ["discharge_blocked", "pharmacy_open", "stock_orders_open", "low_stock"]:
+        assert key in r.json(), f"Domain pressure missing {key}"
+    print("Domain pressure OK")
+
+    r = client.post("/api/pulse-signals", json={"signal_type": "theatre_delay", "section_name": "Theatre", "severity": "medium", "detail": "Smoke test pulse signal", "episode_id": episode_id, "source": "Smoke Test"})
     assert r.status_code == 200, r.text
     print("Pulse signal create OK")
 
@@ -213,13 +201,7 @@ with TestClient(app) as client:
         assert key in pulse, f"Pulse missing key {key}"
     print("Lucy Pulse OK")
 
-    r = client.post("/api/schedule/generate", json={
-        "episode_ref": ep_ref,
-        "procedure_type_id": 1,
-        "room_name": "Theatre 1",
-        "start_time": "2026-04-24T10:00:00+00:00",
-        "actor_name": "Smoke Test"
-    })
+    r = client.post("/api/schedule/generate", json={"episode_ref": ep_ref, "procedure_type_id": 1, "room_name": "Theatre 1", "start_time": "2026-04-24T10:00:00+00:00", "actor_name": "Smoke Test"})
     assert r.status_code == 200, r.text
     print("Schedule generated")
 
@@ -243,8 +225,7 @@ with TestClient(app) as client:
 
     r = client.post("/api/staff/allocate", json={"schedule_block_id": block_id, "staff_member_id": staff_id, "actor_name": "Smoke Test"})
     assert r.status_code == 200, r.text
-    allocation = r.json()
-    assert allocation["status"] in {"allocated", "conflict"}
+    assert r.json()["status"] in {"allocated", "conflict"}
     print("Staff allocation endpoint OK")
 
     r = client.get("/api/staff-load")
