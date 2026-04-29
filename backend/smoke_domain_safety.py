@@ -25,6 +25,35 @@ with TestClient(app) as client:
     episode_id = episode["id"]
     print(f"Episode OK: {episode['episode_ref']}")
 
+    r = client.get("/api/message-threads")
+    assert r.status_code == 200, r.text
+    threads = r.json()
+    assert threads, "No seeded message threads"
+    thread_id = threads[0]["id"]
+    r = client.post(f"/api/messages/{thread_id}", json={
+        "sender_name": "Smoke Mail Ops",
+        "direction": "outbound",
+        "body": "Safety smoke test owner update",
+        "material_decision_flag": True,
+        "actor_name": "Smoke Test",
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["body"] == "Safety smoke test owner update"
+    print("Mail Ops reply OK")
+
+    r = client.get("/api/room-states")
+    assert r.status_code == 200, r.text
+    rooms = r.json()
+    assert rooms, "No seeded room states"
+    room_id = rooms[0]["id"]
+    r = client.post(f"/api/room-states/{room_id}/set?state=cleaning")
+    assert r.status_code == 200, r.text
+    assert r.json()["state"] == "cleaning"
+    r = client.post(f"/api/room-states/{room_id}/set?state=available")
+    assert r.status_code == 200, r.text
+    assert r.json()["state"] == "available"
+    print("Room state controls OK")
+
     r = client.post("/api/lucyflow/triage", json={
         "episode_id": episode_id,
         "species": "dog",
@@ -97,5 +126,12 @@ with TestClient(app) as client:
     for key in ["discharge_blocked", "pharmacy_open", "stock_orders_open", "low_stock"]:
         assert key in pressure, f"Missing domain pressure: {key}"
     print("Domain pressure OK")
+
+    r = client.get("/api/audit")
+    assert r.status_code == 200, r.text
+    audit = r.json()
+    assert any(event["entity_type"] == "message_entry" for event in audit), "Message audit missing"
+    assert any(event["entity_type"] == "room_state" for event in audit), "Room state audit missing"
+    print("Audit coverage OK")
 
 print("\n--- DOMAIN SAFETY SMOKE TEST PASSED ---\n")
