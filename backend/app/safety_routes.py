@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import (
+    AuditEvent,
     Blocker,
     DecisionRecord,
     DischargeReadiness,
@@ -10,11 +11,29 @@ from app.models import (
     EthicsFlag,
     OwnerCommsRequirement,
     PharmacyRequest,
+    RoomState,
     StockOrder,
     WorkItem,
 )
 
 router = APIRouter()
+
+
+@router.post("/api/room-states/{room_state_id}/set")
+def set_room_state(room_state_id: int, state: str, session: Session = Depends(get_session)):
+    room = session.get(RoomState, room_state_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="Room state not found")
+    allowed = {"available", "occupied", "cleaning", "blocked", "offline"}
+    if state not in allowed:
+        raise HTTPException(status_code=400, detail=f"Invalid room state. Allowed: {sorted(allowed)}")
+    room.state = state
+    session.add(room)
+    session.commit()
+    session.refresh(room)
+    session.add(AuditEvent(actor_name="Rooms", action="state_updated", entity_type="room_state", entity_id=room.id or 0, summary=f"{room.room_name} set to {state}"))
+    session.commit()
+    return room
 
 
 @router.get("/api/flow-readiness/{episode_id}")
@@ -29,91 +48,43 @@ def flow_readiness(episode_id: int, session: Session = Depends(get_session)):
     discharge = session.exec(select(DischargeReadiness).where(DischargeReadiness.episode_id == episode_id)).all()
     for item in discharge:
         if item.readiness_state != "ready":
-            hard_blocks.append({
-                "type": "discharge_not_ready",
-                "section": "Discharge",
-                "detail": item.blocker_summary or "Discharge readiness incomplete",
-                "owner_role": item.owner_role,
-                "urgency": item.urgency,
-            })
+            hard_blocks.append({"type": "discharge_not_ready", "section": "Discharge", "detail": item.blocker_summary or "Discharge readiness incomplete", "owner_role": item.owner_role, "urgency": item.urgency})
 
     pharmacy = session.exec(select(PharmacyRequest).where(PharmacyRequest.episode_id == episode_id)).all()
     for item in pharmacy:
         if item.status != "complete":
-            hard_blocks.append({
-                "type": "pharmacy_open",
-                "section": "Pharmacy",
-                "detail": f"{item.medication_name} is {item.status}",
-                "owner_role": item.owner_role,
-                "urgency": item.urgency,
-            })
+            hard_blocks.append({"type": "pharmacy_open", "section": "Pharmacy", "detail": f"{item.medication_name} is {item.status}", "owner_role": item.owner_role, "urgency": item.urgency})
 
     stock_orders = session.exec(select(StockOrder).where(StockOrder.episode_id == episode_id)).all()
     for item in stock_orders:
         if item.status != "complete":
-            hard_blocks.append({
-                "type": "stock_order_open",
-                "section": "Stock",
-                "detail": f"{item.item_name}: {item.reason}",
-                "owner_role": "nurse",
-                "urgency": item.urgency,
-            })
+            hard_blocks.append({"type": "stock_order_open", "section": "Stock", "detail": f"{item.item_name}: {item.reason}", "owner_role": "nurse", "urgency": item.urgency})
 
     owner_comms = session.exec(select(OwnerCommsRequirement).where(OwnerCommsRequirement.episode_id == episode_id)).all()
     for item in owner_comms:
         if item.status != "complete":
-            warnings.append({
-                "type": "owner_comms_due",
-                "section": "Mail Ops",
-                "detail": item.required_message,
-                "owner_role": item.owner_role,
-                "urgency": item.urgency,
-            })
+            warnings.append({"type": "owner_comms_due", "section": "Mail Ops", "detail": item.required_message, "owner_role": item.owner_role, "urgency": item.urgency})
 
     ethics = session.exec(select(EthicsFlag).where(EthicsFlag.episode_id == episode_id)).all()
     for item in ethics:
         if item.status != "resolved":
-            hard_blocks.append({
-                "type": "ethics_open",
-                "section": "Lucy Ethics",
-                "detail": item.detail,
-                "owner_role": item.owner_role,
-                "urgency": "red" if item.severity == "high" else "amber",
-            })
+            hard_blocks.append({"type": "ethics_open", "section": "Lucy Ethics", "detail": item.detail, "owner_role": item.owner_role, "urgency": "red" if item.severity == "high" else "amber"})
 
     decisions = session.exec(select(DecisionRecord).where(DecisionRecord.episode_id == episode_id)).all()
     for item in decisions:
         if item.status != "resolved":
-            warnings.append({
-                "type": "decision_open",
-                "section": item.section_name or "Decision",
-                "detail": item.decision_needed,
-                "owner_role": item.owner_role,
-                "urgency": item.urgency,
-            })
+            warnings.append({"type": "decision_open", "section": item.section_name or "Decision", "detail": item.decision_needed, "owner_role": item.owner_role, "urgency": item.urgency})
 
     blockers = session.exec(select(Blocker).where(Blocker.episode_id == episode_id)).all()
     for item in blockers:
         if item.status != "resolved":
-            hard_blocks.append({
-                "type": "blocker_open",
-                "section": item.section_name,
-                "detail": item.detail,
-                "owner_role": item.owner_role,
-                "urgency": item.urgency,
-            })
+            hard_blocks.append({"type": "blocker_open", "section": item.section_name, "detail": item.detail, "owner_role": item.owner_role, "urgency": item.urgency})
 
     ep_ref = episode.episode_ref
     work_items = session.exec(select(WorkItem).where(WorkItem.linked_episode_ref == ep_ref)).all()
     red_work = [item for item in work_items if item.status != "done" and item.urgency == "red"]
     for item in red_work:
-        hard_blocks.append({
-            "type": "red_work_open",
-            "section": item.section_name or item.category,
-            "detail": item.title,
-            "owner_role": item.owner_role,
-            "urgency": item.urgency,
-        })
+        hard_blocks.append({"type": "red_work_open", "section": item.section_name or item.category, "detail": item.title, "owner_role": item.owner_role, "urgency": item.urgency})
 
     ready_for_flow = len(hard_blocks) == 0
     caution = len(warnings) > 0
