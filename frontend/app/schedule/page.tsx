@@ -18,6 +18,11 @@ type ScheduleBlock = {
   status: string;
 };
 
+type Episode = {
+  id: number;
+  episode_ref: string;
+};
+
 function colour(blockType: string) {
   if (blockType === "prep") return "#3b82f6";
   if (blockType === "anaesthesia") return "#a855f7";
@@ -33,14 +38,25 @@ function timeLabel(value: string) {
 
 export default function SchedulePage() {
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/schedule-blocks`, { cache: "no-store" });
-      setBlocks(await res.json());
+      const [blockRes, episodeRes] = await Promise.all([
+        fetch(`${API_BASE}/api/schedule-blocks`, { cache: "no-store" }),
+        fetch(`${API_BASE}/api/episodes`, { cache: "no-store" }),
+      ]);
+      setBlocks(await blockRes.json());
+      setEpisodes(await episodeRes.json());
     }
     load();
   }, []);
+
+  const episodeById = useMemo(() => {
+    const map: Record<number, Episode> = {};
+    for (const episode of episodes) map[episode.id] = episode;
+    return map;
+  }, [episodes]);
 
   const rooms = useMemo(() => Array.from(new Set(blocks.map((b) => b.room_name || "Unassigned"))).sort(), [blocks]);
   const grouped = useMemo(() => {
@@ -77,16 +93,19 @@ export default function SchedulePage() {
                   <span style={{ color: "#94a3b8" }}>{grouped[room]?.length || 0} blocks</span>
                 </div>
                 <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                  {(grouped[room] || []).map((block) => (
-                    <div key={block.id} style={{ border: `1px solid ${colour(block.block_type)}`, borderRadius: 14, padding: 12, display: "grid", gridTemplateColumns: "130px 1fr 120px", gap: 12, alignItems: "center" }}>
-                      <strong>{timeLabel(block.starts_at)} → {timeLabel(block.ends_at)}</strong>
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{block.block_type.toUpperCase()}</div>
-                        <div style={{ color: "#94a3b8" }}>episode #{block.episode_id} • owner {block.owner_role || "unassigned"}</div>
+                  {(grouped[room] || []).map((block) => {
+                    const episode = episodeById[block.episode_id];
+                    return (
+                      <div key={block.id} style={{ border: `1px solid ${colour(block.block_type)}`, borderRadius: 14, padding: 12, display: "grid", gridTemplateColumns: "130px 1fr 140px", gap: 12, alignItems: "center" }}>
+                        <strong>{timeLabel(block.starts_at)} → {timeLabel(block.ends_at)}</strong>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{block.block_type.toUpperCase()}</div>
+                          <div style={{ color: "#94a3b8" }}>episode {episode?.episode_ref || `#${block.episode_id}`} • owner {block.owner_role || "unassigned"}</div>
+                        </div>
+                        <Link href={episode ? `/episodes/${episode.episode_ref}` : "/episodes"} style={{ textAlign: "right" }}>Open episode</Link>
                       </div>
-                      <Link href="/episodes" style={{ textAlign: "right" }}>Open cases</Link>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {!grouped[room]?.length ? <div style={{ color: "#94a3b8" }}>No schedule blocks.</div> : null}
                 </div>
               </section>
