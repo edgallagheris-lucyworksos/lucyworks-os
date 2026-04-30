@@ -32,7 +32,23 @@ with TestClient(app) as client:
     assert episodes, "No seeded episodes"
     episode = next((e for e in episodes if e["episode_ref"] == "EP-1042"), episodes[0])
     episode_id = episode["id"]
-    print(f"Episode OK: {episode['episode_ref']}")
+    episode_ref = episode["episode_ref"]
+    print(f"Episode OK: {episode_ref}")
+
+    r = client.post("/api/operating-catalogue/schedule-from-template", json={
+        "episode_ref": episode_ref,
+        "procedure_name": "CT scan",
+        "room_name": "CT",
+        "start_time": "2026-01-01T09:00:00+00:00",
+        "actor_name": "Safety Smoke Test",
+    })
+    assert r.status_code == 200, r.text
+    schedule = r.json()
+    assert schedule["template"]["name"] == "CT scan"
+    assert schedule["total_minutes"] == 105
+    assert len(schedule["blocks"]) >= 4
+    assert any(block["block_type"] == "anaesthesia" for block in schedule["blocks"])
+    print("Catalogue schedule generation OK")
 
     r = client.get("/api/message-threads")
     assert r.status_code == 200, r.text
@@ -108,6 +124,7 @@ with TestClient(app) as client:
     audit = r.json()
     assert any(event["entity_type"] == "message_entry" for event in audit), "Message audit missing"
     assert any(event["entity_type"] == "room_state" for event in audit), "Room state audit missing"
+    assert any(event["action"] == "catalogue_schedule_generated" for event in audit), "Catalogue schedule audit missing"
     print("Audit coverage OK")
 
 print("\n--- DOMAIN SAFETY SMOKE TEST PASSED ---\n")
