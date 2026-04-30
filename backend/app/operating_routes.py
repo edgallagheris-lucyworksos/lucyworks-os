@@ -22,6 +22,13 @@ def find_template(name: str):
     return None
 
 
+def find_by_key(collection: str, key: str, value: str):
+    for row in HOSPITAL_OPERATING_CATALOGUE.get(collection, []):
+        if row.get(key) == value:
+            return row
+    return None
+
+
 @router.get("/api/operating-catalogue")
 def operating_catalogue():
     return HOSPITAL_OPERATING_CATALOGUE
@@ -43,6 +50,63 @@ def operating_procedure_detail(procedure_name: str):
     if not template:
         raise HTTPException(status_code=404, detail="Procedure template not found")
     return template
+
+
+@router.get("/api/episode-operating-readiness/{episode_ref}")
+def episode_operating_readiness(episode_ref: str, session: Session = Depends(get_session)):
+    episode = session.exec(select(Episode).where(Episode.episode_ref == episode_ref)).first()
+    if not episode:
+        raise HTTPException(status_code=404, detail="Episode not found")
+    case_procedures = session.exec(select(CaseProcedure).where(CaseProcedure.episode_id == episode.id)).all()
+    procedure_rows = []
+    missing_templates = []
+    for case_procedure in case_procedures:
+      proc_type = session.get(ProcedureType, case_procedure.procedure_type_id)
+      if not proc_type:
+          continue
+      template = find_template(proc_type.name)
+      if not template:
+          missing_templates.append(proc_type.name)
+          continue
+      anaesthesia = find_by_key("anaesthesia_levels", "level", template.get("anaesthesia_level", ""))
+      recovery = find_by_key("recovery_standards", "class", template.get("recovery_class", ""))
+      cleaning = find_by_key("cleaning_turnover_standards", "area", template.get("cleaning_standard", ""))
+      family = next((f for f in HOSPITAL_OPERATING_CATALOGUE.get("procedure_families", []) if f.get("family") == template.get("family")), None)
+      blocks = session.exec(select(ScheduleBlock).where(ScheduleBlock.case_procedure_id == case_procedure.id).order_by(ScheduleBlock.starts_at)).all()
+      expected = [name for name, mins in [("prep", template["prep_min"]), ("anaesthesia", template["anaesthesia_min"]), ("procedure", template["procedure_min"]), ("recovery", template["recovery_min"]), ("cleaning", template["cleaning_min"])] if mins > 0]
+      actual = [b.block_type for b in blocks]
+      missing_blocks = [name for name in expected if name not in actual]
+      gates = []
+      gates.extend(family.get("required_gates", []) if family else [])
+      gates.extend(anaesthesia.get("readiness_gates", []) if anaesthesia else [])
+      gates.extend(recovery.get("minimum_checks", []) if recovery else [])
+      gates.extend(cleaning.get("checks", []) if cleaning else [])
+      procedure_rows.append({
+          "case_procedure_id": case_procedure.id,
+          "procedure_name": proc_type.name,
+          "template": template,
+          "family": family,
+          "anaesthesia": anaesthesia,
+          "recovery": recovery,
+          "cleaning": cleaning,
+          "expected_blocks": expected,
+          "actual_blocks": actual,
+          "missing_blocks": missing_blocks,
+          "readiness_gates": list(dict.fromkeys(gates)),
+          "ready": len(missing_blocks) == 0,
+      })
+    blockers = []
+    for row in procedure_rows:
+        for missing in row["missing_blocks"]:
+            blockers.append({"type": "missing_schedule_block", "procedure": row["procedure_name"], "detail": f"Missing {missing} block"})
+    return {
+        "episode_ref": episode_ref,
+        "procedure_count": len(procedure_rows),
+        "procedures": procedure_rows,
+        "missing_templates": missing_templates,
+        "operating_blockers": blockers,
+        "ready": len(blockers) == 0 and len(missing_templates) == 0,
+    }
 
 
 @router.post("/api/operating-catalogue/schedule-from-template")
