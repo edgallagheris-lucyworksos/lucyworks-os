@@ -14,9 +14,10 @@ type AlertSummary = {
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
     { href: "/system", label: "System" },
+    { href: "/operating-model", label: "Operating Model" },
     { href: "/pulse", label: "Pulse" },
     { href: "/command", label: "Command" },
-    { href: "/episodes/EP-1042", label: "Demo Case" },
+    { href: "/episodes/EP-1042", label: "Seeded Case" },
     { href: "/triage", label: "LucyFlow" },
     { href: "/ethics", label: "Ethics" },
     { href: "/discharge", label: "Discharge" },
@@ -32,9 +33,10 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   clinician: [
     { href: "/system", label: "System" },
+    { href: "/operating-model", label: "Operating Model" },
     { href: "/pulse", label: "Pulse" },
     { href: "/command", label: "Command" },
-    { href: "/episodes/EP-1042", label: "Demo Case" },
+    { href: "/episodes/EP-1042", label: "Seeded Case" },
     { href: "/triage", label: "LucyFlow" },
     { href: "/ethics", label: "Ethics" },
     { href: "/discharge", label: "Discharge" },
@@ -47,8 +49,9 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   nurse: [
     { href: "/system", label: "System" },
+    { href: "/operating-model", label: "Operating Model" },
     { href: "/pulse", label: "Pulse" },
-    { href: "/episodes/EP-1042", label: "Demo Case" },
+    { href: "/episodes/EP-1042", label: "Seeded Case" },
     { href: "/triage", label: "LucyFlow" },
     { href: "/discharge", label: "Discharge" },
     { href: "/pharmacy", label: "Pharmacy" },
@@ -61,8 +64,9 @@ const roleLinks: Record<string, { href: string; label: string }[]> = {
   ],
   admin: [
     { href: "/system", label: "System" },
+    { href: "/operating-model", label: "Operating Model" },
     { href: "/pulse", label: "Pulse" },
-    { href: "/episodes/EP-1042", label: "Demo Case" },
+    { href: "/episodes/EP-1042", label: "Seeded Case" },
     { href: "/discharge", label: "Discharge" },
     { href: "/stock", label: "Stock" },
     { href: "/mail", label: "Mail Ops" },
