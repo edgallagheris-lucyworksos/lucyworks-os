@@ -17,6 +17,15 @@ with TestClient(app) as client:
     assert r.status_code == 200, r.text
     print("Health OK")
 
+    r = client.get("/api/operating-catalogue")
+    assert r.status_code == 200, r.text
+    catalogue = r.json()
+    assert len(catalogue["departments"]) >= 8, "Operating catalogue missing departments"
+    assert len(catalogue["procedure_templates"]) >= 10, "Operating catalogue missing procedures"
+    assert len(catalogue["pharmacy_governance"]) >= 5, "Operating catalogue missing pharmacy governance"
+    assert "legal_and_compliance_guardrails" in catalogue, "Compliance guardrails missing"
+    print("Operating catalogue OK")
+
     r = client.get("/api/episodes")
     assert r.status_code == 200, r.text
     episodes = r.json()
@@ -30,13 +39,7 @@ with TestClient(app) as client:
     threads = r.json()
     assert threads, "No seeded message threads"
     thread_id = threads[0]["id"]
-    r = client.post(f"/api/messages/{thread_id}", json={
-        "sender_name": "Smoke Mail Ops",
-        "direction": "outbound",
-        "body": "Safety smoke test owner update",
-        "material_decision_flag": True,
-        "actor_name": "Smoke Test",
-    })
+    r = client.post(f"/api/messages/{thread_id}", json={"sender_name": "Smoke Mail Ops", "direction": "outbound", "body": "Safety smoke test owner update", "material_decision_flag": True, "actor_name": "Smoke Test"})
     assert r.status_code == 200, r.text
     assert r.json()["body"] == "Safety smoke test owner update"
     print("Mail Ops reply OK")
@@ -54,50 +57,23 @@ with TestClient(app) as client:
     assert r.json()["state"] == "available"
     print("Room state controls OK")
 
-    r = client.post("/api/lucyflow/triage", json={
-        "episode_id": episode_id,
-        "species": "dog",
-        "presenting_signs": "pain, breathing difficulty and owner worried about cost",
-    })
+    r = client.post("/api/lucyflow/triage", json={"episode_id": episode_id, "species": "dog", "presenting_signs": "pain, breathing difficulty and owner worried about cost"})
     assert r.status_code == 200, r.text
     triage = r.json()["triage"]
     assert triage["urgency"] in {"red", "amber"}
     assert triage["owner_contact_required"] is True
     print("LucyFlow signal OK")
 
-    r = client.post("/api/lucy-ethics", json={
-        "episode_id": episode_id,
-        "flag_type": "financial_constraint_affecting_care",
-        "severity": "high",
-        "detail": "Owner cost concern may delay pain treatment",
-        "clinical_reasoning": "Pain and affordability issue create welfare risk",
-        "owner_state": "cost_concern",
-        "decision_required": "senior clinician review",
-        "escalation_path": "clinician_to_ops_manager",
-        "owner_role": "clinician",
-    })
+    r = client.post("/api/lucy-ethics", json={"episode_id": episode_id, "flag_type": "financial_constraint_affecting_care", "severity": "high", "detail": "Owner cost concern may delay pain treatment", "clinical_reasoning": "Pain and affordability issue create welfare risk", "owner_state": "cost_concern", "decision_required": "senior clinician review", "escalation_path": "clinician_to_ops_manager", "owner_role": "clinician"})
     assert r.status_code == 200, r.text
     print("Lucy Ethics signal OK")
 
-    r = client.post("/api/discharge-readiness", json={
-        "episode_id": episode_id,
-        "blocker_summary": "Medication and owner update incomplete",
-        "urgency": "amber",
-        "owner_role": "clinician",
-    })
+    r = client.post("/api/discharge-readiness", json={"episode_id": episode_id, "blocker_summary": "Medication and owner update incomplete", "urgency": "amber", "owner_role": "clinician"})
     assert r.status_code == 200, r.text
     assert r.json()["readiness_state"] == "blocked"
     print("Discharge blocker OK")
 
-    r = client.post("/api/stock-items", json={
-        "name": "IV catheter 22G safety test",
-        "category": "clinical",
-        "location": "main stock",
-        "current_quantity": 0,
-        "reorder_threshold": 5,
-        "authorised_supplier": "NVS",
-        "compliance_note": "Safety smoke test low stock item",
-    })
+    r = client.post("/api/stock-items", json={"name": "IV catheter 22G safety test", "category": "clinical", "location": "main stock", "current_quantity": 0, "reorder_threshold": 5, "authorised_supplier": "NVS", "compliance_note": "Safety smoke test low stock item"})
     assert r.status_code == 200, r.text
     print("Low stock signal OK")
 
