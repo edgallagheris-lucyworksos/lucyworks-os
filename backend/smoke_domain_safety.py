@@ -27,6 +27,18 @@ with TestClient(app) as client:
     assert "procedure_dependency_layers" in catalogue, "Procedure dependency layers missing"
     print("Operating catalogue OK")
 
+    r = client.get("/api/capability/procedures/CT scan")
+    assert r.status_code == 200, r.text
+    capability = r.json()
+    assert capability["procedure"]["name"] == "CT scan"
+    assert capability["total_minutes"] == 105
+    assert capability["room_options"], "Capability room options missing"
+    assert capability["required_roles"], "Capability required roles missing"
+    assert capability["readiness_gates"], "Capability readiness gates missing"
+    assert capability["dependency_layers"], "Capability dependency layers missing"
+    assert any(block["block_type"] == "anaesthesia" for block in capability["schedule_chain"]), "Capability schedule chain missing anaesthesia"
+    print("Capability engine OK")
+
     r = client.get("/api/episodes")
     assert r.status_code == 200, r.text
     episodes = r.json()
@@ -46,10 +58,11 @@ with TestClient(app) as client:
     assert r.status_code == 200, r.text
     schedule = r.json()
     assert schedule["template"]["name"] == "CT scan"
+    assert schedule["capability"]["total_minutes"] == 105
     assert schedule["total_minutes"] == 105
     assert len(schedule["blocks"]) >= 4
     assert any(block["block_type"] == "anaesthesia" for block in schedule["blocks"])
-    print("Catalogue schedule generation OK")
+    print("Capability schedule generation OK")
 
     r = client.get("/api/message-threads")
     assert r.status_code == 200, r.text
@@ -119,6 +132,7 @@ with TestClient(app) as client:
     assert operating_readiness["episode_ref"] == episode_ref
     assert operating_readiness["procedure_count"] >= 1
     assert operating_readiness["procedures"][0]["readiness_gates"], "Operating readiness gates missing"
+    assert operating_readiness["procedures"][0]["dependency_layers"], "Operating dependency layers missing"
     print("Episode operating readiness OK")
 
     r = client.get("/api/dashboard/intelligence")
@@ -130,7 +144,7 @@ with TestClient(app) as client:
     active_slots = [slot for slot in dashboard["slots"] if slot["active_count"]]
     assert active_slots, "Dashboard has no active 15-minute slots"
     active_block = active_slots[0]["blocks"][0]
-    assert "episode" in active_block and active_block["episode"], "Dashboard block missing episode context"
+    assert active_block.get("episode"), "Dashboard block missing episode context"
     assert "pressure" in active_block, "Dashboard block missing pressure context"
     assert "operating" in active_block, "Dashboard block missing operating context"
     print("Dashboard intelligence OK")
@@ -147,7 +161,7 @@ with TestClient(app) as client:
     audit = r.json()
     assert any(event["entity_type"] == "message_entry" for event in audit), "Message audit missing"
     assert any(event["entity_type"] == "room_state" for event in audit), "Room state audit missing"
-    assert any(event["action"] == "catalogue_schedule_generated" for event in audit), "Catalogue schedule audit missing"
+    assert any(event["action"] in {"catalogue_schedule_generated", "capability_schedule_generated"} for event in audit), "Schedule audit missing"
     print("Audit coverage OK")
 
 print("\n--- DOMAIN SAFETY SMOKE TEST PASSED ---\n")
