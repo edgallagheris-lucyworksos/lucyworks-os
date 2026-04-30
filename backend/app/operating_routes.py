@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
+from app.capability_engine import all_capability_profiles, procedure_capability_profile
 from app.database import get_session
 from app.models import AuditEvent, CaseProcedure, Episode, ProcedureType, ScheduleBlock
 from app.operating_catalogue import HOSPITAL_OPERATING_CATALOGUE
@@ -52,6 +53,19 @@ def operating_procedure_detail(procedure_name: str):
     return template
 
 
+@router.get("/api/capability/procedures")
+def capability_profiles():
+    return all_capability_profiles()
+
+
+@router.get("/api/capability/procedures/{procedure_name}")
+def capability_profile(procedure_name: str):
+    profile = procedure_capability_profile(procedure_name)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Procedure capability profile not found")
+    return profile
+
+
 @router.get("/api/episode-operating-readiness/{episode_ref}")
 def episode_operating_readiness(episode_ref: str, session: Session = Depends(get_session)):
     episode = session.exec(select(Episode).where(Episode.episode_ref == episode_ref)).first()
@@ -65,34 +79,28 @@ def episode_operating_readiness(episode_ref: str, session: Session = Depends(get
       if not proc_type:
           continue
       template = find_template(proc_type.name)
-      if not template:
+      capability = procedure_capability_profile(proc_type.name)
+      if not template or not capability:
           missing_templates.append(proc_type.name)
           continue
-      anaesthesia = find_by_key("anaesthesia_levels", "level", template.get("anaesthesia_level", ""))
-      recovery = find_by_key("recovery_standards", "class", template.get("recovery_class", ""))
-      cleaning = find_by_key("cleaning_turnover_standards", "area", template.get("cleaning_standard", ""))
-      family = next((f for f in HOSPITAL_OPERATING_CATALOGUE.get("procedure_families", []) if f.get("family") == template.get("family")), None)
       blocks = session.exec(select(ScheduleBlock).where(ScheduleBlock.case_procedure_id == case_procedure.id).order_by(ScheduleBlock.starts_at)).all()
-      expected = [name for name, mins in [("prep", template["prep_min"]), ("anaesthesia", template["anaesthesia_min"]), ("procedure", template["procedure_min"]), ("recovery", template["recovery_min"]), ("cleaning", template["cleaning_min"])] if mins > 0]
+      expected = [block["block_type"] for block in capability["schedule_chain"] if block["minutes"] > 0]
       actual = [b.block_type for b in blocks]
       missing_blocks = [name for name in expected if name not in actual]
-      gates = []
-      gates.extend(family.get("required_gates", []) if family else [])
-      gates.extend(anaesthesia.get("readiness_gates", []) if anaesthesia else [])
-      gates.extend(recovery.get("minimum_checks", []) if recovery else [])
-      gates.extend(cleaning.get("checks", []) if cleaning else [])
       procedure_rows.append({
           "case_procedure_id": case_procedure.id,
           "procedure_name": proc_type.name,
           "template": template,
-          "family": family,
-          "anaesthesia": anaesthesia,
-          "recovery": recovery,
-          "cleaning": cleaning,
+          "capability": capability,
+          "family": capability.get("family"),
+          "anaesthesia": capability.get("anaesthesia"),
+          "recovery": capability.get("recovery"),
+          "cleaning": capability.get("cleaning"),
           "expected_blocks": expected,
           "actual_blocks": actual,
           "missing_blocks": missing_blocks,
-          "readiness_gates": list(dict.fromkeys(gates)),
+          "readiness_gates": capability.get("readiness_gates", []),
+          "dependency_layers": capability.get("dependency_layers", []),
           "ready": len(missing_blocks) == 0,
       })
     blockers = []
@@ -119,9 +127,13 @@ def schedule_from_template(payload: dict, session: Session = Depends(get_session
     if not episode_ref or not procedure_name or not start_time_raw:
         raise HTTPException(status_code=400, detail="episode_ref, procedure_name and start_time are required")
 
-    template = find_template(procedure_name)
-    if not template:
-        raise HTTPException(status_code=404, detail="Procedure template not found")
+    capability = procedure_capability_profile(procedure_name)
+    if not capability:
+        raise HTTPException(status_code=404, detail="Procedure capability profile not found")
+    template = capability["procedure"]
+
+    if room_name != "Unassigned" and capability["room_options"] and room_name not in capability["room_options"]:
+        raise HTTPException(status_code=400, detail=f"Room '{room_name}' is not listed for {procedure_name}. Options: {capability['room_options']}")
 
     episode = session.exec(select(Episode).where(Episode.episode_ref == episode_ref)).first()
     if not episode:
@@ -152,14 +164,10 @@ def schedule_from_template(payload: dict, session: Session = Depends(get_session
 
     blocks = []
     current = start_time
-    chain = [
-        ("prep", template["prep_min"], "nurse"),
-        ("anaesthesia", template["anaesthesia_min"], "anaesthetist"),
-        ("procedure", template["procedure_min"], "clinician"),
-        ("recovery", template["recovery_min"], "nurse"),
-        ("cleaning", template["cleaning_min"], "nurse"),
-    ]
-    for block_type, minutes, owner_role in chain:
+    for chain_block in capability["schedule_chain"]:
+        block_type = chain_block["block_type"]
+        minutes = chain_block["minutes"]
+        owner_role = chain_block["owner_role"]
         if minutes <= 0:
             continue
         block = ScheduleBlock(
@@ -181,12 +189,13 @@ def schedule_from_template(payload: dict, session: Session = Depends(get_session
     session.add(episode)
     session.commit()
 
-    log(session, actor_name, "catalogue_schedule_generated", "case_procedure", case_procedure.id or 0, f"{episode_ref} scheduled from {template['name']}")
+    log(session, actor_name, "capability_schedule_generated", "case_procedure", case_procedure.id or 0, f"{episode_ref} scheduled from {template['name']} capability profile")
     return {
         "template": template,
+        "capability": capability,
         "case_procedure": case_procedure,
         "blocks": blocks,
-        "total_minutes": sum([template["prep_min"], template["anaesthesia_min"], template["procedure_min"], template["recovery_min"], template["cleaning_min"]]),
+        "total_minutes": capability["total_minutes"],
     }
 
 
