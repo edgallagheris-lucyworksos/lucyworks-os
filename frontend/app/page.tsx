@@ -1,77 +1,64 @@
 import Link from "next/link";
 
-const links = [
-  ["/system", "System Map"],
-  ["/product", "Product"],
-  ["/login", "Access"],
-  ["/pulse", "Pulse"],
-  ["/ethics", "Ethics"],
-  ["/command", "Command"],
-  ["/triage", "Triage"],
-  ["/admissions", "Admissions"],
-  ["/schedule", "Schedule"],
-  ["/rota", "Rota"],
-  ["/discharge", "Discharge"],
-  ["/pharmacy", "Pharmacy"],
-  ["/stock", "Stock"],
-  ["/episodes", "Episodes"],
-  ["/staff", "Staff"],
-  ["/conflicts", "Conflicts"],
-  ["/rooms", "Rooms"],
-  ["/results", "Results"],
-  ["/mail", "Mail Ops"],
-  ["/consult", "Consult"],
-  ["/ward", "Ward / ICU"],
-  ["/theatre", "Theatre / Recovery"],
-  ["/queues", "Queues"],
-  ["/audit", "Audit"],
+const primaryPath = [
+  ["/login", "1. Login", "Pick a demo role and enter the workspace."],
+  ["/workspace", "2. Workspace", "Role-based launchpad for the whole system."],
+  ["/system", "3. System", "Understand the operating spine and module map."],
+  ["/pulse", "4. Pulse", "Read hospital pressure, risk and next action."],
+  ["/command", "5. Command", "See the lead item, section pressure and accountable owner."],
+  ["/episodes/EP-1042", "6. Demo Case", "Open the case intelligence and readiness chain."],
+];
+
+const surfaces = [
+  ["/triage", "LucyFlow", "Front-door routing and red-flag handoff."],
+  ["/ethics", "Lucy Ethics", "Welfare, consent, owner and financial-risk flags."],
+  ["/discharge", "Discharge", "Safe leave chain: signoff, meds, owner, admin, results, instructions."],
+  ["/pharmacy", "Pharmacy", "Medication work and compliance blockers."],
+  ["/stock", "Stock", "Ordering pressure and missing-item blockers."],
+  ["/schedule", "Schedule", "Procedure block chain and timing movement."],
+  ["/rooms", "Rooms", "Live room state control."],
+  ["/mail", "Mail Ops", "Owner/comms threads and material messages."],
+  ["/conflicts", "Conflicts", "Operational failures converted to work."],
+  ["/queues", "Queues", "Role-owned work by urgency and status."],
+  ["/audit", "Audit", "Trace of material actions."],
+  ["/staff", "Staff", "Shift/load visibility."],
 ];
 
 export default function HomePage() {
   return (
-    <main style={{ minHeight: "100vh", padding: 24, background: "#020617" }}>
-      <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 24 }}>
-        <section style={{ border: "1px solid #1f2937", borderRadius: 28, padding: 32, background: "#0f172a" }}>
-          <div style={{ color: "#14b8a6", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Hospital Operations Engine</div>
-          <h1 style={{ fontSize: 52, lineHeight: 1, margin: "14px 0 0", letterSpacing: "-0.04em" }}>LucyWorks OS</h1>
-          <p style={{ marginTop: 16, color: "#cbd5e1", fontSize: 20, maxWidth: 820 }}>Run the hospital. Not just the schedule.</p>
-          <p style={{ marginTop: 10, color: "#94a3b8", maxWidth: 900 }}>
-            Case-driven operational control for specialist veterinary hospitals: Pulse, Ethics, triage, admissions, episodes, rooms, schedule blocks, rota, discharge, pharmacy, stock, conflicts, results, comms, work ownership, staff availability, and audit trail.
-          </p>
+    <main className="lw-shell">
+      <div className="lw-main" style={{ display: "grid", gap: 24 }}>
+        <section className="lw-card" style={{ padding: 32 }}>
+          <div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>LucyWorks OS / LucyVet OS</div>
+          <h1 style={{ fontSize: 58, lineHeight: 0.95, margin: "14px 0 0", letterSpacing: "-0.06em" }}>Specialist hospital command system.</h1>
+          <p style={{ marginTop: 18, color: "#cbd5e1", fontSize: 20, maxWidth: 920, lineHeight: 1.45 }}>Case-driven operational control for complex veterinary hospitals: pressure, ethics, triage, schedule, staff, rooms, owner comms, pharmacy, stock, discharge, conflicts and audit.</p>
           <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Link href="/pulse" style={{ background: "#14b8a6", color: "#020617", padding: "12px 16px", borderRadius: 12, fontWeight: 700 }}>Open Pulse</Link>
-            <Link href="/ethics" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Ethics</Link>
-            <Link href="/command" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Command</Link>
-            <Link href="/system" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open System Map</Link>
-            <Link href="/episodes/EP-1042" style={{ border: "1px solid #334155", padding: "12px 16px", borderRadius: 12 }}>Open Example Case</Link>
+            <Link href="/login" className="lw-btn-primary" style={{ padding: "12px 16px", borderRadius: 14 }}>Start demo</Link>
+            <Link href="/system" className="lw-pill">System map</Link>
+            <Link href="/command" className="lw-pill">Command</Link>
+            <Link href="/episodes/EP-1042" className="lw-pill">Demo case</Link>
           </div>
         </section>
 
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-          {[
-            ["Pulse", "Whole-hospital pressure, risk, capacity, staffing and execution state."],
-            ["Ethics", "Welfare, consent, owner communication, financial constraint and escalation risk."],
-            ["Triage", "Front-door routing, red flags, urgent inputs and escalation."],
-            ["Admissions", "Admitted patient flow, inpatient ownership and current ward/ICU load."],
-            ["Schedule", "Prep → anaesthesia → procedure → recovery → cleaning as operational blocks."],
-            ["Rota", "Shift coverage, staff pressure and assigned block warnings."],
-            ["Conflicts", "Room, chain, handoff, and review problems surfaced as action."],
-            ["Audit", "Every action becomes a traceable operational record."],
-          ].map(([title, text]) => (
-            <div key={title} style={{ border: "1px solid #1f2937", borderRadius: 18, padding: 18, background: "#0f172a" }}>
-              <strong>{title}</strong>
-              <p style={{ color: "#94a3b8", marginBottom: 0 }}>{text}</p>
-            </div>
-          ))}
-        </section>
-
-        <section style={{ border: "1px solid #1f2937", borderRadius: 22, padding: 20, background: "#0f172a" }}>
-          <h2 style={{ marginTop: 0 }}>Control surfaces</h2>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {links.map(([href, label]) => (
-              <Link key={href} href={href} style={{ border: "1px solid #334155", padding: "10px 12px", borderRadius: 12 }}>{label}</Link>
+        <section className="lw-card" style={{ padding: 22 }}>
+          <h2 style={{ marginTop: 0 }}>Main demo path</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
+            {primaryPath.map(([href, label, text]) => (
+              <Link key={href} href={href} style={{ border: "1px solid #1f2937", borderRadius: 16, padding: 16, background: "rgba(15,23,42,0.72)", display: "block" }}>
+                <strong>{label}</strong>
+                <p style={{ color: "#94a3b8", marginBottom: 0 }}>{text}</p>
+              </Link>
             ))}
           </div>
+        </section>
+
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+          {surfaces.map(([href, title, text]) => (
+            <Link key={href} href={href} className="lw-card" style={{ padding: 18, display: "block" }}>
+              <strong>{title}</strong>
+              <p style={{ color: "#94a3b8", marginBottom: 0 }}>{text}</p>
+            </Link>
+          ))}
         </section>
       </div>
     </main>
