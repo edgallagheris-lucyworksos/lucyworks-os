@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 const primaryPath = [
-  ["/login", "1. Login", "Pick a demo role and enter the workspace."],
+  ["/login", "1. Login", "Pick an operating role and enter the workspace."],
   ["/workspace", "2. Workspace", "Role-based launchpad for the whole system."],
   ["/system", "3. System", "Understand the operating spine and module map."],
   ["/pulse", "4. Pulse", "Read hospital pressure, risk and next action."],
   ["/command", "5. Command", "See the lead item, section pressure and accountable owner."],
-  ["/episodes/EP-1042", "6. Demo Case", "Open the case intelligence and readiness chain."],
+  ["/episodes/EP-1042", "6. Seeded Case", "Open a seeded case to inspect case intelligence and readiness."],
 ];
 
 const surfaces = [
@@ -33,15 +33,15 @@ export default function HomePage() {
           <h1 style={{ fontSize: 58, lineHeight: 0.95, margin: "14px 0 0", letterSpacing: "-0.06em" }}>Specialist hospital command system.</h1>
           <p style={{ marginTop: 18, color: "#cbd5e1", fontSize: 20, maxWidth: 920, lineHeight: 1.45 }}>Case-driven operational control for complex veterinary hospitals: pressure, ethics, triage, schedule, staff, rooms, owner comms, pharmacy, stock, discharge, conflicts and audit.</p>
           <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Link href="/login" className="lw-btn-primary" style={{ padding: "12px 16px", borderRadius: 14 }}>Start demo</Link>
+            <Link href="/login" className="lw-btn-primary" style={{ padding: "12px 16px", borderRadius: 14 }}>Enter system</Link>
             <Link href="/system" className="lw-pill">System map</Link>
             <Link href="/command" className="lw-pill">Command</Link>
-            <Link href="/episodes/EP-1042" className="lw-pill">Demo case</Link>
+            <Link href="/episodes/EP-1042" className="lw-pill">Seeded case</Link>
           </div>
         </section>
 
         <section className="lw-card" style={{ padding: 22 }}>
-          <h2 style={{ marginTop: 0 }}>Main demo path</h2>
+          <h2 style={{ marginTop: 0 }}>Main operating path</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
             {primaryPath.map(([href, label, text]) => (
               <Link key={href} href={href} style={{ border: "1px solid #1f2937", borderRadius: 16, padding: 16, background: "rgba(15,23,42,0.72)", display: "block" }}>
