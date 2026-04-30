@@ -24,6 +24,7 @@ with TestClient(app) as client:
     assert len(catalogue["procedure_templates"]) >= 10, "Operating catalogue missing procedures"
     assert len(catalogue["pharmacy_governance"]) >= 5, "Operating catalogue missing pharmacy governance"
     assert "legal_and_compliance_guardrails" in catalogue, "Compliance guardrails missing"
+    assert "procedure_dependency_layers" in catalogue, "Procedure dependency layers missing"
     print("Operating catalogue OK")
 
     r = client.get("/api/episodes")
@@ -111,6 +112,28 @@ with TestClient(app) as client:
     assert readiness["hard_block_count"] >= 1
     assert "hard_blocks" in readiness and "warnings" in readiness
     print("Flow readiness blocks unsafe flow OK")
+
+    r = client.get(f"/api/episode-operating-readiness/{episode_ref}")
+    assert r.status_code == 200, r.text
+    operating_readiness = r.json()
+    assert operating_readiness["episode_ref"] == episode_ref
+    assert operating_readiness["procedure_count"] >= 1
+    assert operating_readiness["procedures"][0]["readiness_gates"], "Operating readiness gates missing"
+    print("Episode operating readiness OK")
+
+    r = client.get("/api/dashboard/intelligence")
+    assert r.status_code == 200, r.text
+    dashboard = r.json()
+    assert dashboard["dashboard_basis"] == "15-minute operational command grid"
+    assert len(dashboard["slots"]) == 56
+    assert dashboard["summary"]["schedule_blocks"] >= len(schedule["blocks"])
+    active_slots = [slot for slot in dashboard["slots"] if slot["active_count"]]
+    assert active_slots, "Dashboard has no active 15-minute slots"
+    active_block = active_slots[0]["blocks"][0]
+    assert "episode" in active_block and active_block["episode"], "Dashboard block missing episode context"
+    assert "pressure" in active_block, "Dashboard block missing pressure context"
+    assert "operating" in active_block, "Dashboard block missing operating context"
+    print("Dashboard intelligence OK")
 
     r = client.get("/api/domain-pressure")
     assert r.status_code == 200, r.text
