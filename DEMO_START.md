@@ -1,4 +1,8 @@
-# LucyWorks OS — Demo Start
+# LucyWorks OS — Working Build Start
+
+This is the current working build of the LucyWorks OS operating spine.
+
+It is not a throwaway demo and it is not being claimed as a finished hospital-grade system. The current job is to make the working build run cleanly, read clearly, and expose the right operating logic.
 
 ## Codespaces first run
 
@@ -24,7 +28,7 @@ npm run backend:safety
 npm run frontend:build
 ```
 
-## Start the demo
+## Start the working build
 
 Use two terminals.
 
@@ -54,7 +58,7 @@ Frontend port:
 
 Open the forwarded `3000` port.
 
-## Demo path
+## Main operating path
 
 Start here:
 
@@ -71,6 +75,8 @@ Then open:
 /command
 /episodes/EP-1042
 ```
+
+`EP-1042` is seeded data used to exercise the current build path. It is not the product boundary.
 
 ## What to check visually
 
