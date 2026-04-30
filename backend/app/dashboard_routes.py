@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
+from app.capability_engine import procedure_capability_profile
 from app.database import get_session
 from app.main_fixed import alerts_for, compute_conflicts
 from app.models import (
@@ -12,7 +13,6 @@ from app.models import (
     Episode,
     EthicsFlag,
     LucyCareTask,
-    MessageThread,
     OwnerCommsRequirement,
     Patient,
     PharmacyRequest,
@@ -24,27 +24,8 @@ from app.models import (
     TriageAssessment,
     WorkItem,
 )
-from app.operating_catalogue import HOSPITAL_OPERATING_CATALOGUE
 
 router = APIRouter()
-
-
-def _find_template(name: str | None):
-    if not name:
-        return None
-    for template in HOSPITAL_OPERATING_CATALOGUE.get("procedure_templates", []):
-        if template.get("name", "").lower() == name.lower():
-            return template
-    return None
-
-
-def _lookup(collection: str, key: str, value: str | None):
-    if not value:
-        return None
-    for row in HOSPITAL_OPERATING_CATALOGUE.get(collection, []):
-        if row.get(key) == value:
-            return row
-    return None
 
 
 def _to_iso(dt):
@@ -75,12 +56,7 @@ def _episode_bundle(session: Session, episode: Episode | None):
 
 def _episode_pressures(session: Session, episode: Episode | None):
     if not episode:
-        return {
-            "hard_blocks": [],
-            "warnings": [],
-            "counts": {},
-            "next_action": None,
-        }
+        return {"hard_blocks": [], "warnings": [], "counts": {}, "next_action": None}
     ep_id = episode.id
     ep_ref = episode.episode_ref
     hard_blocks = []
@@ -144,7 +120,6 @@ def _episode_pressures(session: Session, episode: Episode | None):
             warnings.append({"type": "work", "section": item.section_name or item.category, "detail": item.title, "owner_role": item.owner_role, "urgency": item.urgency})
 
     combined = hard_blocks + warnings
-    next_action = combined[0] if combined else None
     return {
         "hard_blocks": hard_blocks,
         "warnings": warnings,
@@ -160,7 +135,7 @@ def _episode_pressures(session: Session, episode: Episode | None):
             "care": len([x for x in care if x.status != "done"]),
             "work": len([x for x in work if x.status != "done"]),
         },
-        "next_action": next_action,
+        "next_action": combined[0] if combined else None,
     }
 
 
@@ -171,19 +146,25 @@ def _block_context(session: Session, block: ScheduleBlock):
     procedure = None
     operating = None
     if block.case_procedure_id:
-        # ProcedureType lives through CaseProcedure; import locally to avoid cluttering model list above if refactor changes.
         from app.models import CaseProcedure, ProcedureType
         cp = session.get(CaseProcedure, block.case_procedure_id)
         pt = session.get(ProcedureType, cp.procedure_type_id) if cp else None
-        template = _find_template(pt.name if pt else None)
+        capability = procedure_capability_profile(pt.name) if pt else None
         procedure = {"name": pt.name if pt else None, "department": pt.department if pt else None, "case_procedure_id": cp.id if cp else None}
-        if template:
+        if capability:
             operating = {
-                "template": template,
-                "family": _lookup("procedure_families", "family", template.get("family")),
-                "anaesthesia": _lookup("anaesthesia_levels", "level", template.get("anaesthesia_level")),
-                "recovery": _lookup("recovery_standards", "class", template.get("recovery_class")),
-                "cleaning": _lookup("cleaning_turnover_standards", "area", template.get("cleaning_standard")),
+                "template": capability.get("procedure"),
+                "family": capability.get("family"),
+                "anaesthesia": capability.get("anaesthesia"),
+                "recovery": capability.get("recovery"),
+                "cleaning": capability.get("cleaning"),
+                "room_options": capability.get("room_options", []),
+                "required_roles": capability.get("required_roles", []),
+                "readiness_gates": capability.get("readiness_gates", []),
+                "dependency_layers": capability.get("dependency_layers", []),
+                "blockers_to_watch": capability.get("blockers_to_watch", []),
+                "total_minutes": capability.get("total_minutes"),
+                "schedule_chain": capability.get("schedule_chain", []),
             }
     pressure = _episode_pressures(session, episode)
     return {
