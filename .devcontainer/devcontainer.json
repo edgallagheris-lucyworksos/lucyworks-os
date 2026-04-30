@@ -1,12 +1,28 @@
 {
-  "name": "LucyWorks OS",
+  "name": "LucyWorks OS Demo",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "forwardPorts": [3000, 8000],
+  "forwardPorts": [8000, 3000],
+  "portsAttributes": {
+    "8000": {
+      "label": "LucyWorks Backend API",
+      "onAutoForward": "notify"
+    },
+    "3000": {
+      "label": "LucyWorks Frontend",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "npm run backend:install && npm run frontend:install",
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash"
-      }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "esbenp.prettier-vscode"
+      ]
     }
   }
 }
