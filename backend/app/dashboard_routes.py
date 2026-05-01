@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 
 from app.capability_engine import procedure_capability_profile
 from app.database import get_session
+from app.integrity_engine import dashboard_integrity_report
 from app.main_fixed import alerts_for, compute_conflicts
 from app.models import (
     Blocker,
@@ -190,8 +191,7 @@ def _block_context(session: Session, block: ScheduleBlock):
     }
 
 
-@router.get("/api/dashboard/intelligence")
-def dashboard_intelligence(session: Session = Depends(get_session)):
+def _build_dashboard(session: Session):
     now = datetime.now()
     day_start = now.replace(hour=7, minute=0, second=0, microsecond=0)
     slots = []
@@ -238,3 +238,16 @@ def dashboard_intelligence(session: Session = Depends(get_session)):
         "conflicts": conflicts,
         "alerts": alerts,
     }
+
+
+@router.get("/api/dashboard/intelligence")
+def dashboard_intelligence(session: Session = Depends(get_session)):
+    dashboard = _build_dashboard(session)
+    dashboard["integrity"] = dashboard_integrity_report(session, dashboard)
+    return dashboard
+
+
+@router.get("/api/dashboard/integrity")
+def dashboard_integrity(session: Session = Depends(get_session)):
+    dashboard = _build_dashboard(session)
+    return dashboard_integrity_report(session, dashboard)
