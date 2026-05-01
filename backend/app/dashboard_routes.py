@@ -24,6 +24,7 @@ from app.models import (
     TriageAssessment,
     WorkItem,
 )
+from app.slot_dependency_engine import slot_dependency_check
 
 router = APIRouter()
 
@@ -167,6 +168,10 @@ def _block_context(session: Session, block: ScheduleBlock):
                 "schedule_chain": capability.get("schedule_chain", []),
             }
     pressure = _episode_pressures(session, episode)
+    dependency = slot_dependency_check(session, block)
+    merged_hard = pressure.get("hard_blocks", []) + dependency.get("hard_failures", [])
+    merged_warnings = pressure.get("warnings", []) + dependency.get("warnings", [])
+    merged_pressure = {**pressure, "hard_blocks": merged_hard, "warnings": merged_warnings, "next_action": dependency.get("next_action") or pressure.get("next_action")}
     return {
         "block_id": block.id,
         "block_type": block.block_type,
@@ -179,8 +184,9 @@ def _block_context(session: Session, block: ScheduleBlock):
         "episode": _episode_bundle(session, episode),
         "procedure": procedure,
         "operating": operating,
-        "pressure": pressure,
-        "next_action": pressure.get("next_action"),
+        "dependency": dependency,
+        "pressure": merged_pressure,
+        "next_action": merged_pressure.get("next_action"),
     }
 
 
