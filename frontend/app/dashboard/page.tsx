@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { ClinicalDirectorReadPanel } from "@/components/clinical-director-read";
+import { DashboardIntegrityPanel } from "@/components/dashboard-integrity-panel";
 import { HospitalShell } from "@/components/hospital-shell";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -52,8 +53,9 @@ export default function DashboardPage() {
   useEffect(() => { load(); }, []);
   const rooms = useMemo(() => data ? Array.from(new Set([...data.rooms.map((r) => r.room_name), ...data.slots.flatMap((s) => s.blocks.map((b) => b.room.name || "Unassigned"))])).sort() : [], [data]);
 
-  return <AuthGuard allowedRoles={["ops_manager", "clinician", "nurse", "admin"]}>{() => <HospitalShell title="Clinical Director Dashboard" subtitle="Command read, 15-minute grid, slot dependency intelligence"><div style={{ display: "grid", gap: 16 }}>
+  return <AuthGuard allowedRoles={["ops_manager", "clinician", "nurse", "admin"]}>{() => <HospitalShell title="Clinical Director Dashboard" subtitle="Command read, integrity state, 15-minute grid, slot dependency intelligence"><div style={{ display: "grid", gap: 16 }}>
     <ClinicalDirectorReadPanel />
+    <DashboardIntegrityPanel />
     {error ? <section className="lw-card" style={{ padding: 14, border: "1px solid #7f1d1d" }}>{error}</section> : null}
 
     <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
