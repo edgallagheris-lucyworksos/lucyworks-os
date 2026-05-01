@@ -147,7 +147,22 @@ with TestClient(app) as client:
     assert active_block.get("episode"), "Dashboard block missing episode context"
     assert "pressure" in active_block, "Dashboard block missing pressure context"
     assert "operating" in active_block, "Dashboard block missing operating context"
+    assert active_block["operating"]["required_roles"], "Dashboard operating required roles missing"
+    assert active_block["operating"]["readiness_gates"], "Dashboard operating readiness gates missing"
     print("Dashboard intelligence OK")
+
+    r = client.get("/api/dashboard/clinical-director")
+    assert r.status_code == 200, r.text
+    director = r.json()
+    assert director["hospital_state"] in {"red", "amber", "green"}
+    assert "reason_for_state" in director
+    assert "ignored_risk" in director
+    assert "lanes" in director
+    for lane in ["unsafe_now", "flow_blockers", "decision_required", "owner_failures", "next_60_minutes"]:
+        assert lane in director["lanes"], f"Clinical Director lane missing: {lane}"
+    assert "counts" in director
+    assert "next_action" in director
+    print("Clinical Director command read OK")
 
     r = client.get("/api/domain-pressure")
     assert r.status_code == 200, r.text
