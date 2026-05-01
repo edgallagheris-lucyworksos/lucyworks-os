@@ -149,7 +149,17 @@ with TestClient(app) as client:
     assert "operating" in active_block, "Dashboard block missing operating context"
     assert active_block["operating"]["required_roles"], "Dashboard operating required roles missing"
     assert active_block["operating"]["readiness_gates"], "Dashboard operating readiness gates missing"
-    print("Dashboard intelligence OK")
+    assert "dependency" in active_block, "Dashboard block missing dependency truth check"
+    dependency = active_block["dependency"]
+    assert "can_start" in dependency, "Dependency check missing can_start"
+    assert "risk" in dependency, "Dependency check missing risk"
+    assert "checks" in dependency, "Dependency check missing checks"
+    for key in ["episode_present", "procedure_capability_present", "room_suitable", "room_released", "staff_assigned", "staff_skill_probable"]:
+        assert key in dependency["checks"], f"Dependency check missing: {key}"
+    assert "hard_failures" in dependency, "Dependency check missing hard_failures"
+    assert "warnings" in dependency, "Dependency check missing warnings"
+    assert "next_action" in dependency, "Dependency check missing next_action"
+    print("Dashboard slot dependency truth checks OK")
 
     r = client.get("/api/dashboard/clinical-director")
     assert r.status_code == 200, r.text
