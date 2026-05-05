@@ -39,6 +39,9 @@ jobs:
       - name: Run live-action gate smoke test
         run: python live_action_gate_smoke_test.py
 
+      - name: Run workspace role queue smoke test
+        run: python workspace_smoke_test.py
+
   frontend-build:
     name: Frontend build check
     runs-on: ubuntu-latest
