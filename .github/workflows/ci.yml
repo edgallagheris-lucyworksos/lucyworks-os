@@ -33,6 +33,9 @@ jobs:
       - name: Run hospital-scale overnight smoke test
         run: python hospital_scale_smoke_test.py
 
+      - name: Run flow-state realignment smoke test
+        run: python flow_state_smoke_test.py
+
   frontend-build:
     name: Frontend build check
     runs-on: ubuntu-latest
