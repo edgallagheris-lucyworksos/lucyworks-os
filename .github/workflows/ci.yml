@@ -36,6 +36,9 @@ jobs:
       - name: Run flow-state realignment smoke test
         run: python flow_state_smoke_test.py
 
+      - name: Run live-action gate smoke test
+        run: python live_action_gate_smoke_test.py
+
   frontend-build:
     name: Frontend build check
     runs-on: ubuntu-latest
