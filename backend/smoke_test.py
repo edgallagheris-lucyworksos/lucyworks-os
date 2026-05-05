@@ -47,6 +47,54 @@ with TestClient(app) as client:
         assert "cards" in r.json()
         print(f"{label} OK")
 
+    r = client.get("/api/dashboard/intelligence")
+    assert r.status_code == 200, r.text
+    dashboard = r.json()
+    assert "summary" in dashboard and "slots" in dashboard and "integrity" in dashboard
+    for key in ["rooms", "schedule_blocks", "active_slots", "red_slots", "amber_slots", "alerts", "conflicts", "open_work"]:
+        assert key in dashboard["summary"], f"Dashboard summary missing {key}"
+    assert isinstance(dashboard["slots"], list) and len(dashboard["slots"]) == 56
+    print("Dashboard intelligence OK")
+
+    r = client.get("/api/dashboard/integrity")
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), dict)
+    print("Dashboard integrity OK")
+
+    r = client.get("/api/message-threads")
+    assert r.status_code == 200, r.text
+    threads = r.json()
+    assert isinstance(threads, list), "Message threads should return a list"
+    if threads:
+        thread_id = threads[0]["id"]
+        r = client.get(f"/api/message-threads/{thread_id}/entries")
+        assert r.status_code == 200, r.text
+        before_entries = r.json()
+        assert isinstance(before_entries, list)
+
+        r = client.post(
+            f"/api/messages/{thread_id}",
+            json={
+                "sender_name": "Smoke Test",
+                "direction": "outbound",
+                "body": "Automated Mail Ops smoke test message",
+                "material_decision_flag": True,
+                "actor_name": "Smoke Test",
+            },
+        )
+        assert r.status_code == 200, r.text
+        message = r.json()
+        assert message["thread_id"] == thread_id
+        assert message["material_decision_flag"] is True
+
+        r = client.get(f"/api/message-threads/{thread_id}/entries")
+        assert r.status_code == 200, r.text
+        after_entries = r.json()
+        assert len(after_entries) == len(before_entries) + 1
+        print("Mail Ops message write OK")
+    else:
+        print("Mail Ops message write skipped: no seeded message threads")
+
     r = client.post("/api/lucyflow/triage", json={"episode_id": episode_id, "species": "dog", "presenting_signs": "collapse, breathing difficulty and pain"})
     assert r.status_code == 200, r.text
     triage_created = r.json()
