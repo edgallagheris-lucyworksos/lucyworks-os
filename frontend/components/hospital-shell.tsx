@@ -13,6 +13,7 @@ type AlertSummary = {
 
 const sharedCore = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/overnight", label: "Overnight" },
   { href: "/system", label: "System" },
   { href: "/operating-model", label: "Operating Model" },
   { href: "/pulse", label: "Pulse" },
