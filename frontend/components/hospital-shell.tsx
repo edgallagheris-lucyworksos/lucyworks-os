@@ -13,6 +13,7 @@ type AlertSummary = {
 
 const sharedCore = [
   { href: "/system-control", label: "System Control" },
+  { href: "/departments", label: "Department Ops" },
   { href: "/command", label: "Lucy Command" },
   { href: "/pulse", label: "Lucy Pulse" },
   { href: "/triage", label: "Lucy Flow" },
