@@ -1,16 +1,17 @@
 {
   "name": "lucyworks-os",
-  "version": "0.9.0-domain-spine",
+  "version": "0.10.0-one-system",
   "private": true,
   "scripts": {
+    "lucy:check": "bash scripts/check-all.sh",
+    "lucy:dev": "bash scripts/run-dev.sh",
     "backend:install": "cd backend && python -m pip install -r requirements.txt",
     "backend:smoke": "cd backend && python smoke_test.py",
-    "backend:safety": "cd backend && python smoke_domain_safety.py",
     "backend:run": "cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
     "frontend:install": "cd frontend && npm install",
     "frontend:build": "cd frontend && npm run build",
-    "frontend:run": "cd frontend && npm run dev -- --host 0.0.0.0 --port 3000",
-    "check": "npm run backend:smoke && npm run backend:safety && npm run frontend:build",
-    "dev": "echo Run backend and frontend in two terminals: npm run backend:run ; npm run frontend:run"
+    "frontend:run": "cd frontend && npm run dev -- --hostname 0.0.0.0 --port 3000",
+    "check": "npm run lucy:check",
+    "dev": "npm run lucy:dev"
   }
 }
