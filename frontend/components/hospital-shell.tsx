@@ -12,6 +12,7 @@ type AlertSummary = {
 };
 
 const sharedCore = [
+  { href: "/system-control", label: "System Control" },
   { href: "/command", label: "Lucy Command" },
   { href: "/pulse", label: "Lucy Pulse" },
   { href: "/triage", label: "Lucy Flow" },
@@ -100,7 +101,7 @@ export function HospitalShell({ title, subtitle, children }: { title: string; su
         <div className="lw-wrap">
           <div className="lw-brand-row">
             <div className="lw-brand-title">
-              <Link href="/command" className="lw-brand-mark">L</Link>
+              <Link href="/system-control" className="lw-brand-mark">L</Link>
               <div>
                 <div className="lw-product">LucyWorks OS</div>
                 <div className="lw-subtitle">{title} • {subtitle}</div>
