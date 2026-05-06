@@ -1,4 +1,5 @@
 from app.main_fixed import app
+from app.department_routes import router as department_router
 from app.forecast_routes import router as forecast_router
 from app.readiness_routes import router as readiness_router
 from app.hr_routes import router as hr_router
@@ -16,6 +17,7 @@ from app.operating_routes import router as operating_router
 from app.safety_routes import router as safety_router
 from app.startup_routes import router as startup_router
 
+app.include_router(department_router)
 app.include_router(forecast_router)
 app.include_router(readiness_router)
 app.include_router(hr_router)
