@@ -51,6 +51,9 @@ jobs:
       - name: Run BVS readiness smoke test
         run: python readiness_smoke_test.py
 
+      - name: Run mobile input capture smoke test
+        run: python input_smoke_test.py
+
   frontend-build:
     name: Frontend build check
     runs-on: ubuntu-latest
