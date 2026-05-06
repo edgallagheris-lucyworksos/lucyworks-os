@@ -45,6 +45,9 @@ jobs:
       - name: Run catalogue import smoke test
         run: python catalogue_smoke_test.py
 
+      - name: Run HR staffing smoke test
+        run: python hr_smoke_test.py
+
   frontend-build:
     name: Frontend build check
     runs-on: ubuntu-latest
