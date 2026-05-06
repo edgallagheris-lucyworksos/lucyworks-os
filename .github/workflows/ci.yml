@@ -54,6 +54,9 @@ jobs:
       - name: Run mobile input capture smoke test
         run: python input_smoke_test.py
 
+      - name: Run operational workflow engine smoke test
+        run: python ops_engine_smoke_test.py
+
   frontend-build:
     name: Frontend build check
     runs-on: ubuntu-latest
