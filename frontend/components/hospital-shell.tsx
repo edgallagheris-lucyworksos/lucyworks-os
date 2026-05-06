@@ -13,6 +13,7 @@ type AlertSummary = {
 
 const sharedCore = [
   { href: "/system-control", label: "System Control" },
+  { href: "/input", label: "Input / Capture" },
   { href: "/departments", label: "Department Ops" },
   { href: "/command", label: "Lucy Command" },
   { href: "/pulse", label: "Lucy Pulse" },
@@ -44,37 +45,10 @@ const supportLinks = [
 ];
 
 const roleLinks: Record<string, { href: string; label: string }[]> = {
-  ops_manager: [
-    ...sharedCore,
-    ...supportLinks,
-    { href: "/conflicts", label: "Conflicts" },
-    { href: "/queues", label: "Queues" },
-  ],
-  clinician: [
-    ...sharedCore,
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/flow-state", label: "Flow State" },
-    { href: "/discharge", label: "Discharge" },
-    { href: "/theatre", label: "Theatre" },
-    { href: "/queues", label: "Queues" },
-  ],
-  nurse: [
-    ...sharedCore,
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/flow-state", label: "Flow State" },
-    { href: "/stock", label: "Stock" },
-    { href: "/rooms", label: "Rooms" },
-    { href: "/queues", label: "Queues" },
-  ],
-  admin: [
-    ...sharedCore,
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/flow-state", label: "Flow State" },
-    { href: "/discharge", label: "Discharge" },
-    { href: "/stock", label: "Stock" },
-    { href: "/consult", label: "Consult" },
-    { href: "/input", label: "Input" },
-  ],
+  ops_manager: [...sharedCore, ...supportLinks, { href: "/conflicts", label: "Conflicts" }, { href: "/queues", label: "Queues" }],
+  clinician: [...sharedCore, { href: "/dashboard", label: "Dashboard" }, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/theatre", label: "Theatre" }, { href: "/queues", label: "Queues" }],
+  nurse: [...sharedCore, { href: "/dashboard", label: "Dashboard" }, { href: "/flow-state", label: "Flow State" }, { href: "/stock", label: "Stock" }, { href: "/rooms", label: "Rooms" }, { href: "/queues", label: "Queues" }],
+  admin: [...sharedCore, { href: "/dashboard", label: "Dashboard" }, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/stock", label: "Stock" }, { href: "/consult", label: "Consult" }],
 };
 
 export function HospitalShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
@@ -110,18 +84,12 @@ export function HospitalShell({ title, subtitle, children }: { title: string; su
             </div>
             <div className="lw-actions">
               {user ? <span className="lw-pill">{user.name} • {user.role}</span> : <Link className="lw-pill" href="/login">Login</Link>}
-              <Link href="/alerts" className={alerts.high_alerts ? "lw-pill lw-alert-pill" : "lw-pill"}>
-                Alerts {alerts.total_alerts} / high {alerts.high_alerts}
-              </Link>
-              <button onClick={() => { clearSession(); window.location.href = "/login"; }} className="lw-pill">
-                Sign out
-              </button>
+              <Link href="/alerts" className={alerts.high_alerts ? "lw-pill lw-alert-pill" : "lw-pill"}>Alerts {alerts.total_alerts} / high {alerts.high_alerts}</Link>
+              <button onClick={() => { clearSession(); window.location.href = "/login"; }} className="lw-pill">Sign out</button>
             </div>
           </div>
           <div className="lw-nav">
-            {(roleLinks[user?.role || "ops_manager"] || roleLinks.ops_manager).map((item) => (
-              <Link key={`${item.href}-${item.label}`} href={item.href}>{item.label}</Link>
-            ))}
+            {(roleLinks[user?.role || "ops_manager"] || roleLinks.ops_manager).map((item) => <Link key={`${item.href}-${item.label}`} href={item.href}>{item.label}</Link>)}
           </div>
         </div>
       </div>
