@@ -16,6 +16,7 @@ const sharedCore = [
   { href: "/workspace", label: "Workspace" },
   { href: "/flow-state", label: "Flow State" },
   { href: "/catalogues", label: "Catalogues" },
+  { href: "/hr", label: "HR" },
   { href: "/overnight", label: "Overnight" },
   { href: "/system", label: "System" },
   { href: "/operating-model", label: "Operating Model" },
