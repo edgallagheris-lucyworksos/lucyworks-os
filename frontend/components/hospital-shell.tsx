@@ -12,69 +12,65 @@ type AlertSummary = {
 };
 
 const sharedCore = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/readiness", label: "Readiness" },
+  { href: "/command", label: "Lucy Command" },
+  { href: "/pulse", label: "Lucy Pulse" },
+  { href: "/triage", label: "Lucy Flow" },
+  { href: "/ethics", label: "Lucy Ethics" },
+  { href: "/overnight", label: "Lucy Care" },
+  { href: "/hr", label: "LucyRota" },
+  { href: "/schedule", label: "Lucy Theatre" },
+  { href: "/ward", label: "Lucy Ward" },
+  { href: "/catalogues", label: "Lucy Diagnostics" },
+  { href: "/pharmacy", label: "Lucy Pharmacy" },
+  { href: "/mail", label: "Lucy Comms" },
+  { href: "/audit", label: "LucyTrace" },
+  { href: "/workspace", label: "My Workspace" },
   { href: "/actions", label: "Actions" },
-  { href: "/workspace", label: "Workspace" },
+  { href: "/readiness", label: "Readiness" },
+];
+
+const supportLinks = [
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/flow-state", label: "Flow State" },
-  { href: "/catalogues", label: "Catalogues" },
-  { href: "/hr", label: "HR" },
-  { href: "/overnight", label: "Overnight" },
+  { href: "/stock", label: "Stock" },
+  { href: "/discharge", label: "Discharge" },
+  { href: "/rooms", label: "Rooms" },
+  { href: "/staff", label: "Staff" },
   { href: "/system", label: "System" },
   { href: "/operating-model", label: "Operating Model" },
-  { href: "/pulse", label: "Pulse" },
-  { href: "/command", label: "Command" },
   { href: "/episodes/EP-1042", label: "Seeded Case" },
 ];
 
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [
     ...sharedCore,
-    { href: "/triage", label: "LucyFlow" },
-    { href: "/ethics", label: "Ethics" },
-    { href: "/discharge", label: "Discharge" },
-    { href: "/pharmacy", label: "Pharmacy" },
-    { href: "/stock", label: "Stock" },
-    { href: "/schedule", label: "Schedule" },
-    { href: "/rooms", label: "Rooms" },
-    { href: "/staff", label: "Staff" },
-    { href: "/mail", label: "Mail Ops" },
+    ...supportLinks,
     { href: "/conflicts", label: "Conflicts" },
     { href: "/queues", label: "Queues" },
-    { href: "/audit", label: "Audit" },
   ],
   clinician: [
     ...sharedCore,
-    { href: "/triage", label: "LucyFlow" },
-    { href: "/ethics", label: "Ethics" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/flow-state", label: "Flow State" },
     { href: "/discharge", label: "Discharge" },
-    { href: "/pharmacy", label: "Pharmacy" },
-    { href: "/schedule", label: "Schedule" },
-    { href: "/ward", label: "Ward" },
     { href: "/theatre", label: "Theatre" },
-    { href: "/mail", label: "Mail Ops" },
     { href: "/queues", label: "Queues" },
   ],
   nurse: [
     ...sharedCore,
-    { href: "/triage", label: "LucyFlow" },
-    { href: "/discharge", label: "Discharge" },
-    { href: "/pharmacy", label: "Pharmacy" },
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/flow-state", label: "Flow State" },
     { href: "/stock", label: "Stock" },
-    { href: "/schedule", label: "Schedule" },
-    { href: "/ward", label: "Ward" },
-    { href: "/theatre", label: "Theatre" },
     { href: "/rooms", label: "Rooms" },
     { href: "/queues", label: "Queues" },
   ],
   admin: [
     ...sharedCore,
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/flow-state", label: "Flow State" },
     { href: "/discharge", label: "Discharge" },
     { href: "/stock", label: "Stock" },
-    { href: "/mail", label: "Mail Ops" },
     { href: "/consult", label: "Consult" },
-    { href: "/queues", label: "Queues" },
-    { href: "/audit", label: "Audit" },
     { href: "/input", label: "Input" },
   ],
 };
@@ -104,7 +100,7 @@ export function HospitalShell({ title, subtitle, children }: { title: string; su
         <div className="lw-wrap">
           <div className="lw-brand-row">
             <div className="lw-brand-title">
-              <Link href="/dashboard" className="lw-brand-mark">L</Link>
+              <Link href="/command" className="lw-brand-mark">L</Link>
               <div>
                 <div className="lw-product">LucyWorks OS</div>
                 <div className="lw-subtitle">{title} • {subtitle}</div>
@@ -122,7 +118,7 @@ export function HospitalShell({ title, subtitle, children }: { title: string; su
           </div>
           <div className="lw-nav">
             {(roleLinks[user?.role || "ops_manager"] || roleLinks.ops_manager).map((item) => (
-              <Link key={item.href} href={item.href}>{item.label}</Link>
+              <Link key={`${item.href}-${item.label}`} href={item.href}>{item.label}</Link>
             ))}
           </div>
         </div>
