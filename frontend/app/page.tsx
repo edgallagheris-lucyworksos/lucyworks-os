@@ -1,12 +1,13 @@
 import Link from "next/link";
 
 const mainPath = [
-  ["/readiness", "1. Readiness", "Check what is working, partial or missing."],
-  ["/command", "2. Lucy Command", "Open the hospital command surface."],
-  ["/workspace", "3. My Workspace", "See the role-owned queue."],
-  ["/actions", "4. Actions", "Acknowledge, review, resolve, approve and start work."],
-  ["/flow-state", "5. Flow State", "Check live blockers, gates, occupancy and handovers."],
-  ["/overnight", "6. Lucy Care", "Check inpatients, overnight carry-over and discharge pressure."],
+  ["/system-control", "1. System Control", "Check backend, readiness, workspace, flow-state, catalogues, HR and forecast."],
+  ["/readiness", "2. Readiness", "Check what is working, partial or missing."],
+  ["/command", "3. Lucy Command", "Open the hospital command surface."],
+  ["/workspace", "4. My Workspace", "See the role-owned queue."],
+  ["/actions", "5. Actions", "Acknowledge, review, resolve, approve and start work."],
+  ["/flow-state", "6. Flow State", "Check live blockers, gates, occupancy and handovers."],
+  ["/overnight", "7. Lucy Care", "Check inpatients, overnight carry-over and discharge pressure."],
 ];
 
 const lucyModules = [
@@ -31,9 +32,10 @@ export default function HomePage() {
         <section className="lw-card" style={{ padding: 24 }}>
           <div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>LucyWorks OS / mobile launchpad</div>
           <h1 style={{ fontSize: 42, lineHeight: 0.98, margin: "12px 0 0", letterSpacing: "-0.055em" }}>One hospital system. One phone-friendly start point.</h1>
-          <p style={{ marginTop: 16, color: "#cbd5e1", fontSize: 18, maxWidth: 920, lineHeight: 1.45 }}>Start at Readiness, then run the hospital through Command, Workspace, Actions and Flow State. The Lucy modules are the product spine underneath.</p>
+          <p style={{ marginTop: 16, color: "#cbd5e1", fontSize: 18, maxWidth: 920, lineHeight: 1.45 }}>Start at System Control. It checks whether the connected backend, readiness, workspace, flow-state, catalogues, HR and forecast layers are responding as one LucyWorks system.</p>
           <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/readiness" className="lw-btn-primary" style={{ padding: "12px 16px", borderRadius: 14 }}>Start here</Link>
+            <Link href="/system-control" className="lw-btn-primary" style={{ padding: "12px 16px", borderRadius: 14 }}>Start here</Link>
+            <Link href="/readiness" className="lw-pill">Readiness</Link>
             <Link href="/command" className="lw-pill">Lucy Command</Link>
             <Link href="/actions" className="lw-pill">Actions</Link>
             <Link href="/workspace" className="lw-pill">My Workspace</Link>
