@@ -23,6 +23,7 @@ python readiness_smoke_test.py
 python input_smoke_test.py
 python ops_engine_smoke_test.py
 python canonical_v3_smoke_test.py
+python canonical_modules_smoke_test.py
 
 if [ -f forecast_smoke_test.py ]; then
   python forecast_smoke_test.py
