@@ -1,4 +1,5 @@
 from app.main_fixed import app
+from app.v3_operational_routes import router as v3_operational_router
 from app.ops_engine_routes import router as ops_engine_router
 from app.input_routes import router as input_router
 from app.department_routes import router as department_router
@@ -19,6 +20,7 @@ from app.operating_routes import router as operating_router
 from app.safety_routes import router as safety_router
 from app.startup_routes import router as startup_router
 
+app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
 app.include_router(input_router)
 app.include_router(department_router)
