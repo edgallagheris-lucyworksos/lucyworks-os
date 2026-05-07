@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -14,6 +15,10 @@ router = APIRouter()
 
 def now():
     return datetime.now(timezone.utc)
+
+
+def make_episode_ref() -> str:
+    return f"EP-{datetime.now(timezone.utc).strftime('%y%m%d%H%M%S')}-{uuid.uuid4().hex[:4].upper()}"
 
 
 class V3CaseCreate(BaseModel):
@@ -157,7 +162,7 @@ def create_v3_case(payload: V3CaseCreate, session: Session = Depends(get_session
     session.commit()
     session.refresh(patient)
 
-    episode_ref = f"EP-{int(datetime.now().timestamp())}"
+    episode_ref = make_episode_ref()
     episode = Episode(
         episode_ref=episode_ref,
         patient_id=patient.id or 0,
