@@ -6,49 +6,44 @@ import { clearSession, getSession, type SessionUser } from "@/lib/session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
-type AlertSummary = {
-  total_alerts: number;
-  high_alerts: number;
-};
+type AlertSummary = { total_alerts: number; high_alerts: number };
 
 const sharedCore = [
-  { href: "/system-control", label: "System Control" },
+  { href: "/hospital-board", label: "Hospital Board" },
   { href: "/input", label: "Input / Capture" },
-  { href: "/departments", label: "Department Ops" },
-  { href: "/command", label: "Lucy Command" },
-  { href: "/pulse", label: "Lucy Pulse" },
-  { href: "/triage", label: "Lucy Flow" },
-  { href: "/ethics", label: "Lucy Ethics" },
-  { href: "/overnight", label: "Lucy Care" },
-  { href: "/hr", label: "LucyRota" },
-  { href: "/schedule", label: "Lucy Theatre" },
-  { href: "/ward", label: "Lucy Ward" },
-  { href: "/catalogues", label: "Lucy Diagnostics" },
-  { href: "/pharmacy", label: "Lucy Pharmacy" },
-  { href: "/mail", label: "Lucy Comms" },
-  { href: "/audit", label: "LucyTrace" },
-  { href: "/workspace", label: "My Workspace" },
+  { href: "/workspace", label: "My Work" },
   { href: "/actions", label: "Actions" },
+  { href: "/system-control", label: "System Control" },
+  { href: "/departments", label: "Department Ops" },
+  { href: "/command", label: "Legacy Command" },
+  { href: "/pulse", label: "LucyPulse" },
+  { href: "/triage", label: "LucyFlow" },
+  { href: "/ethics", label: "LucySafe" },
+  { href: "/hr", label: "LucyRota" },
+  { href: "/schedule", label: "Theatre / Schedule" },
+  { href: "/ward", label: "Ward / ICU" },
+  { href: "/catalogues", label: "Diagnostics" },
+  { href: "/pharmacy", label: "Pharmacy" },
+  { href: "/mail", label: "Comms" },
+  { href: "/audit", label: "Audit" },
   { href: "/readiness", label: "Readiness" },
 ];
 
 const supportLinks = [
-  { href: "/dashboard", label: "Dashboard" },
   { href: "/flow-state", label: "Flow State" },
   { href: "/stock", label: "Stock" },
   { href: "/discharge", label: "Discharge" },
   { href: "/rooms", label: "Rooms" },
   { href: "/staff", label: "Staff" },
   { href: "/system", label: "System" },
-  { href: "/operating-model", label: "Operating Model" },
   { href: "/episodes/EP-1042", label: "Seeded Case" },
 ];
 
 const roleLinks: Record<string, { href: string; label: string }[]> = {
   ops_manager: [...sharedCore, ...supportLinks, { href: "/conflicts", label: "Conflicts" }, { href: "/queues", label: "Queues" }],
-  clinician: [...sharedCore, { href: "/dashboard", label: "Dashboard" }, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/theatre", label: "Theatre" }, { href: "/queues", label: "Queues" }],
-  nurse: [...sharedCore, { href: "/dashboard", label: "Dashboard" }, { href: "/flow-state", label: "Flow State" }, { href: "/stock", label: "Stock" }, { href: "/rooms", label: "Rooms" }, { href: "/queues", label: "Queues" }],
-  admin: [...sharedCore, { href: "/dashboard", label: "Dashboard" }, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/stock", label: "Stock" }, { href: "/consult", label: "Consult" }],
+  clinician: [...sharedCore, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/theatre", label: "Theatre" }, { href: "/queues", label: "Queues" }],
+  nurse: [...sharedCore, { href: "/flow-state", label: "Flow State" }, { href: "/stock", label: "Stock" }, { href: "/rooms", label: "Rooms" }, { href: "/queues", label: "Queues" }],
+  admin: [...sharedCore, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/stock", label: "Stock" }, { href: "/consult", label: "Consult" }],
 };
 
 export function HospitalShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
@@ -76,9 +71,9 @@ export function HospitalShell({ title, subtitle, children }: { title: string; su
         <div className="lw-wrap">
           <div className="lw-brand-row">
             <div className="lw-brand-title">
-              <Link href="/system-control" className="lw-brand-mark">L</Link>
+              <Link href="/hospital-board" className="lw-brand-mark">L</Link>
               <div>
-                <div className="lw-product">LucyWorks OS</div>
+                <div className="lw-product">LucyWorksOS</div>
                 <div className="lw-subtitle">{title} • {subtitle}</div>
               </div>
             </div>
