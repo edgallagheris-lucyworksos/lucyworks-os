@@ -1,18 +1,19 @@
 {
-  "name": "LucyWorks OS Demo",
+  "name": "LucyWorksOS",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "forwardPorts": [8000, 3000],
+  "forwardPorts": [3000, 8000],
   "portsAttributes": {
-    "8000": {
-      "label": "LucyWorks Backend API",
-      "onAutoForward": "notify"
-    },
     "3000": {
-      "label": "LucyWorks Frontend",
+      "label": "LucyWorksOS Hospital Board",
       "onAutoForward": "openPreview"
+    },
+    "8000": {
+      "label": "LucyWorksOS API",
+      "onAutoForward": "notify"
     }
   },
   "postCreateCommand": "npm run backend:install && npm run frontend:install",
+  "postStartCommand": "bash scripts/run-dev.sh",
   "customizations": {
     "vscode": {
       "settings": {
