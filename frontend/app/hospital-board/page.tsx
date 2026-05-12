@@ -7,6 +7,18 @@ import { HospitalShell } from "@/components/hospital-shell";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
+const LANES = [
+  "Reception / Intake",
+  "Triage / Consult",
+  "Imaging",
+  "Surgery / Theatre",
+  "ICU / Ward",
+  "Pharmacy",
+  "Discharge / Owner Comms",
+];
+
+const TIMES = ["08:00", "08:15", "08:30", "08:45", "09:00", "09:15", "09:30", "09:45", "10:00", "10:15", "10:30", "10:45"];
+
 type Board = {
   summary: Record<string, number>;
   episodes: any[];
@@ -42,8 +54,8 @@ const defaultCaseForm: CaseForm = {
 
 function toneClass(value?: string) {
   const v = (value || "").toLowerCase();
-  if (["red", "critical", "blocked", "failed", "unsafe"].includes(v)) return "lw-red";
-  if (["amber", "warning", "due", "new", "requested"].includes(v)) return "lw-amber";
+  if (["red", "critical", "blocked", "failed", "unsafe", "overdue"].includes(v)) return "lw-red";
+  if (["amber", "warning", "due", "new", "requested", "busy"].includes(v)) return "lw-amber";
   return "lw-green";
 }
 
@@ -52,6 +64,19 @@ function formatTime(value?: string) {
   try { return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); } catch { return "—"; }
 }
 
+function laneFor(item: any) {
+  const text = `${item.section_name || ""} ${item.category || ""} ${item.title || ""}`.toLowerCase();
+  if (text.includes("surgery") || text.includes("theatre") || text.includes("anaesthesia")) return "Surgery / Theatre";
+  if (text.includes("imaging") || text.includes("mri") || text.includes("xray") || text.includes("ct")) return "Imaging";
+  if (text.includes("icu") || text.includes("ward") || text.includes("inpatient")) return "ICU / Ward";
+  if (text.includes("pharmacy") || text.includes("drug") || text.includes("medication")) return "Pharmacy";
+  if (text.includes("discharge") || text.includes("owner") || text.includes("comms")) return "Discharge / Owner Comms";
+  if (text.includes("triage") || text.includes("consult")) return "Triage / Consult";
+  return item.section_name || "Reception / Intake";
+}
+
+function slotFor(index: number) { return TIMES[index % TIMES.length]; }
+
 function Kpi({ label, value, tone }: { label: string; value: any; tone?: string }) {
   return <div className={`lw-kpi ${tone ? toneClass(tone) : ""}`}>
     <div className="lw-kpi-label">{label}</div>
@@ -59,35 +84,28 @@ function Kpi({ label, value, tone }: { label: string; value: any; tone?: string 
   </div>;
 }
 
-function EventRow({ item }: { item: any }) {
-  return <div className="ops-row">
-    <div className="ops-time">{formatTime(item.created_at)}</div>
-    <div className="ops-main">
-      <strong>{item.title}</strong>
-      <span>{item.linked_patient_name || "No patient"} {item.linked_episode_ref ? `• ${item.linked_episode_ref}` : ""}</span>
-    </div>
-    <div className="ops-location">{item.section_name || "Unassigned section"}<br /><span>{item.room_name || "No room"}</span></div>
-    <div className="ops-owner">{item.owner_role || "unowned"}</div>
-    <div className="ops-status"><span className={`lw-pill ${toneClass(item.urgency)}`}>{item.urgency || "—"}</span><span className="lw-pill">{item.status}</span></div>
-    <div className="ops-action"><Link className="lw-pill" href={item.linked_episode_ref ? `/cases/${item.linked_episode_ref}` : "/actions"}>Open</Link></div>
+function GridEvent({ item }: { item: any }) {
+  return <Link href={item.linked_episode_ref ? `/cases/${item.linked_episode_ref}` : "/actions"} className={`mission-event ${toneClass(item.urgency)}`}>
+    <div className="mission-event-top"><strong>{(item.urgency || "green").toUpperCase()}</strong><span>{item.status || "new"}</span></div>
+    <div className="mission-event-title">{item.title}</div>
+    <div className="mission-event-meta">{item.linked_patient_name || "No patient"} {item.linked_episode_ref ? `• ${item.linked_episode_ref}` : ""}</div>
+    <div className="mission-event-meta">Owner: {item.owner_role || "UNOWNED"}</div>
+  </Link>;
+}
+
+function ActionRow({ item }: { item: any }) {
+  return <div className="mission-action-row">
+    <span className={`lw-pill ${toneClass(item.urgency)}`}>{item.urgency || "green"}</span>
+    <div><strong>{item.title}</strong><small>{item.linked_patient_name || "No patient"} • {item.section_name || laneFor(item)} • {item.owner_role || "UNOWNED"}</small></div>
+    <Link href={item.linked_episode_ref ? `/cases/${item.linked_episode_ref}` : "/actions"} className="lw-pill">Open</Link>
   </div>;
 }
 
-function StaffRow({ staff }: { staff: any }) {
-  return <div className="ops-row compact">
-    <div className="ops-main"><strong>{staff.name}</strong><span>{staff.role}</span></div>
-    <div className="ops-location">Skills<br /><span>{staff.skills || "—"}</span></div>
-    <div className="ops-owner">{staff.active ? "active" : "off"}</div>
-    <div className="ops-status"><span className="lw-pill lw-info">staff</span></div>
-  </div>;
-}
-
-function AuditRow({ audit }: { audit: any }) {
-  return <div className="ops-row compact">
-    <div className="ops-time">{formatTime(audit.created_at)}</div>
-    <div className="ops-main"><strong>{audit.action}</strong><span>{audit.summary}</span></div>
-    <div className="ops-owner">{audit.actor_name}</div>
-    <div className="ops-status"><span className="lw-pill lw-info">audit</span></div>
+function StaffLoad({ staff }: { staff: any }) {
+  return <div className="staff-load-row">
+    <strong>{staff.name}</strong>
+    <span>{staff.role}</span>
+    <small>{staff.skills || "No skills listed"}</small>
   </div>;
 }
 
@@ -114,7 +132,7 @@ function BoardInner() {
   }
 
   async function seed() {
-    setNotice("Seeding hospital system...");
+    setNotice("Seeding hospital operating system...");
     await fetch(`${API_BASE}/api/admin/first-run`, { method: "POST" }).catch(() => null);
     await load();
     setNotice("System seeded/refreshed.");
@@ -153,65 +171,94 @@ function BoardInner() {
   const amber = work.filter((w) => w.urgency === "amber");
   const unowned = work.filter((w) => !w.owner_role || w.owner_role === "unowned");
   const hospitalState = red.length ? "red" : amber.length ? "amber" : "green";
-  const nowItems = useMemo(() => work.slice(0, 12), [work]);
+  const priority = useMemo(() => [...red, ...amber, ...work.filter((w) => !["red", "amber"].includes(w.urgency))].slice(0, 10), [work, red, amber]);
+  const byLane = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    LANES.forEach((lane) => { map[lane] = []; });
+    work.forEach((item, index) => {
+      const lane = laneFor(item);
+      const bucket = LANES.includes(lane) ? lane : "Reception / Intake";
+      map[bucket].push({ ...item, __slot: slotFor(index) });
+    });
+    return map;
+  }, [work]);
 
-  return <HospitalShell title="Hospital Board" subtitle="One serious operational surface: intake, triage, ownership, audit, pharmacy and work control">
-    <div className="ops-board">
-      <section className="ops-header">
+  return <HospitalShell title="Hospital Board" subtitle="15-minute operational control grid for the whole hospital">
+    <div className="mission-board">
+      <section className="mission-header">
         <div>
-          <div className="ops-eyebrow">LucyWorksOS / live hospital operations</div>
-          <h1>Day-running board</h1>
-          <p>Not a marketing dashboard. This is the working surface: what is happening, who owns it, where it is, what is blocked, and what must happen next.</p>
+          <div className="ops-eyebrow">LucyWorksOS / hospital operating layer</div>
+          <h1>Live hospital control board</h1>
+          <p>Single system view: time, department, room/section, patient, owner role, urgency, blocker and next action.</p>
         </div>
         <div className="ops-header-actions">
-          <span className={`lw-pill ${toneClass(hospitalState)}`}>STATE {hospitalState.toUpperCase()}</span>
+          <span className={`lw-pill ${toneClass(hospitalState)}`}>HOSPITAL {hospitalState.toUpperCase()}</span>
           <button className="lw-pill lw-btn-primary" onClick={load} disabled={loading}>{loading ? "Refreshing..." : "Refresh"}</button>
-          <button className="lw-pill" onClick={seed}>First Run / Seed</button>
-          <Link className="lw-pill" href="/system-control">System</Link>
+          <button className="lw-pill" onClick={seed}>Seed / reset live data</button>
+          <Link className="lw-pill" href="/api/v3/board">API</Link>
         </div>
       </section>
 
       {notice ? <div className="ops-notice ok">{notice}</div> : null}
       {error ? <div className="ops-notice fail">{error}</div> : null}
 
-      <section className="lw-kpi-strip">
+      <section className="mission-kpis">
         <Kpi label="Active cases" value={board?.summary?.active_episodes ?? "—"} />
         <Kpi label="Open work" value={board?.summary?.open_work_items ?? "—"} />
-        <Kpi label="Red" value={red.length} tone={red.length ? "red" : "green"} />
-        <Kpi label="Amber" value={amber.length} tone={amber.length ? "amber" : "green"} />
+        <Kpi label="Red blockers" value={red.length} tone={red.length ? "red" : "green"} />
+        <Kpi label="Amber pressure" value={amber.length} tone={amber.length ? "amber" : "green"} />
         <Kpi label="Unowned" value={unowned.length} tone={unowned.length ? "red" : "green"} />
-        <Kpi label="Staff" value={board?.summary?.staff_on_system ?? "—"} />
+        <Kpi label="Staff visible" value={board?.summary?.staff_on_system ?? "—"} />
         <Kpi label="Pharmacy" value={board?.summary?.pharmacy_requests ?? "—"} />
       </section>
 
-      <div className="ops-grid">
-        <section className="ops-panel main">
-          <div className="ops-panel-head"><h2>Now / priority worklist</h2><span>time → event → location → owner → status → action</span></div>
-          <div className="ops-table-head"><span>Time</span><span>What</span><span>Where</span><span>Owner</span><span>Status</span><span>Action</span></div>
-          {nowItems.map((item) => <EventRow key={item.id} item={item} />)}
-          {!nowItems.length ? <p className="ops-empty">No live work items. Press First Run or create a case.</p> : null}
-        </section>
-
-        <section className="ops-panel side">
-          <div className="ops-panel-head"><h2>Create case / intake</h2><span>v3 working pattern</span></div>
-          <div className="ops-form">
-            <label>Patient<input value={form.patient_name} onChange={(e) => setForm({ ...form, patient_name: e.target.value })} placeholder="Bella" /></label>
-            <label>Species<select value={form.species} onChange={(e) => setForm({ ...form, species: e.target.value })}><option>dog</option><option>cat</option><option>rabbit</option><option>exotic</option></select></label>
-            <label>Owner<input value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} placeholder="Owner name" /></label>
-            <label>Presenting problem<input value={form.presenting_problem} onChange={(e) => setForm({ ...form, presenting_problem: e.target.value })} placeholder="collapse / blocked / vomiting..." /></label>
-            <label>Symptoms<textarea rows={4} value={form.symptoms_text} onChange={(e) => setForm({ ...form, symptoms_text: e.target.value })} placeholder="Free text owner/referral notes" /></label>
-            <div className="ops-form-two"><label>Pain<input value={form.pain_score} onChange={(e) => setForm({ ...form, pain_score: e.target.value })} type="number" min="0" max="10" /></label><label>Sedations 6mo<input value={form.repeat_sedation_6mo} onChange={(e) => setForm({ ...form, repeat_sedation_6mo: e.target.value })} type="number" min="0" /></label></div>
-            <label className="ops-check"><input type="checkbox" checked={form.consent_obtained} onChange={(e) => setForm({ ...form, consent_obtained: e.target.checked })} /> Consent obtained</label>
-            <label className="ops-check"><input type="checkbox" checked={form.financial_constraint} onChange={(e) => setForm({ ...form, financial_constraint: e.target.checked })} /> Financial constraint</label>
-            <button className="lw-pill lw-btn-primary" onClick={createCase}>Create + triage + audit</button>
+      <section className="mission-layout">
+        <div className="mission-main">
+          <div className="mission-panel-head"><h2>15-minute operational grid</h2><span>department lanes × live work/state</span></div>
+          <div className="mission-grid-scroll">
+            <div className="mission-time-head">
+              <div className="mission-lane-title">Lane</div>
+              {TIMES.map((time) => <div key={time} className="mission-time-cell">{time}</div>)}
+            </div>
+            {LANES.map((lane) => <div key={lane} className="mission-lane-row">
+              <div className="mission-lane-title"><strong>{lane}</strong><span>{byLane[lane]?.length || 0} active</span></div>
+              {TIMES.map((time) => {
+                const items = (byLane[lane] || []).filter((item) => item.__slot === time).slice(0, 2);
+                return <div key={`${lane}-${time}`} className="mission-slot">
+                  {items.map((item) => <GridEvent key={`${item.id}-${time}`} item={item} />)}
+                </div>;
+              })}
+            </div>)}
           </div>
-        </section>
-      </div>
+        </div>
 
-      <div className="ops-grid lower">
-        <section className="ops-panel"><div className="ops-panel-head"><h2>Specialists / staff capacity</h2><span>skills and ownership</span></div>{(board?.staff || []).map((s) => <StaffRow key={s.id} staff={s} />)}</section>
-        <section className="ops-panel"><div className="ops-panel-head"><h2>Audit / governance trail</h2><span>who did what, when, why</span></div>{(board?.audit || []).slice(0, 12).map((a) => <AuditRow key={a.id} audit={a} />)}</section>
-      </div>
+        <aside className="mission-side">
+          <div className="mission-panel-head"><h2>Command rail</h2><span>act first</span></div>
+          <div className="mission-rail-section"><h3>Priority actions</h3>{priority.map((item) => <ActionRow key={item.id} item={item} />)}{!priority.length ? <p className="ops-empty">No active work. Seed data or create case.</p> : null}</div>
+          <div className="mission-rail-section"><h3>Staff / specialist visibility</h3>{(board?.staff || []).slice(0, 8).map((s) => <StaffLoad key={s.id} staff={s} />)}</div>
+        </aside>
+      </section>
+
+      <section className="mission-bottom">
+        <div className="mission-intake">
+          <div className="mission-panel-head"><h2>Live intake</h2><span>creates case → triage → audit → work item</span></div>
+          <div className="ops-form horizontal">
+            <label>Patient<input value={form.patient_name} onChange={(e) => setForm({ ...form, patient_name: e.target.value })} placeholder="Patient" /></label>
+            <label>Species<select value={form.species} onChange={(e) => setForm({ ...form, species: e.target.value })}><option>dog</option><option>cat</option><option>rabbit</option><option>exotic</option></select></label>
+            <label>Owner<input value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} placeholder="Owner" /></label>
+            <label>Problem<input value={form.presenting_problem} onChange={(e) => setForm({ ...form, presenting_problem: e.target.value })} placeholder="collapse / blocked / vomiting" /></label>
+            <label>Symptoms<textarea rows={2} value={form.symptoms_text} onChange={(e) => setForm({ ...form, symptoms_text: e.target.value })} placeholder="Referral / owner notes" /></label>
+            <label>Pain<input value={form.pain_score} onChange={(e) => setForm({ ...form, pain_score: e.target.value })} type="number" min="0" max="10" /></label>
+            <label className="ops-check"><input type="checkbox" checked={form.consent_obtained} onChange={(e) => setForm({ ...form, consent_obtained: e.target.checked })} /> Consent</label>
+            <label className="ops-check"><input type="checkbox" checked={form.financial_constraint} onChange={(e) => setForm({ ...form, financial_constraint: e.target.checked })} /> Finance flag</label>
+            <button className="lw-pill lw-btn-primary" onClick={createCase}>Create operational case</button>
+          </div>
+        </div>
+        <div className="mission-audit">
+          <div className="mission-panel-head"><h2>Audit / governance</h2><span>latest 12</span></div>
+          {(board?.audit || []).slice(0, 12).map((a) => <div className="audit-line" key={a.id}><span>{formatTime(a.created_at)}</span><strong>{a.action}</strong><small>{a.summary}</small></div>)}
+        </div>
+      </section>
     </div>
   </HospitalShell>;
 }
