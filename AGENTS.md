@@ -17,13 +17,13 @@ Canonical names:
 
 Do not rename the system or invent replacement module names.
 
-## KX Protocol — Knowledge Extraction / Context Lock
+## Codex Context Lock Protocol
 
-Codex must use KX before editing.
+Codex must lock the repo context before editing.
 
-KX means: extract the current repo truth, lock the context, then build against that truth only.
+This means: extract the current repo truth, state what is confirmed, state what is not confirmed, then build against that truth only.
 
-### KX-0 — Read controls first
+### Step 0 — Read controls first
 
 Before changing files, read:
 
@@ -50,7 +50,7 @@ frontend/components/hospital-shell.tsx
 frontend/app/globals.css
 ```
 
-### KX-1 — State confirmed reality
+### Step 1 — State confirmed reality
 
 Before editing, Codex must output:
 
@@ -69,7 +69,7 @@ NOT CONFIRMED:
 - anything not inspected or tested
 ```
 
-### KX-2 — No invention rule
+### Step 2 — No invention rule
 
 Do not invent names, architecture, or modules unless they map to existing LucyWorksOS objects.
 
@@ -84,7 +84,7 @@ LucyWorksAI
 LucySafe
 ```
 
-### KX-3 — Locked build passes
+### Step 3 — Locked build passes
 
 Work in this order only:
 
@@ -99,7 +99,7 @@ PASS 6: Styling and polish
 
 Do not jump to UI polish while runtime/tests/imports are broken.
 
-### KX-4 — Every claim needs proof
+### Step 4 — Every claim needs proof
 
 Final claims require command evidence:
 
@@ -221,7 +221,7 @@ Minimum before declaring done:
 npm run check
 ```
 
-If unable to run because of environment/network restriction, state the exact blocker and what was validated instead.
+If unable to run because of environment restriction or package-network restriction, state the exact blocker and what was validated instead.
 
 ## Output rule
 
