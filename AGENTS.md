@@ -17,6 +17,100 @@ Canonical names:
 
 Do not rename the system or invent replacement module names.
 
+## KX Protocol — Knowledge Extraction / Context Lock
+
+Codex must use KX before editing.
+
+KX means: extract the current repo truth, lock the context, then build against that truth only.
+
+### KX-0 — Read controls first
+
+Before changing files, read:
+
+```text
+AGENTS.md
+GitHub issue #14
+package.json
+RUN_LUCYWORKSOS.sh
+run_lucyworksos.sh
+scripts/run-dev.sh
+scripts/check-all.sh
+.devcontainer/devcontainer.json
+.python-version
+backend/requirements.txt
+backend/app/models.py
+backend/app/database.py
+backend/app/main.py
+backend/app/main_fixed.py
+backend/app/v3_operational_routes.py
+backend/app/dashboard_routes.py
+frontend/app/page.tsx
+frontend/app/hospital-board/page.tsx
+frontend/components/hospital-shell.tsx
+frontend/app/globals.css
+```
+
+### KX-1 — State confirmed reality
+
+Before editing, Codex must output:
+
+```text
+CONFIRMED:
+- current branch
+- upstream state
+- Python version
+- package scripts
+- backend entrypoint
+- frontend entrypoint
+- current failing command/error
+- primary board route
+
+NOT CONFIRMED:
+- anything not inspected or tested
+```
+
+### KX-2 — No invention rule
+
+Do not invent names, architecture, or modules unless they map to existing LucyWorksOS objects.
+
+Allowed canonical names only:
+
+```text
+LucyWorksOS
+LucyFlow
+LucyPulse
+LucyRota
+LucyWorksAI
+LucySafe
+```
+
+### KX-3 — Locked build passes
+
+Work in this order only:
+
+```text
+PASS 1: Runtime / runner
+PASS 2: Backend imports / SQLModel models
+PASS 3: Smoke tests / npm run check
+PASS 4: Hospital-board operating-system behaviour
+PASS 5: Real seed data / schedule / room / staff state
+PASS 6: Styling and polish
+```
+
+Do not jump to UI polish while runtime/tests/imports are broken.
+
+### KX-4 — Every claim needs proof
+
+Final claims require command evidence:
+
+```bash
+python --version
+npm run check
+bash RUN_LUCYWORKSOS.sh
+```
+
+If a command cannot run due environment/network limits, state the exact blocker.
+
 ## Build priority order
 
 Always work in this order:
