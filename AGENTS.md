@@ -2,9 +2,9 @@
 
 ## Product rule
 
-LucyWorksOS is one hospital operating system.
+LucyWorksOS is one professional-grade hospital operating system.
 
-Do not treat it as separate apps, a demo, a SaaS launchpad, a chatbot wrapper, or a loose dashboard.
+Do not treat it as separate apps, a demo, a SaaS launchpad, a chatbot wrapper, a toy intake form, or a loose dashboard.
 
 Canonical names:
 
@@ -16,6 +16,75 @@ Canonical names:
 - LucySafe = safety, ethics, escalation, safeguarding, override layer
 
 Do not rename the system or invent replacement module names.
+
+## Professional-grade standard
+
+A change is not good enough if it only makes the UI look better.
+
+LucyWorksOS must behave like a real hospital operations system for a specialist referral hospital.
+
+Minimum professional system capabilities:
+
+1. **Single source of truth**
+   - one backend
+   - one database
+   - one workflow engine
+   - one hospital board
+   - one audit/governance trail
+
+2. **Real operational entities**
+   Every visible item must map to real backend objects:
+   - Patient
+   - Episode
+   - TriageAssessment
+   - WorkItem
+   - StaffMember
+   - Shift
+   - ScheduleBlock
+   - RoomState
+   - PharmacyRequest
+   - ResultReview
+   - OwnerCommsRequirement
+   - Blocker / EthicsFlag
+   - AuditEvent
+
+3. **Hospital-scale structure**
+   The board must account for:
+   - Reception / Intake
+   - Triage / Consult
+   - Imaging: MRI, CT, X-ray, ultrasound
+   - Surgery / Theatre: prep, anaesthesia, procedure, recovery, cleaning / turnover
+   - ICU / Ward
+   - Pharmacy / stock / medicines governance
+   - Discharge / owner communications
+   - Staff / rota / skills / availability / load
+   - Safety / ethics / escalation / audit
+
+4. **Time-and-resource operating model**
+   The primary board must be based on:
+   - 15-minute time slots
+   - rooms / departments / lanes
+   - active cases
+   - assigned staff and owner roles
+   - blockers and dependencies
+   - handoffs and next actions
+   - red / amber / green pressure
+
+5. **No decorative-only actions**
+   Buttons and screens must create, update or inspect system state.
+   No empty feature panels.
+   No fake cards that are not attached to backend state.
+
+6. **Clinical-safety posture**
+   AI may assist but must not be the source of truth.
+   Hard rules, audit and human authority decide.
+   RED cases, consent gaps, finance constraints, repeat sedation, pharmacy governance and unsafe discharge must create visible board pressure and audit.
+
+7. **Proof before claims**
+   Do not claim the system works unless commands actually passed:
+   - `python --version`
+   - `npm run check`
+   - `bash RUN_LUCYWORKSOS.sh`
 
 ## Codex Context Lock Protocol
 
@@ -92,9 +161,10 @@ Work in this order only:
 PASS 1: Runtime / runner
 PASS 2: Backend imports / SQLModel models
 PASS 3: Smoke tests / npm run check
-PASS 4: Hospital-board operating-system behaviour
-PASS 5: Real seed data / schedule / room / staff state
-PASS 6: Styling and polish
+PASS 4: Full backend integration chain
+PASS 5: Hospital-board operating-system behaviour
+PASS 6: Real seed data / schedule / room / staff state
+PASS 7: Styling and polish
 ```
 
 Do not jump to UI polish while runtime/tests/imports are broken.
@@ -111,6 +181,34 @@ bash RUN_LUCYWORKSOS.sh
 
 If a command cannot run due environment/network limits, state the exact blocker.
 
+## Full integration chain
+
+A case is not integrated until this chain works:
+
+```text
+Referral / intake
+→ Patient
+→ Episode
+→ TriageAssessment
+→ WorkItem
+→ Staff/role ownership
+→ ScheduleBlock
+→ RoomState
+→ blocker/dependency check
+→ handoff / next action
+→ audit event
+→ visible board state
+```
+
+RED / AMBER / ethics / pharmacy / result-review pressure must propagate into:
+
+```text
+WorkItem
+Blocker or EthicsFlag where relevant
+AuditEvent
+/hospital-board pressure display
+```
+
 ## Build priority order
 
 Always work in this order:
@@ -120,7 +218,8 @@ Always work in this order:
 3. Fix backend imports/models.
 4. Connect data to actual operational objects.
 5. Improve `/hospital-board` as the primary system surface.
-6. Only then polish styling.
+6. Add real hospital seed data.
+7. Only then polish styling.
 
 Do not start with visual polish while startup, imports, tests, or backend routes are broken.
 
@@ -163,21 +262,7 @@ Must not leave:
 - SQLModel/Pydantic import crashes
 - missing smoke tests for new route modules
 
-All user-facing operations must create/update real system objects:
-
-- Patient
-- Episode
-- TriageAssessment
-- WorkItem
-- StaffMember
-- Shift
-- ScheduleBlock
-- RoomState
-- PharmacyRequest
-- ResultReview
-- OwnerCommsRequirement
-- Blocker / EthicsFlag
-- AuditEvent
+All user-facing operations must create/update real system objects.
 
 No decorative-only actions.
 
