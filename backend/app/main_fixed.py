@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
@@ -134,7 +135,7 @@ def create_triage(payload: dict, session: Session = Depends(get_session)):
     if triage.ethics_triggered:
         flag = EthicsFlag(episode_id=episode_id, flag_type="triage_ethics_trigger", severity="high" if urgency=="red" else "medium", detail="LucyFlow detected possible pain/consent/financial/welfare language in intake", clinical_reasoning=triage.reasoning)
         session.add(flag)
-    session.commit(); log(session,"LucyFlow","created","triage_assessment",triage.id or 0,triage.reasoning); return {"triage":triage,"work_item":work,"decision":decision}
+    session.commit(); session.refresh(decision); log(session,"LucyFlow","created","triage_assessment",triage.id or 0,triage.reasoning); return {"triage": jsonable_encoder(triage), "work_item": jsonable_encoder(work), "decision": jsonable_encoder(decision)}
 @app.post("/api/lucyflow/triage/{triage_id}/resolve")
 def resolve_triage(triage_id:int, note:str="Resolved", session: Session = Depends(get_session)):
     triage=session.get(TriageAssessment, triage_id)
@@ -148,7 +149,7 @@ def create_ethics(payload: dict, session: Session = Depends(get_session)):
     flag=EthicsFlag(**payload); session.add(flag); session.commit(); session.refresh(flag)
     ep_ref = session.get(Episode, flag.episode_id).episode_ref if flag.episode_id and session.get(Episode, flag.episode_id) else None
     work=make_work(session, f"Lucy Ethics: {flag.flag_type}", "ethics", "lucy_ethics", "ethics", flag.detail, "red" if flag.severity == "high" else "amber", flag.owner_role, ep_ref)
-    flag.linked_work_item_id=work.id; session.add(flag); session.commit(); log(session,"Lucy Ethics","created","ethics_flag",flag.id or 0,flag.detail); return {"ethics_flag":flag,"work_item":work}
+    flag.linked_work_item_id=work.id; session.add(flag); session.commit(); session.refresh(flag); log(session,"Lucy Ethics","created","ethics_flag",flag.id or 0,flag.detail); return {"ethics_flag": jsonable_encoder(flag), "work_item": jsonable_encoder(work)}
 @app.post("/api/lucy-ethics/{flag_id}/resolve")
 def resolve_ethics(flag_id:int, note:str="Resolved", session: Session = Depends(get_session)):
     flag=session.get(EthicsFlag, flag_id)

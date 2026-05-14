@@ -98,16 +98,17 @@ with TestClient(app) as client:
     r = client.post("/api/lucyflow/triage", json={"episode_id": episode_id, "species": "dog", "presenting_signs": "collapse, breathing difficulty and pain"})
     assert r.status_code == 200, r.text
     triage_created = r.json()
-    assert triage_created["triage"]["urgency"] == "red"
-    assert triage_created["triage"]["handoff_required"] is True
-    assert "work_item" in triage_created and "decision" in triage_created
-    triage_id = triage_created["triage"]["id"]
-    print("LucyFlow triage create OK")
+    assert "triage" in triage_created and "work_item" in triage_created and "decision" in triage_created
 
     r = client.get("/api/lucyflow/triage")
     assert r.status_code == 200, r.text
-    assert len(r.json()) > 0
-    print("LucyFlow triage list OK")
+    triage_rows = r.json()
+    assert len(triage_rows) > 0
+    latest_triage = triage_rows[0]
+    assert latest_triage["urgency"] == "red"
+    assert latest_triage["handoff_required"] is True
+    triage_id = latest_triage["id"]
+    print("LucyFlow triage create/list OK")
 
     r = client.post(f"/api/lucyflow/triage/{triage_id}/resolve?note=Smoke%20triage%20resolved")
     assert r.status_code == 200, r.text
@@ -118,8 +119,16 @@ with TestClient(app) as client:
     assert r.status_code == 200, r.text
     ethics_created = r.json()
     assert "ethics_flag" in ethics_created and "work_item" in ethics_created
-    ethics_id = ethics_created["ethics_flag"]["id"]
-    print("Lucy Ethics create OK")
+
+    r = client.get("/api/lucy-ethics")
+    assert r.status_code == 200, r.text
+    ethics_rows = r.json()
+    assert len(ethics_rows) > 0
+    latest_ethics = ethics_rows[0]
+    assert latest_ethics["flag_type"] == "consent_delay"
+    assert latest_ethics["severity"] == "high"
+    ethics_id = latest_ethics["id"]
+    print("Lucy Ethics create/list OK")
 
     r = client.post(f"/api/lucy-ethics/{ethics_id}/resolve?note=Smoke%20ethics%20resolved")
     assert r.status_code == 200, r.text

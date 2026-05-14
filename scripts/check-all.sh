@@ -11,6 +11,9 @@ cd "$ROOT_DIR/backend"
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 
+echo "\n== Backend import smoke check =="
+python import_all_smoke_test.py
+
 echo "\n== Backend smoke tests =="
 python smoke_test.py
 python hospital_scale_smoke_test.py
