@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
@@ -135,12 +134,12 @@ def create_triage(payload: dict, session: Session = Depends(get_session)):
     if triage.ethics_triggered:
         flag = EthicsFlag(episode_id=episode_id, flag_type="triage_ethics_trigger", severity="high" if urgency=="red" else "medium", detail="LucyFlow detected possible pain/consent/financial/welfare language in intake", clinical_reasoning=triage.reasoning)
         session.add(flag)
-    session.commit(); session.refresh(decision); log(session,"LucyFlow","created","triage_assessment",triage.id or 0,triage.reasoning); return {"triage": jsonable_encoder(triage), "work_item": jsonable_encoder(work), "decision": jsonable_encoder(decision)}
+    session.commit(); session.refresh(decision); log(session,"LucyFlow","created","triage_assessment",triage.id or 0,triage.reasoning); return {"triage": triage.model_dump(mode="json"), "work_item": work.model_dump(mode="json"), "decision": decision.model_dump(mode="json")}
 @app.post("/api/lucyflow/triage/{triage_id}/resolve")
 def resolve_triage(triage_id:int, note:str="Resolved", session: Session = Depends(get_session)):
     triage=session.get(TriageAssessment, triage_id)
     if not triage: raise HTTPException(status_code=404, detail="Triage assessment not found")
-    triage.status="resolved"; triage.resolved_at=datetime.now(timezone.utc); session.add(triage); session.commit(); log(session,"LucyFlow","resolved","triage_assessment",triage_id,note); return triage
+    triage.status="resolved"; triage.resolved_at=datetime.now(timezone.utc); session.add(triage); session.commit(); session.refresh(triage); log(session,"LucyFlow","resolved","triage_assessment",triage_id,note); return triage.model_dump(mode="json")
 
 @app.get("/api/lucy-ethics")
 def list_ethics(session: Session = Depends(get_session)): return session.exec(select(EthicsFlag).order_by(EthicsFlag.created_at.desc())).all()
@@ -149,12 +148,12 @@ def create_ethics(payload: dict, session: Session = Depends(get_session)):
     flag=EthicsFlag(**payload); session.add(flag); session.commit(); session.refresh(flag)
     ep_ref = session.get(Episode, flag.episode_id).episode_ref if flag.episode_id and session.get(Episode, flag.episode_id) else None
     work=make_work(session, f"Lucy Ethics: {flag.flag_type}", "ethics", "lucy_ethics", "ethics", flag.detail, "red" if flag.severity == "high" else "amber", flag.owner_role, ep_ref)
-    flag.linked_work_item_id=work.id; session.add(flag); session.commit(); session.refresh(flag); log(session,"Lucy Ethics","created","ethics_flag",flag.id or 0,flag.detail); return {"ethics_flag": jsonable_encoder(flag), "work_item": jsonable_encoder(work)}
+    flag.linked_work_item_id=work.id; session.add(flag); session.commit(); session.refresh(flag); log(session,"Lucy Ethics","created","ethics_flag",flag.id or 0,flag.detail); return {"ethics_flag": flag.model_dump(mode="json"), "work_item": work.model_dump(mode="json")}
 @app.post("/api/lucy-ethics/{flag_id}/resolve")
 def resolve_ethics(flag_id:int, note:str="Resolved", session: Session = Depends(get_session)):
     flag=session.get(EthicsFlag, flag_id)
     if not flag: raise HTTPException(status_code=404, detail="Ethics flag not found")
-    flag.status="resolved"; flag.resolved_at=datetime.now(timezone.utc); flag.resolution_note=note; session.add(flag); session.commit(); log(session,"Lucy Ethics","resolved","ethics_flag",flag_id,note); return flag
+    flag.status="resolved"; flag.resolved_at=datetime.now(timezone.utc); flag.resolution_note=note; session.add(flag); session.commit(); session.refresh(flag); log(session,"Lucy Ethics","resolved","ethics_flag",flag_id,note); return flag.model_dump(mode="json")
 
 @app.get("/api/lucy-care/tasks")
 def list_care(session: Session = Depends(get_session)): return session.exec(select(LucyCareTask).order_by(LucyCareTask.created_at.desc())).all()
@@ -165,7 +164,7 @@ def create_care(payload: dict, session: Session = Depends(get_session)):
 def complete_care(task_id:int, session: Session = Depends(get_session)):
     task=session.get(LucyCareTask, task_id)
     if not task: raise HTTPException(status_code=404, detail="Care task not found")
-    task.status="done"; task.completed_at=datetime.now(timezone.utc); session.add(task); session.commit(); log(session,"Lucy Care","completed","care_task",task_id,task.detail); return task
+    task.status="done"; task.completed_at=datetime.now(timezone.utc); session.add(task); session.commit(); session.refresh(task); log(session,"Lucy Care","completed","care_task",task_id,task.detail); return task.model_dump(mode="json")
 
 @app.get("/api/decisions")
 def list_decisions(session: Session = Depends(get_session)): return session.exec(select(DecisionRecord).order_by(DecisionRecord.created_at.desc())).all()
@@ -176,7 +175,7 @@ def create_decision(payload: dict, session: Session = Depends(get_session)):
 def resolve_decision(decision_id:int, resolution:str="Resolved", session: Session = Depends(get_session)):
     rec=session.get(DecisionRecord, decision_id)
     if not rec: raise HTTPException(status_code=404, detail="Decision not found")
-    rec.status="resolved"; rec.resolved_at=datetime.now(timezone.utc); rec.resolution=resolution; session.add(rec); session.commit(); log(session,"LucyWorks","resolved","decision",decision_id,resolution); return rec
+    rec.status="resolved"; rec.resolved_at=datetime.now(timezone.utc); rec.resolution=resolution; session.add(rec); session.commit(); session.refresh(rec); log(session,"LucyWorks","resolved","decision",decision_id,resolution); return rec.model_dump(mode="json")
 
 @app.get("/api/blockers")
 def list_blockers(session: Session = Depends(get_session)): return session.exec(select(Blocker).order_by(Blocker.created_at.desc())).all()
@@ -187,7 +186,7 @@ def create_blocker(payload: dict, session: Session = Depends(get_session)):
 def resolve_blocker(blocker_id:int, session: Session = Depends(get_session)):
     blocker=session.get(Blocker, blocker_id)
     if not blocker: raise HTTPException(status_code=404, detail="Blocker not found")
-    blocker.status="resolved"; blocker.resolved_at=datetime.now(timezone.utc); session.add(blocker); session.commit(); log(session,"LucyWorks","resolved","blocker",blocker_id,blocker.detail); return blocker
+    blocker.status="resolved"; blocker.resolved_at=datetime.now(timezone.utc); session.add(blocker); session.commit(); session.refresh(blocker); log(session,"LucyWorks","resolved","blocker",blocker_id,blocker.detail); return blocker.model_dump(mode="json")
 
 @app.get("/api/escalations")
 def list_escalations(session: Session = Depends(get_session)): return session.exec(select(EscalationEvent).order_by(EscalationEvent.created_at.desc())).all()
