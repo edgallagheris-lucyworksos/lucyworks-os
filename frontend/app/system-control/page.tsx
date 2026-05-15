@@ -79,7 +79,7 @@ function SystemControlInner() {
   const workspace = results.find((r) => r.key === "workspace")?.data;
   const forecast = results.find((r) => r.key === "forecast")?.data;
   const departments = results.find((r) => r.key === "departments")?.data;
-  const workspaceTotal = Object.values(workspace?.summary || {}).reduce((a: any, b: any) => Number(a) + Number(b), 0);
+  const workspaceTotal = Number(Object.values(workspace?.summary || {}).reduce((a: number, b: unknown) => a + Number(b || 0), 0));
 
   return <HospitalShell title="System Control" subtitle="One mobile control surface for running LucyWorks OS as one system">
     <div style={{ display: "grid", gap: 12 }}>
