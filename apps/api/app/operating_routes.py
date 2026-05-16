@@ -143,15 +143,18 @@ def schedule_from_template(payload: dict, session: Session = Depends(get_session
 
     proc_type = session.exec(select(ProcedureType).where(ProcedureType.name == template["name"])).first()
     if not proc_type:
+        room_options = capability.get("room_options") or []
+        required_room_type = room_options[0] if room_options else "standard"
         proc_type = ProcedureType(
             name=template["name"],
             department=template["department"],
             default_duration_min=template["procedure_min"],
             prep_min=template["prep_min"],
+            anaesthesia_min=template.get("anaesthesia_min", 0),
             recovery_min=template["recovery_min"],
             cleaning_min=template["cleaning_min"],
             required_role="clinician",
-            notes=template["risk"],
+            required_room_type=required_room_type,
         )
         session.add(proc_type)
         session.commit()
