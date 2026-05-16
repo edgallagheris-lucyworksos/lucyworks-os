@@ -30,7 +30,10 @@ function CountCard({ label, value }: { label: string; value: number | string }) 
 
 function numericSummaryTotal(summary: unknown): number {
   if (!summary || typeof summary !== "object") return 0;
-  return Object.values(summary as Record<string, unknown>).reduce((total, value) => total + (typeof value === "number" ? value : Number(value) || 0), 0);
+  return Object.values(summary as Record<string, unknown>).reduce<number>((total, value) => {
+    const numericValue = typeof value === "number" ? value : Number(value);
+    return total + (Number.isFinite(numericValue) ? numericValue : 0);
+  }, 0);
 }
 
 function SystemControlInner() {
