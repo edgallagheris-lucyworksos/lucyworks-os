@@ -30,6 +30,32 @@ def find_by_key(collection: str, key: str, value: str):
     return None
 
 
+def schedule_block_payload(block: ScheduleBlock) -> dict:
+    return {
+        "id": block.id,
+        "episode_id": block.episode_id,
+        "case_procedure_id": block.case_procedure_id,
+        "block_type": block.block_type,
+        "room_name": block.room_name,
+        "owner_role": block.owner_role,
+        "assigned_staff_member_id": block.assigned_staff_member_id,
+        "starts_at": block.starts_at.isoformat() if block.starts_at else None,
+        "ends_at": block.ends_at.isoformat() if block.ends_at else None,
+        "status": block.status,
+    }
+
+
+def case_procedure_payload(case_procedure: CaseProcedure) -> dict:
+    return {
+        "id": case_procedure.id,
+        "episode_id": case_procedure.episode_id,
+        "procedure_type_id": case_procedure.procedure_type_id,
+        "status": case_procedure.status,
+        "scheduled_start": case_procedure.scheduled_start.isoformat() if case_procedure.scheduled_start else None,
+        "complexity": case_procedure.complexity,
+    }
+
+
 @router.get("/api/operating-catalogue")
 def operating_catalogue():
     return HOSPITAL_OPERATING_CATALOGUE
@@ -192,12 +218,15 @@ def schedule_from_template(payload: dict, session: Session = Depends(get_session
     session.add(episode)
     session.commit()
 
+    for block in blocks:
+        session.refresh(block)
+
     log(session, actor_name, "capability_schedule_generated", "case_procedure", case_procedure.id or 0, f"{episode_ref} scheduled from {template['name']} capability profile")
     return {
         "template": template,
         "capability": capability,
-        "case_procedure": case_procedure,
-        "blocks": blocks,
+        "case_procedure": case_procedure_payload(case_procedure),
+        "blocks": [schedule_block_payload(block) for block in blocks],
         "total_minutes": capability["total_minutes"],
     }
 
