@@ -12,8 +12,9 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "cd apps/api && python -m pip install -r requirements.txt && cd ../web && npm install",
-  "postStartCommand": "npm run monorepo:run",
+  "postCreateCommand": "bash scripts/codespace-autostart.sh",
+  "postStartCommand": "bash scripts/codespace-autostart.sh",
+  "postAttachCommand": "bash scripts/codespace-autostart.sh",
   "customizations": {
     "vscode": {
       "settings": {
