@@ -10,6 +10,16 @@ os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 from fastapi.testclient import TestClient
 from app.main import app
 
+
+def room_state_by_id(client: TestClient, room_id: int) -> dict:
+    response = client.get("/api/room-states")
+    assert response.status_code == 200, response.text
+    rooms = response.json()
+    match = next((room for room in rooms if room["id"] == room_id), None)
+    assert match, f"Room state {room_id} missing after update"
+    return match
+
+
 print("\n--- RUNNING DOMAIN SAFETY SMOKE TEST ---\n")
 
 with TestClient(app) as client:
@@ -81,10 +91,10 @@ with TestClient(app) as client:
     room_id = rooms[0]["id"]
     r = client.post(f"/api/room-states/{room_id}/set?state=cleaning")
     assert r.status_code == 200, r.text
-    assert r.json()["state"] == "cleaning"
+    assert room_state_by_id(client, room_id)["state"] == "cleaning"
     r = client.post(f"/api/room-states/{room_id}/set?state=available")
     assert r.status_code == 200, r.text
-    assert r.json()["state"] == "available"
+    assert room_state_by_id(client, room_id)["state"] == "available"
     print("Room state controls OK")
 
     r = client.post("/api/lucyflow/triage", json={"episode_id": episode_id, "species": "dog", "presenting_signs": "pain, breathing difficulty and owner worried about cost"})
