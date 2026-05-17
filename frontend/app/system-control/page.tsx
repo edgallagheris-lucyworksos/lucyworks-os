@@ -28,6 +28,14 @@ function CountCard({ label, value }: { label: string; value: number | string }) 
   return <div className="lw-kpi"><div className="lw-kpi-label">{label}</div><div className="lw-kpi-value">{value}</div></div>;
 }
 
+function numericSummaryTotal(summary: unknown): number {
+  if (!summary || typeof summary !== "object") return 0;
+  return Object.values(summary as Record<string, unknown>).reduce<number>((total, value) => {
+    const numericValue = typeof value === "number" ? value : Number(value);
+    return total + (Number.isFinite(numericValue) ? numericValue : 0);
+  }, 0);
+}
+
 function SystemControlInner() {
   const [results, setResults] = useState<Check[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,7 +87,7 @@ function SystemControlInner() {
   const workspace = results.find((r) => r.key === "workspace")?.data;
   const forecast = results.find((r) => r.key === "forecast")?.data;
   const departments = results.find((r) => r.key === "departments")?.data;
-  const workspaceTotal = Object.values(workspace?.summary || {}).reduce((a: any, b: any) => Number(a) + Number(b), 0);
+  const workspaceTotal = numericSummaryTotal(workspace?.summary);
 
   return <HospitalShell title="System Control" subtitle="One mobile control surface for running LucyWorks OS as one system">
     <div style={{ display: "grid", gap: 12 }}>
