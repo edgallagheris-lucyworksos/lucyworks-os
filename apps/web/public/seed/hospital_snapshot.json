@@ -1,0 +1,19 @@
+{
+  "generated_at": "2026-05-15T00:00:00Z",
+  "rooms": ["Reception-1","Consult-1","Theatre-A","Theatre-B","ICU-1","Ward-1"],
+  "theatres": ["Theatre-A","Theatre-B"],
+  "icu": ["ICU-1"],
+  "wards": ["Ward-1"],
+  "imaging": ["MRI-1","CT-1","Xray-1","Ultrasound-1"],
+  "labs": ["Lab-Hematology","Lab-Chemistry"],
+  "pharmacy": {"open_requests": 3},
+  "stock": [{"name":"Propofol","qty":18},{"name":"IV Set","qty":42}],
+  "staff": [{"name":"Dr Vale","role":"clinician"},{"name":"Nurse Kim","role":"nurse"}],
+  "rota": [{"name":"Dr Vale","shift":"08:00-16:00"}],
+  "cases": [{"episode_ref":"EP-1042","urgency":"amber"}],
+  "handoffs": [{"episode_ref":"EP-1042","from":"triage","to":"theatre"}],
+  "owner_updates": [{"episode_ref":"EP-1042","status":"due"}],
+  "discharge_tasks": [{"episode_ref":"EP-1030","status":"blocked"}],
+  "governance_flags": [{"episode_ref":"EP-1042","severity":"amber"}],
+  "audit_events": [{"action":"seed_loaded","entity":"hospital_snapshot"}]
+}
