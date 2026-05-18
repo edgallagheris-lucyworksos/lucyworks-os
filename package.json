@@ -14,6 +14,8 @@
     "check": "bash scripts/check-all.sh",
     "dev": "npm run lucy:dev",
     "monorepo:check": "bash scripts/check-monorepo.sh",
-    "monorepo:run": "bash scripts/run-monorepo.sh"
+    "monorepo:run": "bash scripts/run-monorepo.sh",
+    "codespace:run": "bash scripts/codespace-autostart.sh",
+    "codespace:health": "bash scripts/codespace-health.sh"
   }
 }
