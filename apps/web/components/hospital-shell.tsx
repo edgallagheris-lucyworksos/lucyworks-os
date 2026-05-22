@@ -8,43 +8,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 type AlertSummary = { total_alerts: number; high_alerts: number };
 
-const sharedCore = [
-  { href: "/hospital-board", label: "Hospital Board" },
-  { href: "/input", label: "Input / Capture" },
-  { href: "/workspace", label: "My Work" },
-  { href: "/actions", label: "Actions" },
-  { href: "/system-control", label: "System Control" },
-  { href: "/departments", label: "Department Ops" },
-  { href: "/command", label: "Legacy Command" },
-  { href: "/pulse", label: "LucyPulse" },
-  { href: "/triage", label: "LucyFlow" },
-  { href: "/ethics", label: "LucySafe" },
-  { href: "/hr", label: "LucyRota" },
-  { href: "/schedule", label: "Theatre / Schedule" },
-  { href: "/ward", label: "Ward / ICU" },
-  { href: "/catalogues", label: "Diagnostics" },
+const primaryNav = [
+  { href: "/hospital-board", label: "NOW" },
+  { href: "/flow", label: "FLOW" },
+  { href: "/resources", label: "RESOURCES" },
+  { href: "/my-shift", label: "MY SHIFT" },
+  { href: "/interrupts", label: "INTERRUPTS" },
+  { href: "/cases", label: "CASES" },
+  { href: "/audit", label: "GOVERNANCE" },
+];
+
+const secondaryNav = [
+  { href: "/manager-dashboard", label: "Manager" },
+  { href: "/nurse-dashboard", label: "Nurse" },
+  { href: "/pca-dashboard", label: "PCA" },
+  { href: "/system-control", label: "System" },
   { href: "/pharmacy", label: "Pharmacy" },
   { href: "/mail", label: "Comms" },
-  { href: "/audit", label: "Audit" },
-  { href: "/readiness", label: "Readiness" },
 ];
-
-const supportLinks = [
-  { href: "/flow-state", label: "Flow State" },
-  { href: "/stock", label: "Stock" },
-  { href: "/discharge", label: "Discharge" },
-  { href: "/rooms", label: "Rooms" },
-  { href: "/staff", label: "Staff" },
-  { href: "/system", label: "System" },
-  { href: "/episodes/EP-1042", label: "Seeded Case" },
-];
-
-const roleLinks: Record<string, { href: string; label: string }[]> = {
-  ops_manager: [...sharedCore, ...supportLinks, { href: "/conflicts", label: "Conflicts" }, { href: "/queues", label: "Queues" }],
-  clinician: [...sharedCore, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/theatre", label: "Theatre" }, { href: "/queues", label: "Queues" }],
-  nurse: [...sharedCore, { href: "/flow-state", label: "Flow State" }, { href: "/stock", label: "Stock" }, { href: "/rooms", label: "Rooms" }, { href: "/queues", label: "Queues" }],
-  admin: [...sharedCore, { href: "/flow-state", label: "Flow State" }, { href: "/discharge", label: "Discharge" }, { href: "/stock", label: "Stock" }, { href: "/consult", label: "Consult" }],
-};
 
 export function HospitalShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -66,25 +47,28 @@ export function HospitalShell({ title, subtitle, children }: { title: string; su
   }, []);
 
   return (
-    <main className="lw-shell">
-      <div className="lw-topbar">
+    <main className="lw-shell lw-cinematic-bg">
+      <div className="lw-topbar lw-glass-topbar">
         <div className="lw-wrap">
           <div className="lw-brand-row">
-            <div className="lw-brand-title">
-              <Link href="/hospital-board" className="lw-brand-mark">L</Link>
-              <div>
-                <div className="lw-product">LucyWorksOS</div>
-                <div className="lw-subtitle">{title} • {subtitle}</div>
-              </div>
-            </div>
+            <Link href="/hospital-board" className="lw-brand-title lw-wordmark-link">
+              <span className="lw-orbit-mark small"><span /></span>
+              <span>
+                <span className="lw-product lw-wordmark">lucyworks</span>
+                <span className="lw-subtitle">Operational Integrity OS • {title} • {subtitle}</span>
+              </span>
+            </Link>
             <div className="lw-actions">
               {user ? <span className="lw-pill">{user.name} • {user.role}</span> : <Link className="lw-pill" href="/login">Login</Link>}
               <Link href="/alerts" className={alerts.high_alerts ? "lw-pill lw-alert-pill" : "lw-pill"}>Alerts {alerts.total_alerts} / high {alerts.high_alerts}</Link>
               <button onClick={() => { clearSession(); window.location.href = "/login"; }} className="lw-pill">Sign out</button>
             </div>
           </div>
-          <div className="lw-nav">
-            {(roleLinks[user?.role || "ops_manager"] || roleLinks.ops_manager).map((item) => <Link key={`${item.href}-${item.label}`} href={item.href}>{item.label}</Link>)}
+          <div className="lw-nav lw-primary-nav">
+            {primaryNav.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
+          </div>
+          <div className="lw-nav lw-secondary-nav">
+            {secondaryNav.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
           </div>
         </div>
       </div>
