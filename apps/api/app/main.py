@@ -20,6 +20,7 @@ from app.operating_routes import router as operating_router
 from app.safety_routes import router as safety_router
 from app.startup_routes import router as startup_router
 from app.core_machine_routes import router as core_machine_router
+from app.workflow_action_routes import router as workflow_action_router
 
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
@@ -42,3 +43,5 @@ app.include_router(inpatient_router)
 app.include_router(startup_router)
 app.include_router(safety_router)
 app.include_router(core_machine_router)
+
+app.include_router(workflow_action_router)
