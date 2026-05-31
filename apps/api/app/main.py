@@ -21,6 +21,7 @@ from app.safety_routes import router as safety_router
 from app.startup_routes import router as startup_router
 from app.core_machine_routes import router as core_machine_router
 from app.workflow_action_routes import router as workflow_action_router
+from app.scheduler_routes import router as scheduler_router
 
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
@@ -35,7 +36,7 @@ app.include_router(domain_router)
 app.include_router(operating_router)
 app.include_router(dashboard_router)
 app.include_router(clinical_director_router)
-app.include_router(episode_state_router)
+app.include_router(episode_state_routes)
 app.include_router(flow_state_router)
 app.include_router(live_action_router)
 app.include_router(mail_ops_router)
@@ -44,3 +45,4 @@ app.include_router(startup_router)
 app.include_router(safety_router)
 app.include_router(core_machine_router)
 app.include_router(workflow_action_router)
+app.include_router(scheduler_router)
