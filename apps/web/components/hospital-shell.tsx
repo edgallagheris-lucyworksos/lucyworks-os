@@ -10,21 +10,21 @@ type AlertSummary = { total_alerts: number; high_alerts: number };
 
 const primaryNav = [
   { href: "/hospital-board", label: "NOW" },
-  { href: "/flow", label: "FLOW" },
-  { href: "/resources", label: "RESOURCES" },
-  { href: "/my-shift", label: "MY SHIFT" },
-  { href: "/interrupts", label: "INTERRUPTS" },
-  { href: "/cases", label: "CASES" },
-  { href: "/audit", label: "GOVERNANCE" },
+  { href: "/lucy-flow", label: "LucyFlow" },
+  { href: "/lucy-ops", label: "LucyOps" },
+  { href: "/lucy-hr", label: "LucyHR" },
+  { href: "/lucy-pulse", label: "LucyPulse" },
+  { href: "/lucy-clinical", label: "LucyClinical" },
 ];
 
 const secondaryNav = [
+  { href: "/lucy-comms", label: "LucyComms" },
+  { href: "/lucy-gov", label: "LucyGov" },
+  { href: "/lucy-pharm", label: "LucyPharm" },
   { href: "/manager-dashboard", label: "Manager" },
   { href: "/nurse-dashboard", label: "Nurse" },
   { href: "/pca-dashboard", label: "PCA" },
   { href: "/system-control", label: "System" },
-  { href: "/pharmacy", label: "Pharmacy" },
-  { href: "/mail", label: "Comms" },
 ];
 
 export function HospitalShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
