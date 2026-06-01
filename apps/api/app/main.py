@@ -25,6 +25,7 @@ from app.scheduler_routes import router as scheduler_router
 from app.conflict_engine_routes import router as conflict_engine_router
 from app.role_queue_routes import router as role_queue_router
 from app.shadow_mode_routes import router as shadow_mode_router
+from app.access_control_routes import router as access_control_router
 
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
@@ -52,3 +53,4 @@ app.include_router(scheduler_router)
 app.include_router(conflict_engine_router)
 app.include_router(role_queue_router)
 app.include_router(shadow_mode_router)
+app.include_router(access_control_router)
