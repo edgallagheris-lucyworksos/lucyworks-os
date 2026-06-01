@@ -18,6 +18,8 @@ const primaryNav = [
 ];
 
 const secondaryNav = [
+  { href: "/shadow-mode", label: "Shadow" },
+  { href: "/realtime-status", label: "Realtime" },
   { href: "/lucy-comms", label: "LucyComms" },
   { href: "/lucy-gov", label: "LucyGov" },
   { href: "/lucy-pharm", label: "LucyPharm" },
