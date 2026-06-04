@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from app.command_routes import CommandPayload, execute, history, status
 from app.database import get_session
 from app.department_routes import seed_departments
 from app.hospital_scale_seed import seed_hospital_scale
@@ -32,18 +31,3 @@ def first_run_endpoint(session: Session = Depends(get_session)):
             "/actions",
         ],
     }
-
-
-@router.post("/api/command/execute")
-def command_execute(payload: CommandPayload, session: Session = Depends(get_session)):
-    return execute(payload, session)
-
-
-@router.get("/api/command/status")
-def command_status():
-    return status()
-
-
-@router.get("/api/command/history")
-def command_history():
-    return history()
