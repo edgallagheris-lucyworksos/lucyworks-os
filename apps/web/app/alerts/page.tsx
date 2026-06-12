@@ -7,7 +7,7 @@ import { HospitalShell } from "@/components/hospital-shell";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 type AlertItem = {
-  alert_type: string;
+  type: string;
   severity: string;
   detail: string;
 };
@@ -48,9 +48,9 @@ export default function AlertsPage() {
               </div>
               <div style={{ border: "1px solid #1f2937", borderRadius: 18, overflow: "hidden" }}>
                 {data.alerts.map((alert, index) => (
-                  <div key={`${alert.alert_type}-${index}`} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
+                  <div key={`${alert.type}-${index}`} style={{ padding: 16, borderTop: "1px solid #1f2937" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <strong>{alert.alert_type}</strong>
+                      <strong>{alert.type}</strong>
                       <span>{alert.severity}</span>
                     </div>
                     <div style={{ color: "#94a3b8", marginTop: 6 }}>{alert.detail}</div>
