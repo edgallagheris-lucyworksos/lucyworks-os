@@ -97,7 +97,7 @@ function Kpi({ label, value, state }: { label: string; value: any; state?: strin
 
 function CommandCase({ item, compact = false }: { item: any; compact?: boolean }) {
   const state = tone(item.urgency || item.current_phase || item.status || item.severity);
-  return <Link href={item.linked_episode_ref ? `/cases/${item.linked_episode_ref}` : "/actions"} className={`lw-case-card ${state} ${compact ? "compact" : ""}`}>
+  return <Link href={item.linked_episode_ref ? `/episodes/${item.linked_episode_ref}` : "/actions"} className={`lw-case-card ${state} ${compact ? "compact" : ""}`}>
     <div className="lw-case-top"><span>{String(item.urgency || item.severity || item.current_phase || "green").toUpperCase()}</span><small>{item.status || item.current_phase || "active"}</small></div>
     <h3>{patientName(item)}</h3>
     <p>{item.title || item.presenting_problem || item.description || item.detail || "Operational case requires review"}</p>
