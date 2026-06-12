@@ -85,7 +85,7 @@ function Kpi({ label, value, tone }: { label: string; value: any; tone?: string 
 }
 
 function GridEvent({ item }: { item: any }) {
-  return <Link href={item.linked_episode_ref ? `/cases/${item.linked_episode_ref}` : "/actions"} className={`mission-event ${toneClass(item.urgency)}`}>
+  return <Link href={item.linked_episode_ref ? `/episodes/${item.linked_episode_ref}` : "/actions"} className={`mission-event ${toneClass(item.urgency)}`}>
     <div className="mission-event-top"><strong>{(item.urgency || "green").toUpperCase()}</strong><span>{item.status || "new"}</span></div>
     <div className="mission-event-title">{item.title}</div>
     <div className="mission-event-meta">{item.linked_patient_name || "No patient"} {item.linked_episode_ref ? `• ${item.linked_episode_ref}` : ""}</div>
@@ -97,7 +97,7 @@ function ActionRow({ item }: { item: any }) {
   return <div className="mission-action-row">
     <span className={`lw-pill ${toneClass(item.urgency)}`}>{item.urgency || "green"}</span>
     <div><strong>{item.title}</strong><small>{item.linked_patient_name || "No patient"} • {item.section_name || laneFor(item)} • {item.owner_role || "UNOWNED"}</small></div>
-    <Link href={item.linked_episode_ref ? `/cases/${item.linked_episode_ref}` : "/actions"} className="lw-pill">Open</Link>
+    <Link href={item.linked_episode_ref ? `/episodes/${item.linked_episode_ref}` : "/actions"} className="lw-pill">Open</Link>
   </div>;
 }
 
