@@ -3,7 +3,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-cd apps/api
+cd "$ROOT/apps/api"
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 python import_all_smoke_test.py
 python smoke_test.py
 python hospital_scale_smoke_test.py
@@ -22,11 +24,21 @@ python - <<'PY'
 from app.main import app
 print('API startup import OK', bool(app))
 PY
+
 cd "$ROOT/packages/shared"
-npm install
+if [ -f package-lock.json ]; then
+  npm ci
+else
+  npm install
+fi
 npm run check
+
 cd "$ROOT/apps/web"
-npm install
+if [ -f package-lock.json ]; then
+  npm ci
+else
+  npm install
+fi
 NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run build
 
 echo "MONOREPO CHECK PASSED"
