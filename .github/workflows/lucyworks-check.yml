@@ -1,16 +1,15 @@
 name: LucyWorks OS Check
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   backend-and-frontend:
+    name: Monorepo API and web check
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,22 +19,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install backend dependencies
-        run: cd backend && python -m pip install --upgrade pip && python -m pip install -r requirements.txt
-
-      - name: Backend smoke test
-        run: cd backend && python smoke_test.py
-
-      - name: Domain safety smoke test
-        run: cd backend && python smoke_domain_safety.py
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install frontend dependencies
-        run: cd frontend && npm install
-
-      - name: Frontend build
-        run: cd frontend && npm run build
+      - name: Run monorepo check
+        run: bash scripts/check-monorepo.sh
