@@ -7,6 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ROOT / "apps" / "web" / "lib" / "hospital-modules.ts"
 OPERATING_MODEL = ROOT / "apps" / "web" / "lib" / "hospital-operating-model.ts"
+PUBLIC_PROFILE = ROOT / "apps" / "web" / "lib" / "bvs-public-facility-profile.ts"
 SHELL = ROOT / "apps" / "web" / "components" / "hospital-shell.tsx"
 WORKFLOW = ROOT / ".github" / "workflows" / "lucyworks-check.yml"
 CHECK_SCRIPT = ROOT / "scripts" / "check-monorepo.sh"
@@ -38,21 +39,34 @@ REQUIRED_BACKEND_ENDPOINTS = [
 ]
 
 REQUIRED_OPERATING_UNITS = [
-    "theatreUnits",
-    "length: 11",
+    "publicVerifiedTheatreUnits",
+    "publicVerifiedInterventionalUnits",
+    "internalConfiguredTheatreLikeSpaceCount = 11",
+    "theatreLikeUnits",
     "MRI",
     "CT",
-    "X-ray",
-    "Laboratory",
+    "X-ray / radiography",
+    "Ultrasound",
+    "Radiotherapy / linear accelerator",
+    "Urgent laboratory",
     "Pharmacy",
     "Insurance / pre-authorisation",
-    "ICU",
+    "ICU / critical care",
     "Recovery",
-    "Ward",
+    "Canine / feline wards",
     "Triage / reception intake",
     "Owner communications",
     "Stock / equipment readiness",
     "Governance / audit",
+]
+
+REQUIRED_PUBLIC_PROFILE = [
+    "publicVerifiedOperatingTheatres: 5",
+    "publicVerifiedInterventionalSuites: 1",
+    "theatreLikeSpacesConfigurable: true",
+    "1.5 Tesla Siemens Sempra MRI",
+    "64 slice Siemens go.TOP CT scanner",
+    "linear accelerator radiotherapy",
 ]
 
 
@@ -75,6 +89,7 @@ def route_to_dir(route: str) -> Path:
 def main() -> None:
     modules = require_file(MODULES)
     operating_model = require_file(OPERATING_MODEL)
+    public_profile = require_file(PUBLIC_PROFILE)
     shell = require_file(SHELL)
     workflow = require_file(WORKFLOW)
     check_script = require_file(CHECK_SCRIPT)
@@ -95,6 +110,10 @@ def main() -> None:
     for marker in REQUIRED_OPERATING_UNITS:
         if marker not in operating_model:
             fail(f"operating model missing: {marker}")
+
+    for marker in REQUIRED_PUBLIC_PROFILE:
+        if marker not in public_profile:
+            fail(f"public BVS profile missing: {marker}")
 
     required_shell_bits = [
         "primaryHospitalModules",
