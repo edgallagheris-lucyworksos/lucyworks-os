@@ -95,6 +95,35 @@ def assign_work_item(work_item_id: int, payload: AssignPayload, session: Session
     return {"ok": True, "work_item": item, "audit_event": event}
 
 
+@router.post("/work-items/{work_item_id}/accept")
+def accept_work_item(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
+    item = session.get(WorkItem, work_item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Work item not found")
+    item.status = "accepted"
+    item.updated_at = utc_now()
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    event = write_audit(session, payload.actor_name, "work_item_accepted", "work_item", item.id or 0, payload.note or item.title)
+    return {"ok": True, "work_item": item, "audit_event": event}
+
+
+@router.post("/work-items/{work_item_id}/decline")
+def decline_work_item(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
+    item = session.get(WorkItem, work_item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Work item not found")
+    item.status = "new"
+    item.owner_user_id = None
+    item.updated_at = utc_now()
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    event = write_audit(session, payload.actor_name, "work_item_returned_to_role_queue", "work_item", item.id or 0, payload.note or item.title)
+    return {"ok": True, "work_item": item, "audit_event": event}
+
+
 @router.post("/handovers/{handover_id}/acknowledge")
 def acknowledge_handover(handover_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
     handover = session.get(Handover, handover_id)
