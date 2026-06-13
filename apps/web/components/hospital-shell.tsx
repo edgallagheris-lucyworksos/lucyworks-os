@@ -10,16 +10,17 @@ import {
   PatientFlowDashboard,
   ResourcesDashboard,
 } from "@/components/hospital-operational-screens";
+import { moduleByTitle, primaryHospitalModules, secondaryHospitalModules } from "@/lib/hospital-modules";
 
 function contentFor(title: string, children: ReactNode) {
-  if (title === "NOW") return <HospitalCommandDashboard />;
-  if (title === "FLOW") return <PatientFlowDashboard />;
-  if (title === "RESOURCES") return <ResourcesDashboard />;
-  if (title === "MY SHIFT") return <MyShiftDashboard />;
-  if (title === "INTERRUPTS") return <InterruptionsDashboard />;
+  const module = moduleByTitle(title);
+  if (module?.id === "now") return <HospitalCommandDashboard />;
+  if (module?.id === "flow") return <PatientFlowDashboard />;
+  if (module?.id === "ops") return <ResourcesDashboard />;
+  if (module?.id === "hr") return <MyShiftDashboard />;
+  if (module?.id === "pulse") return <InterruptionsDashboard />;
   if (title === "Manager") return <ClinicalDirectorDashboard />;
-  if (title === "Nurse") return <MyShiftDashboard />;
-  if (title === "PCA") return <MyShiftDashboard />;
+  if (module?.id === "care" || module?.id === "move") return <MyShiftDashboard />;
   return children;
 }
 
@@ -43,12 +44,11 @@ export function HospitalShell({ title, subtitle, children }: { title: string; su
             </div>
           </div>
           <div className="lw-nav lw-primary-nav">
-            <Link href="/hospital-board">NOW</Link>
-            <Link href="/flow">LucyFlow</Link>
-            <Link href="/resources">LucyOps</Link>
-            <Link href="/my-shift">LucyHR</Link>
-            <Link href="/interrupts">LucyPulse</Link>
+            {primaryHospitalModules.map((item) => <Link key={item.id} href={item.route}>{item.label}</Link>)}
             <Link href="/manager-dashboard">Manager</Link>
+          </div>
+          <div className="lw-nav lw-secondary-nav">
+            {secondaryHospitalModules.map((item) => <Link key={item.id} href={item.route}>{item.label}</Link>)}
           </div>
         </div>
       </div>
