@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULES = ROOT / "apps" / "web" / "lib" / "hospital-modules.ts"
 OPERATING_MODEL = ROOT / "apps" / "web" / "lib" / "hospital-operating-model.ts"
 PUBLIC_PROFILE = ROOT / "apps" / "web" / "lib" / "bvs-public-facility-profile.ts"
+SERVICE_WORKFLOWS = ROOT / "apps" / "web" / "lib" / "bvs-service-workflows.ts"
+CLINICAL_BOARD = ROOT / "apps" / "web" / "components" / "bvs-clinical-service-board.tsx"
 SHELL = ROOT / "apps" / "web" / "components" / "hospital-shell.tsx"
 WORKFLOW = ROOT / ".github" / "workflows" / "lucyworks-check.yml"
 CHECK_SCRIPT = ROOT / "scripts" / "check-monorepo.sh"
@@ -69,6 +71,22 @@ REQUIRED_PUBLIC_PROFILE = [
     "linear accelerator radiotherapy",
 ]
 
+REQUIRED_SERVICE_WORKFLOWS = [
+    "diagnostic-imaging",
+    "emergency-critical-care",
+    "oncology-radiotherapy",
+    "interventional-radiology",
+    "soft-tissue-surgery",
+    "orthopaedics",
+    "neurology-neurosurgery",
+    "internal-medicine",
+    "cardiology",
+    "ophthalmology",
+    "dermatology",
+    "dentistry-maxillofacial",
+    "anaesthesia-analgesia",
+]
+
 
 def fail(message: str) -> None:
     print(f"ARCHITECTURE CHECK FAILED: {message}")
@@ -90,6 +108,8 @@ def main() -> None:
     modules = require_file(MODULES)
     operating_model = require_file(OPERATING_MODEL)
     public_profile = require_file(PUBLIC_PROFILE)
+    service_workflows = require_file(SERVICE_WORKFLOWS)
+    clinical_board = require_file(CLINICAL_BOARD)
     shell = require_file(SHELL)
     workflow = require_file(WORKFLOW)
     check_script = require_file(CHECK_SCRIPT)
@@ -115,6 +135,10 @@ def main() -> None:
         if marker not in public_profile:
             fail(f"public BVS profile missing: {marker}")
 
+    for marker in REQUIRED_SERVICE_WORKFLOWS:
+        if marker not in service_workflows:
+            fail(f"BVS service workflow missing: {marker}")
+
     required_shell_bits = [
         "primaryHospitalModules",
         "secondaryHospitalModules",
@@ -122,10 +146,14 @@ def main() -> None:
         "getSession",
         "clearSession",
         "contentFor(title, children, user)",
+        "BvsClinicalServiceBoard",
     ]
     for bit in required_shell_bits:
         if bit not in shell:
             fail(f"hospital-shell missing: {bit}")
+
+    if "bvsServiceWorkflows" not in clinical_board:
+        fail("clinical board is not wired to BVS service workflows")
 
     banned_hardcoded = ["/lucy-flow", "/lucy-ops", "/lucy-hr", "/lucy-pulse"]
     for route in banned_hardcoded:
