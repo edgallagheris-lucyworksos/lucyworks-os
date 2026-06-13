@@ -5,6 +5,7 @@ cd "$ROOT"
 
 python scripts/validate_lucyworks_architecture.py
 python scripts/validate_bvs_public_site_layer.py
+python scripts/validate_staff_assignment_layer.py
 
 cd "$ROOT/apps/api"
 python -m pip install --upgrade pip
