@@ -1,0 +1,17 @@
+"use client";
+
+import Link from "next/link";
+import { bvsPublicFacilityProfile } from "@/lib/bvs-public-facility-profile";
+import { bvsServiceWorkflows, bvsSpeciesSeparation } from "@/lib/bvs-service-workflows";
+
+function routeFor(module: string) {
+  if (module === "LucyOps") return "/resources";
+  if (module === "LucyFlow") return "/flow";
+  return "/lucy-clinical";
+}
+
+export function BvsClinicalServiceBoard() {
+  return <div className="svc"><style>{css}</style><header className="hero"><div><span>BVS public service map</span><h1>Clinical service control</h1><p>Public BVS services mapped into LucyWorks operating lanes.</p></div><nav><Link href="/hospital-board">Daily</Link><Link href="/resources">Resources</Link><Link href="/flow">Flow</Link></nav></header><section className="kpis"><div><span>Theatres</span><strong>{bvsPublicFacilityProfile.publicVerifiedOperatingTheatres}</strong></div><div><span>Interventional</span><strong>{bvsPublicFacilityProfile.publicVerifiedInterventionalSuites}</strong></div><div><span>Diagnostics</span><strong>{bvsPublicFacilityProfile.diagnosticUnits.length}</strong></div><div><span>Services</span><strong>{bvsServiceWorkflows.length}</strong></div></section><div className="layout"><main><section className="panel"><h2>Service workflow map</h2><div className="grid">{bvsServiceWorkflows.map((svc) => <Link href={routeFor(svc.lucyModule)} className="card" key={svc.id}><b>{svc.label}</b><small>{svc.publicBasis}</small><span>{svc.lucyModule}</span><p>{svc.commonBlockers.join(" · ")}</p></Link>)}</div></section></main><aside><section className="panel"><h2>Species separation</h2>{bvsSpeciesSeparation.map((item) => <p className="line" key={item}>{item}</p>)}</section></aside></div></div>;
+}
+
+const css = `.svc{min-height:100vh;background:#050b14;color:#e6edf7;padding:20px;font-family:Inter,system-ui,sans-serif}.hero{display:flex;justify-content:space-between;gap:18px;border:1px solid #274568;border-radius:24px;padding:22px;background:linear-gradient(135deg,#0c182a,#07111f)}.hero span{color:#5eead4;text-transform:uppercase;letter-spacing:.13em;font-weight:900;font-size:12px}.hero h1{font-size:clamp(36px,5vw,64px);line-height:.95;margin:8px 0}.hero p,.card p,.card small,.line{color:#a7b5c8}.hero nav{display:flex;gap:8px;flex-wrap:wrap}.hero a,.card{color:#e6edf7;text-decoration:none}.hero a{border:1px solid #31557f;background:#10223c;border-radius:999px;padding:9px 12px;font-weight:800}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.kpis div,.panel{background:#0b1728;border:1px solid #243b60;border-radius:18px;padding:14px}.kpis span{display:block;color:#9fb0c6;text-transform:uppercase;font-size:11px}.kpis strong{font-size:28px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px}.grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:10px}.card{display:grid;gap:7px;border:1px solid #28466e;border-radius:14px;background:#101d31;padding:12px}.card span{font-size:12px;color:#5eead4;text-transform:uppercase;font-weight:900}.line{border-bottom:1px solid #1e3556;margin:0;padding:8px 0}@media(max-width:1100px){.layout{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,1fr)}.kpis{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.svc{padding:10px}.hero{flex-direction:column}.grid,.kpis{grid-template-columns:1fr}}`;
