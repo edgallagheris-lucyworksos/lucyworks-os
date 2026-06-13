@@ -21,6 +21,7 @@ python input_smoke_test.py
 python ops_engine_smoke_test.py
 python canonical_v3_smoke_test.py
 python canonical_modules_smoke_test.py
+python knowledge_smoke_test.py
 [ -f forecast_smoke_test.py ] && python forecast_smoke_test.py || echo "WARN: forecast_smoke_test.py not present"
 python -c "from app.main import app; print('API startup import OK', bool(app))"
 
