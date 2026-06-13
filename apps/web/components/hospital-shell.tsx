@@ -6,7 +6,7 @@ import { clearSession, getSession, type SessionUser } from "@/lib/session";
 import { DailyOperationalBoard } from "@/components/daily-operational-board";
 import { ResourceControlBoard } from "@/components/resource-control-board";
 import { BvsClinicalServiceBoard } from "@/components/bvs-clinical-service-board";
-import { BvsFlowBoard } from "@/components/bvs-flow-board";
+import { BvsFlowActionBoard } from "@/components/bvs-flow-action-board";
 import {
   ClinicalDirectorDashboard,
   InterruptionsDashboard,
@@ -21,7 +21,7 @@ function contentFor(title: string, children: ReactNode, user: SessionUser | null
   const module = moduleByTitle(title);
   const u = user || undefined;
   if (module?.id === "now") return <DailyOperationalBoard />;
-  if (module?.id === "flow") return <BvsFlowBoard />;
+  if (module?.id === "flow") return <BvsFlowActionBoard />;
   if (module?.id === "ops") return <ResourceControlBoard />;
   if (module?.id === "clinical") return <BvsClinicalServiceBoard />;
   if (module?.id === "hr") return <MyShiftDashboard user={u} />;
