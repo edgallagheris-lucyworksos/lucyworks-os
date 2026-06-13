@@ -10,6 +10,7 @@ export type HospitalModuleId =
   | "gov"
   | "pharm"
   | "knowledge"
+  | "bvs_public"
   | "system";
 
 export type HospitalModule = {
@@ -147,6 +148,17 @@ export const hospitalModules: HospitalModule[] = [
     decision: "which knowledge source or agent can inform this workflow",
   },
   {
+    id: "bvs_public",
+    label: "BVS Public Map",
+    route: "/bvs-public-map",
+    title: "BVS PUBLIC MAP",
+    subtitle: "public website operating model",
+    endpoint: "/api/knowledge/registry",
+    roles: ["clinical_director", "ops_manager", "admin"],
+    linkedEntities: ["public_sources", "services", "pathways", "roles", "capacity"],
+    decision: "which public BVS fact informs the model and what remains configurable",
+  },
+  {
     id: "system",
     label: "System",
     route: "/system-control",
@@ -164,7 +176,7 @@ export const primaryHospitalModules = hospitalModules.filter((module) =>
 );
 
 export const secondaryHospitalModules = hospitalModules.filter((module) =>
-  ["care", "move", "gov", "pharm", "knowledge", "system"].includes(module.id),
+  ["care", "move", "gov", "pharm", "knowledge", "bvs_public", "system"].includes(module.id),
 );
 
 export function moduleByTitle(title: string) {
