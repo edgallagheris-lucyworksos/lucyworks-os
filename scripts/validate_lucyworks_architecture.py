@@ -6,6 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ROOT / "apps" / "web" / "lib" / "hospital-modules.ts"
+OPERATING_MODEL = ROOT / "apps" / "web" / "lib" / "hospital-operating-model.ts"
 SHELL = ROOT / "apps" / "web" / "components" / "hospital-shell.tsx"
 WORKFLOW = ROOT / ".github" / "workflows" / "lucyworks-check.yml"
 CHECK_SCRIPT = ROOT / "scripts" / "check-monorepo.sh"
@@ -36,6 +37,24 @@ REQUIRED_BACKEND_ENDPOINTS = [
     "/api/health",
 ]
 
+REQUIRED_OPERATING_UNITS = [
+    "theatreUnits",
+    "length: 11",
+    "MRI",
+    "CT",
+    "X-ray",
+    "Laboratory",
+    "Pharmacy",
+    "Insurance / pre-authorisation",
+    "ICU",
+    "Recovery",
+    "Ward",
+    "Triage / reception intake",
+    "Owner communications",
+    "Stock / equipment readiness",
+    "Governance / audit",
+]
+
 
 def fail(message: str) -> None:
     print(f"ARCHITECTURE CHECK FAILED: {message}")
@@ -55,6 +74,7 @@ def route_to_dir(route: str) -> Path:
 
 def main() -> None:
     modules = require_file(MODULES)
+    operating_model = require_file(OPERATING_MODEL)
     shell = require_file(SHELL)
     workflow = require_file(WORKFLOW)
     check_script = require_file(CHECK_SCRIPT)
@@ -71,6 +91,10 @@ def main() -> None:
     for endpoint in REQUIRED_BACKEND_ENDPOINTS:
         if endpoint not in modules:
             fail(f"endpoint missing from module map: {endpoint}")
+
+    for marker in REQUIRED_OPERATING_UNITS:
+        if marker not in operating_model:
+            fail(f"operating model missing: {marker}")
 
     required_shell_bits = [
         "primaryHospitalModules",
