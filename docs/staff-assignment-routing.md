@@ -1,10 +1,11 @@
 # Staff assignment routing
 
-LucyWorks now separates three different layers:
+LucyWorks separates four layers:
 
 1. Public BVS role groups.
 2. Internal destination roles and queues.
-3. Active staff records used for named assignment.
+3. Active shift/staff records.
+4. Workload-aware named assignment.
 
 ## Public BVS layer
 
@@ -27,28 +28,41 @@ Examples:
 
 ## Staff assignment layer
 
-`apps/api/app/staff_assignment.py` maps destination roles and queues to acceptable active `StaffMember.role` values.
+`apps/api/app/staff_assignment.py` maps destination roles and queues to acceptable `StaffMember.role` values.
 
-`/api/queue/work-item` uses that matrix:
+`/api/queue/work-item` now uses:
 
-1. build acceptable staff roles from destination role and queue
-2. search active staff
-3. assign `owner_user_id` if a matching active staff member exists
-4. otherwise leave the item in the role queue
-5. create an audit event either way
+1. destination role and queue
+2. acceptable staff-role matrix
+3. active `StaffMember` records
+4. active `Shift` window when available
+5. current open workload by `owner_user_id`
+6. simple queue/skill text match
+7. audit event creation
 
-## Required future layer
+## Assignment rule
 
-Current assignment selects the first matching active staff member by role/name order.
+When a queue item is created:
 
-Next improvement should select by:
+1. Build acceptable staff roles from destination role and queue.
+2. Search active staff matching those roles.
+3. Prefer staff currently on an active shift.
+4. If no active-shift match exists, use active staff in the role pool.
+5. Prefer lower open workload.
+6. Prefer a staff skills string that matches the queue theme.
+7. Assign `owner_user_id` when a match is found.
+8. Otherwise leave it in the role queue.
 
-- active shift window
-- department/service
-- skill tag
-- workload count
+## Still missing
+
+Next improvement should add:
+
+- department/service-specific filtering
+- formal skill tags instead of free-text skills
 - fatigue / break state
 - escalation eligibility
 - conflict of responsibility
+- named notification delivery
+- acceptance / rejection / reassignment loop
 
-Public website data cannot provide that live layer. It must come from rota/shift/internal staffing data.
+Public website data cannot provide that live layer. It must come from rota, shift and internal staffing data.
