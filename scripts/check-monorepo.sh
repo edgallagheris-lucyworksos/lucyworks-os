@@ -4,6 +4,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 python scripts/validate_lucyworks_architecture.py
+python scripts/validate_bvs_public_site_layer.py
 
 cd "$ROOT/apps/api"
 python -m pip install --upgrade pip
@@ -23,6 +24,7 @@ python canonical_v3_smoke_test.py
 python canonical_modules_smoke_test.py
 python knowledge_smoke_test.py
 python operational_action_smoke_test.py
+[ -f queue_smoke_test.py ] && python queue_smoke_test.py || echo "WARN: queue_smoke_test.py not present"
 [ -f forecast_smoke_test.py ] && python forecast_smoke_test.py || echo "WARN: forecast_smoke_test.py not present"
 python -c "from app.main import app; print('API startup import OK', bool(app))"
 
