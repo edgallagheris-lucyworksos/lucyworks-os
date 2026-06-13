@@ -4,12 +4,12 @@ import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { clearSession, getSession, type SessionUser } from "@/lib/session";
 import { DailyOperationalBoard } from "@/components/daily-operational-board";
+import { ResourceControlBoard } from "@/components/resource-control-board";
 import {
   ClinicalDirectorDashboard,
   InterruptionsDashboard,
   MyShiftDashboard,
   PatientFlowDashboard,
-  ResourcesDashboard,
 } from "@/components/hospital-operational-screens";
 import { moduleByTitle, primaryHospitalModules, secondaryHospitalModules } from "@/lib/hospital-modules";
 
@@ -21,7 +21,7 @@ function contentFor(title: string, children: ReactNode, user: SessionUser | null
   const u = user || undefined;
   if (module?.id === "now") return <DailyOperationalBoard />;
   if (module?.id === "flow") return <PatientFlowDashboard user={u} />;
-  if (module?.id === "ops") return <ResourcesDashboard user={u} />;
+  if (module?.id === "ops") return <ResourceControlBoard />;
   if (module?.id === "hr") return <MyShiftDashboard user={u} />;
   if (module?.id === "pulse") return <InterruptionsDashboard user={u} />;
   if (title === "Manager") return <ClinicalDirectorDashboard user={u} />;
