@@ -9,6 +9,7 @@ export type HospitalModuleId =
   | "move"
   | "gov"
   | "pharm"
+  | "knowledge"
   | "system";
 
 export type HospitalModule = {
@@ -135,6 +136,17 @@ export const hospitalModules: HospitalModule[] = [
     decision: "which medication or stock issue blocks care or discharge",
   },
   {
+    id: "knowledge",
+    label: "LucyKnowledge",
+    route: "/lucy-knowledge",
+    title: "LucyKnowledge",
+    subtitle: "sources, agents and approval gates",
+    endpoint: "/api/knowledge/registry",
+    roles: ["clinical_director", "ops_manager", "admin"],
+    linkedEntities: ["sources", "agents", "approval_gates", "training_notes"],
+    decision: "which knowledge source or agent can inform this workflow",
+  },
+  {
     id: "system",
     label: "System",
     route: "/system-control",
@@ -152,7 +164,7 @@ export const primaryHospitalModules = hospitalModules.filter((module) =>
 );
 
 export const secondaryHospitalModules = hospitalModules.filter((module) =>
-  ["care", "move", "gov", "pharm", "system"].includes(module.id),
+  ["care", "move", "gov", "pharm", "knowledge", "system"].includes(module.id),
 );
 
 export function moduleByTitle(title: string) {
