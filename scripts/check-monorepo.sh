@@ -3,6 +3,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+python scripts/validate_lucyworks_architecture.py
+
 cd "$ROOT/apps/api"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
@@ -20,10 +22,7 @@ python ops_engine_smoke_test.py
 python canonical_v3_smoke_test.py
 python canonical_modules_smoke_test.py
 [ -f forecast_smoke_test.py ] && python forecast_smoke_test.py || echo "WARN: forecast_smoke_test.py not present"
-python - <<'PY'
-from app.main import app
-print('API startup import OK', bool(app))
-PY
+python -c "from app.main import app; print('API startup import OK', bool(app))"
 
 cd "$ROOT/packages/shared"
 if [ -f package-lock.json ]; then
