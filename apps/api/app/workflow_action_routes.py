@@ -54,6 +54,18 @@ class MoveSchedulePayload(BaseModel):
     note: str = ""
 
 
+class OperationalRecordPayload(BaseModel):
+    action: str
+    target_id: str
+    target_label: str
+    target_type: str
+    owner_role: Optional[str] = None
+    blocker: Optional[str] = None
+    next_action: Optional[str] = None
+    actor_name: str = "LucyWorks Operator"
+    note: str = ""
+
+
 @router.post("/work-items/{work_item_id}/complete")
 def complete_work_item(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
     item = session.get(WorkItem, work_item_id)
@@ -162,6 +174,13 @@ def delay_schedule_chain(block_id: int, minutes: int = 15, actor_name: str = "Lu
     session.commit()
     event = write_audit(session, actor_name, "schedule_chain_delayed", "case_procedure", block.case_procedure_id, f"Delayed blocks {moved} by {minutes} minutes")
     return {"ok": True, "moved_block_ids": moved, "delay_minutes": minutes, "audit_event": event}
+
+
+@router.post("/operational/record")
+def record_operational_action(payload: OperationalRecordPayload, session: Session = Depends(get_session)):
+    summary = payload.note or f"{payload.action} {payload.target_label}; owner {payload.owner_role or 'unassigned'}; blocker {payload.blocker or 'none'}; next {payload.next_action or 'not set'}"
+    event = write_audit(session, payload.actor_name, f"operational_{payload.action}", payload.target_type, 0, summary)
+    return {"ok": True, "audit_event": event, "target_id": payload.target_id}
 
 
 @router.get("/assignable-staff")
