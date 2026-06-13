@@ -12,11 +12,17 @@ from app.models import Handover, ResultReview, RoomState, ScheduleBlock, StaffMe
 router = APIRouter(prefix="/api/role-queues", tags=["role-queues"])
 
 ROLE_ALIASES: dict[str, set[str]] = {
-    "manager": {"manager", "ops_manager", "clinical_director"},
-    "clinician": {"clinician", "vet", "specialist", "surgeon"},
-    "nurse": {"nurse", "rvn", "ward_nurse", "theatre_nurse"},
-    "pca": {"pca", "kennel_assistant", "assistant"},
-    "admin": {"admin", "reception", "receptionist", "client_care"},
+    "manager": {"manager", "ops_manager", "clinical_director", "clinical_director_or_ops_manager", "capacity_hold_queue"},
+    "clinician": {"clinician", "vet", "specialist", "surgeon", "service_clinician", "clinical_owner_or_senior", "admin_or_service_clinician"},
+    "nurse": {"nurse", "rvn", "ward_nurse", "theatre_nurse", "nurse_lead", "ward_or_icu_lead", "theatre_lead", "imaging_lead", "pharmacy_owner"},
+    "pca": {"pca", "kennel_assistant", "assistant", "receiving_role"},
+    "admin": {"admin", "reception", "receptionist", "client_care", "insurance_admin", "admin_or_service_clinician"},
+    "pharmacy": {"pharmacy", "pharmacy_owner"},
+    "imaging": {"imaging", "imaging_lead"},
+    "theatre": {"theatre", "theatre_lead", "theatre_nurse"},
+    "icu": {"icu", "icu_nurse", "ward_or_icu_lead"},
+    "ward": {"ward", "ward_nurse", "ward_or_icu_lead"},
+    "insurance": {"insurance", "insurance_admin"},
 }
 
 
@@ -37,7 +43,7 @@ def role_set(role: str) -> set[str]:
 def queue_for_role(session: Session, role: str) -> dict[str, Any]:
     roles = role_set(role)
     all_work = session.exec(select(WorkItem).where(WorkItem.status != "done").order_by(WorkItem.urgency, WorkItem.due_at)).all()
-    work = [item for item in all_work if item.owner_role in roles or item.owner_role in {"unowned", "ops_manager"} and "ops_manager" in roles]
+    work = [item for item in all_work if item.owner_role in roles or item.category in roles or item.owner_role in {"unowned", "ops_manager"} and "ops_manager" in roles]
 
     conflicts = normalised_conflicts(session)
     relevant_conflicts = []
@@ -61,7 +67,7 @@ def queue_for_role(session: Session, role: str) -> dict[str, Any]:
     for item in work[:100]:
         payload = row(item)
         work_payload.append(payload)
-        lanes[item.section_name or "Unassigned"].append(payload)
+        lanes[item.section_name or item.category or "Unassigned"].append(payload)
 
     urgency_counts = Counter([item.urgency for item in work])
     return {
@@ -149,6 +155,12 @@ def overview(session: Session = Depends(get_session)):
             "nurse": queue_for_role(session, "nurse")["summary"],
             "pca": queue_for_role(session, "pca")["summary"],
             "admin": queue_for_role(session, "admin")["summary"],
+            "pharmacy": queue_for_role(session, "pharmacy")["summary"],
+            "imaging": queue_for_role(session, "imaging")["summary"],
+            "theatre": queue_for_role(session, "theatre")["summary"],
+            "icu": queue_for_role(session, "icu")["summary"],
+            "ward": queue_for_role(session, "ward")["summary"],
+            "insurance": queue_for_role(session, "insurance")["summary"],
         },
         "interrupts": interrupts_payload(session)["count"],
     }
