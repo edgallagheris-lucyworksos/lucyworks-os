@@ -1,4 +1,18 @@
-export type OperationalActionType = "assign" | "escalate" | "resolve" | "handover" | "hold" | "request_review";
+import { destinationFor } from "@/lib/operational-routing";
+
+export type OperationalActionType =
+  | "assign"
+  | "escalate"
+  | "resolve"
+  | "handover"
+  | "hold"
+  | "request_review"
+  | "owner_update"
+  | "insurance"
+  | "pharmacy"
+  | "bed_request"
+  | "imaging_request"
+  | "theatre_request";
 
 export type OperationalTarget = {
   id: string;
@@ -22,6 +36,7 @@ export type OperationalActionRequest = {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 export async function recordOperationalAction(request: OperationalActionRequest) {
+  const destination = destinationFor(request.action);
   const res = await fetch(`${API_BASE}/api/actions/operational/record`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -30,11 +45,13 @@ export async function recordOperationalAction(request: OperationalActionRequest)
       target_id: request.target.id,
       target_label: request.target.label,
       target_type: request.target.type,
-      owner_role: request.target.ownerRole,
+      owner_role: destination.destinationRole,
+      destination_queue: destination.destinationQueue,
+      urgency: destination.urgency,
       blocker: request.target.blocker,
-      next_action: request.target.nextAction,
+      next_action: request.target.nextAction || destination.reason,
       actor_name: request.actorName || "LucyWorks UI",
-      note: request.note || "",
+      note: request.note || `Route to ${destination.destinationRole} via ${destination.destinationQueue}`,
     }),
   });
   if (!res.ok) throw new Error(`Action failed: ${res.status}`);
