@@ -8,7 +8,9 @@ FILES = [
     ROOT / "apps" / "web" / "app" / "my-shift" / "page.tsx",
 ]
 MARKERS = [
-    "work_item_accepted",
+    "work_item_started",
+    "work_item_blocked",
+    "work_item_completed",
     "work_item_returned_to_role_queue",
     "MyAssignedWorkBoard",
     "/api/role-queues/my-shift",
