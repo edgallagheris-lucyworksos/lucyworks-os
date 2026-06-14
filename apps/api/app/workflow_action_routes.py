@@ -95,22 +95,36 @@ def assign_work_item(work_item_id: int, payload: AssignPayload, session: Session
     return {"ok": True, "work_item": item, "audit_event": event}
 
 
-@router.post("/work-items/{work_item_id}/accept")
-def accept_work_item(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
+@router.post("/work-items/{work_item_id}/start")
+def start_work_item(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
     item = session.get(WorkItem, work_item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Work item not found")
-    item.status = "accepted"
+    item.status = "in_progress"
     item.updated_at = utc_now()
     session.add(item)
     session.commit()
     session.refresh(item)
-    event = write_audit(session, payload.actor_name, "work_item_accepted", "work_item", item.id or 0, payload.note or item.title)
+    event = write_audit(session, payload.actor_name, "work_item_started", "work_item", item.id or 0, payload.note or item.title)
     return {"ok": True, "work_item": item, "audit_event": event}
 
 
-@router.post("/work-items/{work_item_id}/decline")
-def decline_work_item(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
+@router.post("/work-items/{work_item_id}/block")
+def block_work_item(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
+    item = session.get(WorkItem, work_item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Work item not found")
+    item.status = "blocked"
+    item.updated_at = utc_now()
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    event = write_audit(session, payload.actor_name, "work_item_blocked", "work_item", item.id or 0, payload.note or item.title)
+    return {"ok": True, "work_item": item, "audit_event": event}
+
+
+@router.post("/work-items/{work_item_id}/return-to-queue")
+def return_work_item_to_queue(work_item_id: int, payload: ActorPayload, session: Session = Depends(get_session)):
     item = session.get(WorkItem, work_item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Work item not found")
