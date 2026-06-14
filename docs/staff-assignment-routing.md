@@ -30,7 +30,7 @@ Examples:
 
 `apps/api/app/staff_assignment.py` maps destination roles and queues to acceptable `StaffMember.role` values.
 
-`/api/queue/work-item` now uses:
+`/api/queue/work-item` uses:
 
 1. destination role and queue
 2. acceptable staff-role matrix
@@ -53,6 +53,18 @@ When a queue item is created:
 7. Assign `owner_user_id` when a match is found.
 8. Otherwise leave it in the role queue.
 
+## Work lifecycle rule
+
+Normal hospital work does not require every recipient to accept or decline routine tasks.
+
+The practical lifecycle is:
+
+1. `new` - item is in a role queue or assigned to a named person.
+2. `in_progress` - the responsible person has started it.
+3. `blocked` - the person cannot progress it and the blocker must be escalated or cleared.
+4. `done` - the work is complete.
+5. `new + owner_user_id = null` - incorrectly routed work has been returned to the role queue/coordinator.
+
 ## Still missing
 
 Next improvement should add:
@@ -63,6 +75,6 @@ Next improvement should add:
 - escalation eligibility
 - conflict of responsibility
 - named notification delivery
-- acceptance / rejection / reassignment loop
+- reassignment override by coordinator / ops lead
 
 Public website data cannot provide that live layer. It must come from rota, shift and internal staffing data.
