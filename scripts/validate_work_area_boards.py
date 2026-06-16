@@ -3,6 +3,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = [
+    ROOT / "apps" / "web" / "lib" / "canonical-operational-work.ts",
+    ROOT / "apps" / "web" / "components" / "hospital-operating-console.tsx",
     ROOT / "apps" / "web" / "components" / "work-area-board.tsx",
     ROOT / "apps" / "web" / "app" / "theatre" / "page.tsx",
     ROOT / "apps" / "web" / "app" / "imaging" / "page.tsx",
@@ -10,6 +12,9 @@ FILES = [
     ROOT / "apps" / "web" / "app" / "lucy-pharm" / "page.tsx",
 ]
 REQUIRED = [
+    "canonicalOperationalWork",
+    "workItemsForArea",
+    "highPressureWorkItems",
     "WorkAreaBoard",
     "QueueDetailDrawer",
     "OperationalTarget",
