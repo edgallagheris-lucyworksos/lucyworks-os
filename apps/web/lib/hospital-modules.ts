@@ -1,5 +1,6 @@
 export type HospitalModuleId =
   | "now"
+  | "intake"
   | "flow"
   | "ops"
   | "hr"
@@ -36,6 +37,17 @@ export const hospitalModules: HospitalModule[] = [
     roles: ["clinical_director", "ops_manager", "clinician", "nurse", "admin"],
     linkedEntities: ["episodes", "work_items", "conflicts", "rooms", "staff"],
     decision: "what is unsafe now and who owns the next action",
+  },
+  {
+    id: "intake",
+    label: "LucyIntake",
+    route: "/lucy-intake",
+    title: "LUCY INTAKE",
+    subtitle: "front-door coordination and routing",
+    endpoint: "/api/role-queues/overview",
+    roles: ["clinical_director", "ops_manager", "clinician", "nurse", "admin"],
+    linkedEntities: ["referrals", "advice_requests", "owner_updates", "work_items", "capacity"],
+    decision: "what has entered the hospital and where it must be routed next",
   },
   {
     id: "flow",
@@ -172,7 +184,7 @@ export const hospitalModules: HospitalModule[] = [
 ];
 
 export const primaryHospitalModules = hospitalModules.filter((module) =>
-  ["now", "flow", "ops", "hr", "pulse", "clinical"].includes(module.id),
+  ["now", "intake", "flow", "ops", "hr", "pulse", "clinical"].includes(module.id),
 );
 
 export const secondaryHospitalModules = hospitalModules.filter((module) =>
