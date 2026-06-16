@@ -8,6 +8,7 @@ python scripts/validate_bvs_public_site_layer.py
 python scripts/validate_staff_assignment_layer.py
 python scripts/validate_work_visibility_layer.py
 python scripts/validate_intake_layer.py
+python scripts/validate_rota_grid_layer.py
 
 cd "$ROOT/apps/api"
 python -m pip install --upgrade pip
