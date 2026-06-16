@@ -11,6 +11,10 @@ FILES = [
 ]
 REQUIRED = [
     "WorkAreaBoard",
+    "QueueDetailDrawer",
+    "OperationalTarget",
+    "setSelected",
+    "open drawer",
     "owner",
     "blocker",
     "next",
