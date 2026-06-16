@@ -1,2 +1,17 @@
-import { ModulePage } from "@/components/module-page";
-export default function Page(){ return <ModulePage title="rota" endpoint="/api/v3/board" />; }
+"use client";
+
+import { AuthGuard } from "@/components/auth-guard";
+import { HospitalShell } from "@/components/hospital-shell";
+import { RotaCommandGrid } from "@/components/rota-command-grid";
+
+export default function RotaPage() {
+  return (
+    <AuthGuard allowedRoles={["ops_manager", "clinical_director", "clinician", "nurse", "admin"]}>
+      {() => (
+        <HospitalShell title="ROTA" subtitle="staffing grid, department cover and daily risk">
+          <RotaCommandGrid />
+        </HospitalShell>
+      )}
+    </AuthGuard>
+  );
+}
