@@ -36,20 +36,43 @@ try:
                     "subject": "Smoke",
                     "durationMinutes": 15,
                     "generatedFrom": "smoke",
+                },
+                {
+                    "id": "smoke-block-2",
+                    "time": "08:00",
+                    "lane": "decision",
+                    "what": "Smoke decision",
+                    "who": "clinician",
+                    "where": "Consult room",
+                    "how": "review plan",
+                    "status": "amber",
+                    "blocker": "none",
+                    "next": "continue planned flow",
+                    "route": "/my-shift",
+                    "subject": "Smoke",
+                    "durationMinutes": 15,
+                    "generatedFrom": "smoke",
                 }
             ]
         }
 
         r = client.put("/api/day-control/blocks/bulk", json=seed)
         assert r.status_code == 200, r.text
-        assert r.json()["count"] == 1
+        assert r.json()["count"] == 2
         print("Day-control bulk seed OK")
 
         r = client.get("/api/day-control/blocks")
         assert r.status_code == 200, r.text
         blocks = r.json()["blocks"]
-        assert blocks[0]["id"] == "smoke-block-1"
+        assert blocks[0]["id"] in {"smoke-block-1", "smoke-block-2"}
         print("Day-control list OK")
+
+        r = client.get("/api/day-control/conflicts")
+        assert r.status_code == 200, r.text
+        conflicts = r.json()["conflicts"]
+        assert any(item["type"] == "resource_clash" for item in conflicts)
+        assert any(item["type"] == "owner_clash" for item in conflicts)
+        print("Day-control conflicts OK")
 
         r = client.post("/api/day-control/blocks/smoke-block-1/actions", json={"action": "resolve", "actor": "smoke"})
         assert r.status_code == 200, r.text
