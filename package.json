@@ -7,6 +7,7 @@
     "lucy:dev": "bash scripts/run-dev.sh",
     "backend:install": "cd backend && python -m pip install -r requirements.txt",
     "backend:smoke": "cd backend && python smoke_test.py",
+    "backend:day-control-smoke": "cd apps/api && python day_control_smoke_test.py",
     "backend:run": "cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
     "frontend:install": "cd frontend && npm install",
     "frontend:build": "cd frontend && npm run build",
