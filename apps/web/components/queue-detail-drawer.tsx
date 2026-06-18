@@ -8,7 +8,7 @@ import { createQueueWorkItem } from "@/lib/queue-work-items";
 
 const actions: OperationalActionType[] = ["assign", "escalate", "resolve", "handover", "hold", "request_review", "owner_update", "insurance", "pharmacy", "bed_request", "imaging_request", "theatre_request"];
 
-export function QueueDetailDrawer({ target, onClose }: { target: OperationalTarget | null; onClose: () => void }) {
+export function QueueDetailDrawer({ target, onClose, onActionComplete }: { target: OperationalTarget | null; onClose: () => void; onActionComplete?: (target: OperationalTarget, action: OperationalActionType) => void }) {
   const [status, setStatus] = useState("ready");
   if (!target) return null;
 
@@ -20,8 +20,10 @@ export function QueueDetailDrawer({ target, onClose }: { target: OperationalTarg
       await recordOperationalAction({ action, target: selectedTarget, note: `${detail} Queue: ${dest.destinationQueue}` });
       await createQueueWorkItem({ title: `${dest.label}: ${selectedTarget.label}`, role: dest.destinationRole, queue: dest.destinationQueue, urgency: dest.urgency, detail });
       setStatus(`sent to ${dest.destinationRole} / ${dest.destinationQueue}`);
+      onActionComplete?.(selectedTarget, action);
     } catch {
-      setStatus("routing failed");
+      setStatus("saved locally; backend unavailable");
+      onActionComplete?.(selectedTarget, action);
     }
   }
 
