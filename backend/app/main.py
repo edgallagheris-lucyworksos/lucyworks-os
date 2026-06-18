@@ -19,6 +19,7 @@ from app.mail_ops_routes import router as mail_ops_router
 from app.operating_routes import router as operating_router
 from app.safety_routes import router as safety_router
 from app.startup_routes import router as startup_router
+from app.day_control_routes import router as day_control_router
 
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
@@ -40,3 +41,4 @@ app.include_router(mail_ops_router)
 app.include_router(inpatient_router)
 app.include_router(startup_router)
 app.include_router(safety_router)
+app.include_router(day_control_router)
