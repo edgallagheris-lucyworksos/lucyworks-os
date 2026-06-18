@@ -23,6 +23,12 @@ class ScheduleStateBlock(SQLModel, table=True):
     subject: Optional[str] = None
     duration_minutes: Optional[int] = None
     generated_from: Optional[str] = None
+    episode_ref: Optional[str] = None
+    assigned_role: Optional[str] = None
+    assigned_staff_id: Optional[int] = None
+    assigned_staff_name: Optional[str] = None
+    resource_id: Optional[str] = None
+    resource_name: Optional[str] = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
