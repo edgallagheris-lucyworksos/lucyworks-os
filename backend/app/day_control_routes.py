@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlmodel import Session, select
+
+from app.database import get_session
+from app.schedule_state_models import ScheduleStateBlock, ScheduleStateEvent
 
 router = APIRouter(prefix="/api/day-control", tags=["day-control"])
-
-_BLOCKS: dict[str, dict[str, Any]] = {}
-_AUDIT: list[dict[str, Any]] = []
 
 
 class BlockPatch(BaseModel):
@@ -52,98 +54,153 @@ class ActionPayload(BaseModel):
     reason: str | None = None
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
-def _audit(block_id: str, action: str, actor: str, before: dict[str, Any] | None, after: dict[str, Any] | None, reason: str | None = None) -> None:
-    _AUDIT.append({
-        "id": str(uuid4()),
-        "time": _now(),
-        "blockId": block_id,
-        "action": action,
-        "actor": actor,
-        "reason": reason,
-        "before": before,
-        "after": after,
-    })
+def _payload_dict(payload: BaseModel, exclude_none: bool = False) -> dict[str, Any]:
+    if hasattr(payload, "model_dump"):
+        return payload.model_dump(exclude_none=exclude_none)
+    return payload.dict(exclude_none=exclude_none)
 
 
-def _apply_action(block: dict[str, Any], action: str) -> dict[str, Any]:
-    updated = dict(block)
+def _row_dict(row: ScheduleStateBlock) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "time": row.time,
+        "lane": row.lane,
+        "what": row.what,
+        "who": row.who,
+        "where": row.where,
+        "how": row.how,
+        "status": row.status,
+        "blocker": row.blocker,
+        "next": row.next,
+        "route": row.route,
+        "subject": row.subject,
+        "durationMinutes": row.duration_minutes,
+        "generatedFrom": row.generated_from,
+        "createdAt": row.created_at.isoformat() if row.created_at else None,
+        "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+def _make_row(data: dict[str, Any]) -> ScheduleStateBlock:
+    return ScheduleStateBlock(
+        id=str(data.get("id") or uuid4()),
+        time=data["time"],
+        lane=data["lane"],
+        what=data["what"],
+        who=data["who"],
+        where=data["where"],
+        how=data["how"],
+        status=data.get("status", "amber"),
+        blocker=data.get("blocker", "none"),
+        next=data.get("next", "continue planned flow"),
+        route=data.get("route", "/hospital-board"),
+        subject=data.get("subject"),
+        duration_minutes=data.get("durationMinutes"),
+        generated_from=data.get("generatedFrom"),
+        updated_at=_now(),
+    )
+
+
+def _add_event(session: Session, block_id: str, action: str, actor: str, before: dict[str, Any] | None, after: dict[str, Any] | None, reason: str | None = None) -> None:
+    session.add(ScheduleStateEvent(block_id=block_id, action=action, actor=actor, reason=reason, before_json=json.dumps(before or {}), after_json=json.dumps(after or {})))
+
+
+def _apply_action(row: ScheduleStateBlock, action: str) -> None:
     if action == "resolve":
-        updated.update({"status": "green", "blocker": "none", "next": "complete or continue planned flow"})
+        row.status = "green"; row.blocker = "none"; row.next = "complete or continue planned flow"
     elif action == "hold":
-        updated.update({"status": "blue", "blocker": "on hold", "next": "review hold reason"})
+        row.status = "blue"; row.blocker = "on hold"; row.next = "review hold reason"
     elif action == "escalate":
-        updated.update({"status": "red", "blocker": updated.get("blocker") if updated.get("blocker") != "none" else "escalated", "next": "senior review required"})
+        row.status = "red"; row.blocker = row.blocker if row.blocker != "none" else "escalated"; row.next = "senior review required"
     elif action == "request_review":
-        updated.update({"status": "amber", "next": "review requested"})
+        row.status = "amber"; row.next = "review requested"
     elif action == "assign":
-        updated.update({"status": "red" if updated.get("status") == "red" else "amber", "next": "owner assigned"})
+        row.status = "red" if row.status == "red" else "amber"; row.next = "owner assigned"
     elif action == "handover":
-        updated.update({"status": "green", "blocker": "none", "next": "handover complete"})
+        row.status = "green"; row.blocker = "none"; row.next = "handover complete"
     elif action == "owner_update":
-        updated.update({"status": "green", "blocker": "none", "next": "update recorded"})
+        row.status = "green"; row.blocker = "none"; row.next = "update recorded"
     else:
-        updated.update({"status": "amber", "next": f"{action.replace('_', ' ')} requested"})
-    updated["updatedAt"] = _now()
-    return updated
+        row.status = "amber"; row.next = f"{action.replace('_', ' ')} requested"
+    row.updated_at = _now()
 
 
 @router.get("/blocks")
-def list_blocks() -> dict[str, Any]:
-    return {"blocks": list(_BLOCKS.values()), "count": len(_BLOCKS)}
+def list_blocks(session: Session = Depends(get_session)) -> dict[str, Any]:
+    rows = session.exec(select(ScheduleStateBlock).order_by(ScheduleStateBlock.time, ScheduleStateBlock.lane)).all()
+    return {"blocks": [_row_dict(row) for row in rows], "count": len(rows)}
 
 
 @router.post("/blocks")
-def create_block(payload: BlockCreate) -> dict[str, Any]:
-    data = payload.model_dump()
-    block_id = data.get("id") or str(uuid4())
-    data["id"] = block_id
-    data["createdAt"] = _now()
-    data["updatedAt"] = data["createdAt"]
-    _BLOCKS[block_id] = data
-    _audit(block_id, "create", "system", None, data)
-    return {"block": data}
+def create_block(payload: BlockCreate, session: Session = Depends(get_session)) -> dict[str, Any]:
+    row = _make_row(_payload_dict(payload))
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    after = _row_dict(row)
+    _add_event(session, row.id, "create", "system", None, after)
+    session.commit()
+    return {"block": after}
 
 
 @router.put("/blocks/bulk")
-def replace_blocks(payload: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
-    blocks = payload.get("blocks", [])
-    _BLOCKS.clear()
-    for block in blocks:
-        block_id = str(block.get("id") or uuid4())
-        block["id"] = block_id
-        block["updatedAt"] = _now()
-        _BLOCKS[block_id] = block
-    _audit("bulk", "replace_blocks", "system", None, {"count": len(_BLOCKS)})
-    return {"blocks": list(_BLOCKS.values()), "count": len(_BLOCKS)}
+def replace_blocks(payload: dict[str, list[dict[str, Any]]], session: Session = Depends(get_session)) -> dict[str, Any]:
+    for row in session.exec(select(ScheduleStateBlock)).all():
+        session.delete(row)
+    session.commit()
+    for block in payload.get("blocks", []):
+        session.add(_make_row(block))
+    session.commit()
+    rows = session.exec(select(ScheduleStateBlock).order_by(ScheduleStateBlock.time, ScheduleStateBlock.lane)).all()
+    after = {"count": len(rows)}
+    _add_event(session, "bulk", "replace_blocks", "system", None, after)
+    session.commit()
+    return {"blocks": [_row_dict(row) for row in rows], "count": len(rows)}
 
 
 @router.patch("/blocks/{block_id}")
-def update_block(block_id: str, payload: BlockPatch) -> dict[str, Any]:
-    if block_id not in _BLOCKS:
+def update_block(block_id: str, payload: BlockPatch, session: Session = Depends(get_session)) -> dict[str, Any]:
+    row = session.get(ScheduleStateBlock, block_id)
+    if not row:
         raise HTTPException(status_code=404, detail="block not found")
-    before = dict(_BLOCKS[block_id])
-    changes = {k: v for k, v in payload.model_dump().items() if v is not None}
-    _BLOCKS[block_id].update(changes)
-    _BLOCKS[block_id]["updatedAt"] = _now()
-    _audit(block_id, "update", "system", before, dict(_BLOCKS[block_id]))
-    return {"block": _BLOCKS[block_id]}
+    before = _row_dict(row)
+    changes = _payload_dict(payload, exclude_none=True)
+    for key, value in changes.items():
+        if key == "durationMinutes": setattr(row, "duration_minutes", value)
+        elif key == "generatedFrom": setattr(row, "generated_from", value)
+        else: setattr(row, key, value)
+    row.updated_at = _now()
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    after = _row_dict(row)
+    _add_event(session, block_id, "update", "system", before, after)
+    session.commit()
+    return {"block": after}
 
 
 @router.post("/blocks/{block_id}/actions")
-def apply_action(block_id: str, payload: ActionPayload) -> dict[str, Any]:
-    if block_id not in _BLOCKS:
+def apply_action(block_id: str, payload: ActionPayload, session: Session = Depends(get_session)) -> dict[str, Any]:
+    row = session.get(ScheduleStateBlock, block_id)
+    if not row:
         raise HTTPException(status_code=404, detail="block not found")
-    before = dict(_BLOCKS[block_id])
-    after = _apply_action(before, payload.action)
-    _BLOCKS[block_id] = after
-    _audit(block_id, payload.action, payload.actor, before, after, payload.reason)
+    before = _row_dict(row)
+    _apply_action(row, payload.action)
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    after = _row_dict(row)
+    _add_event(session, block_id, payload.action, payload.actor, before, after, payload.reason)
+    session.commit()
     return {"block": after}
 
 
 @router.get("/audit")
-def list_audit() -> dict[str, Any]:
-    return {"audit": _AUDIT[-250:], "count": len(_AUDIT)}
+def list_audit(session: Session = Depends(get_session)) -> dict[str, Any]:
+    rows = session.exec(select(ScheduleStateEvent).order_by(ScheduleStateEvent.created_at.desc()).limit(250)).all()
+    audit = [{"id": row.id, "time": row.created_at.isoformat(), "blockId": row.block_id, "action": row.action, "actor": row.actor, "reason": row.reason, "before": json.loads(row.before_json or "{}"), "after": json.loads(row.after_json or "{}")} for row in rows]
+    return {"audit": audit, "count": len(audit)}
