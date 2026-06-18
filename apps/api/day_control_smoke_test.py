@@ -24,7 +24,8 @@ try:
                 {
                     "id": "smoke-block-1",
                     "time": "08:00",
-                    "lane": "consult",\n                    "what": "Smoke consult",
+                    "lane": "consult",
+                    "what": "Smoke consult",
                     "who": "clinician",
                     "where": "Consult room",
                     "how": "confirm plan",
