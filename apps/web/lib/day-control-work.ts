@@ -16,6 +16,12 @@ export type ScheduledWorkBlock = {
   subject?: string;
   durationMinutes?: number;
   generatedFrom?: string;
+  episodeRef?: string;
+  assignedRole?: string;
+  assignedStaffId?: number;
+  assignedStaffName?: string;
+  resourceId?: string;
+  resourceName?: string;
 };
 
 export type ProcedureTemplate = {
@@ -76,110 +82,20 @@ export const scheduledCases: ScheduledCase[] = [
   { id: "case-005", subject: "Oscar", templateKey: "theatre_minor", arrival: "12:45", consult: "13:15", start: "14:00", owner: "clinician", receptionOwner: "reception 1", insuranceOwner: "insurance/admin", insuranceStatus: "pending", status: "amber", blocker: "room readiness pending" },
 ];
 
-function quarterHourSlots(startHour: number, endHour: number) {
-  const slots: string[] = [];
-  for (let hour = startHour; hour <= endHour; hour += 1) {
-    for (const minute of [0, 15, 30, 45]) {
-      if (hour === endHour && minute > 0) continue;
-      slots.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
-    }
-  }
-  return slots;
-}
-
-function toMinutes(time: string) {
-  const [hour, minute] = time.split(":").map(Number);
-  return hour * 60 + minute;
-}
-
-function fromMinutes(total: number) {
-  const hour = Math.floor(total / 60);
-  const minute = total % 60;
-  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-function templateFor(key: string) {
-  const template = procedureTemplates.find((item) => item.key === key);
-  if (!template) throw new Error(`Missing procedure template: ${key}`);
-  return template;
-}
-
-function routeForLane(lane: DayControlLane) {
-  if (lane === "arrival") return "/lucy-intake";
-  if (lane === "reception") return "/lucy-intake";
-  if (lane === "consult") return "/flow";
-  if (lane === "insurance") return "/flow";
-  if (lane === "intake") return "/lucy-intake";
-  if (lane === "client") return "/flow";
-  if (lane === "decision") return "/my-shift";
-  if (lane === "nursing") return "/my-shift";
-  if (lane === "rooms") return "/theatre";
-  if (lane === "imaging") return "/imaging";
-  if (lane === "care") return "/icu-wards";
-  if (lane === "supply") return "/lucy-pharm";
-  return "/rota";
-}
+function quarterHourSlots(startHour: number, endHour: number) { const slots: string[] = []; for (let hour = startHour; hour <= endHour; hour += 1) { for (const minute of [0, 15, 30, 45]) { if (hour === endHour && minute > 0) continue; slots.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`); } } return slots; }
+function toMinutes(time: string) { const [hour, minute] = time.split(":").map(Number); return hour * 60 + minute; }
+function fromMinutes(total: number) { const hour = Math.floor(total / 60); const minute = total % 60; return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`; }
+function templateFor(key: string) { const template = procedureTemplates.find((item) => item.key === key); if (!template) throw new Error(`Missing procedure template: ${key}`); return template; }
+function routeForLane(lane: DayControlLane) { if (lane === "arrival") return "/lucy-intake"; if (lane === "reception") return "/lucy-intake"; if (lane === "consult") return "/flow"; if (lane === "insurance") return "/flow"; if (lane === "intake") return "/lucy-intake"; if (lane === "client") return "/flow"; if (lane === "decision") return "/my-shift"; if (lane === "nursing") return "/my-shift"; if (lane === "rooms") return "/theatre"; if (lane === "imaging") return "/imaging"; if (lane === "care") return "/icu-wards"; if (lane === "supply") return "/lucy-pharm"; return "/rota"; }
 
 function makeTimedBlock(caseItem: ScheduledCase, template: ProcedureTemplate, time: string, lane: DayControlLane, what: string, who: string, where: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock {
-  return {
-    id: `${caseItem.id}-${lane}-${time.replace(":", "")}`,
-    time,
-    lane,
-    what,
-    who,
-    where,
-    how,
-    status: blocker !== "none" ? "amber" : caseItem.status,
-    blocker,
-    next: blocker !== "none" ? "clear blocker" : "continue planned flow",
-    route: routeForLane(lane),
-    subject: caseItem.subject,
-    durationMinutes,
-    generatedFrom: template.key,
-  };
+  return { id: `${caseItem.id}-${lane}-${time.replace(":", "")}`, time, lane, what, who, where, how, status: blocker !== "none" ? "amber" : caseItem.status, blocker, next: blocker !== "none" ? "clear blocker" : "continue planned flow", route: routeForLane(lane), subject: caseItem.subject, durationMinutes, generatedFrom: template.key, episodeRef: caseItem.id, assignedRole: who, resourceName: where };
 }
-
-function makeBlock(caseItem: ScheduledCase, template: ProcedureTemplate, offset: number, lane: DayControlLane, what: string, who: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock {
-  return makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.start) + offset), lane, what, who, template.resource, how, durationMinutes, blocker);
-}
-
-function insuranceBlocker(caseItem: ScheduledCase) {
-  if (caseItem.insuranceStatus === "clear") return "none";
-  if (caseItem.insuranceStatus === "query") return "insurance query";
-  return "insurance pending";
-}
-
-function expandCase(caseItem: ScheduledCase): ScheduledWorkBlock[] {
-  const template = templateFor(caseItem.templateKey);
-  const procedureStart = template.prepMinutes;
-  const recoveryStart = template.prepMinutes + template.procedureMinutes;
-  const updateStart = recoveryStart + template.recoveryMinutes;
-  const blocker = caseItem.blocker || "none";
-  return [
-    makeTimedBlock(caseItem, template, caseItem.arrival, "arrival", `${caseItem.subject}: arrival`, caseItem.receptionOwner, "Reception", "check arrival and owner details", 15),
-    makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.arrival) + 15), "reception", `${caseItem.subject}: check-in`, caseItem.receptionOwner, "Reception", "complete admin and consent pack", 15),
-    makeTimedBlock(caseItem, template, caseItem.consult, "consult", `${caseItem.subject}: consult`, caseItem.owner, "Consult room", "consult and confirm plan", 30),
-    makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.consult) + 15), "insurance", `${caseItem.subject}: insurance/admin`, caseItem.insuranceOwner, "Admin queue", "check cover, estimate and admin status", 15, insuranceBlocker(caseItem)),
-    makeBlock(caseItem, template, 0, "nursing", `${caseItem.subject}: prep`, template.staffRoles.join(" + "), "prepare and safety check", template.prepMinutes, blocker === "staff cover thin" ? blocker : "none"),
-    makeBlock(caseItem, template, procedureStart, template.resource === "MRI" || template.resource === "CT" ? "imaging" : "rooms", `${caseItem.subject}: ${template.label}`, caseItem.owner, "run planned slot", template.procedureMinutes, blocker === "room readiness pending" ? blocker : "none"),
-    makeBlock(caseItem, template, recoveryStart, "care", `${caseItem.subject}: recovery / handover`, "care area lead", "recover and hand over", template.recoveryMinutes, "none"),
-    makeBlock(caseItem, template, updateStart, "client", `${caseItem.subject}: short update`, "client contact", "send generated update", template.updateMinutes, blocker === "client update pending" || blocker === "report owner not set" ? blocker : "none"),
-    makeBlock(caseItem, template, updateStart, "decision", `${caseItem.subject}: decision check`, caseItem.owner, "confirm next action", 15, blocker === "report owner not set" ? blocker : "none"),
-  ].filter((block) => block.durationMinutes !== 0);
-}
-
-export const dayControlTimes = quarterHourSlots(7, 20);
-
-export const scheduledWorkBlocks: ScheduledWorkBlock[] = scheduledCases.flatMap(expandCase);
-
-export function blocksFor(time: string, lane: DayControlLane) {
-  return scheduledWorkBlocks.filter((block) => block.time === time && block.lane === lane);
-}
-
-export function pressureBlocks() {
-  return scheduledWorkBlocks.filter((block) => block.status === "red" || block.status === "amber" || block.blocker !== "none");
-}
-
-export function totalMinutesScheduled() {
-  return scheduledWorkBlocks.reduce((total, block) => total + (block.durationMinutes || 0), 0);
-}
+function makeBlock(caseItem: ScheduledCase, template: ProcedureTemplate, offset: number, lane: DayControlLane, what: string, who: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock { return makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.start) + offset), lane, what, who, template.resource, how, durationMinutes, blocker); }
+function insuranceBlocker(caseItem: ScheduledCase) { if (caseItem.insuranceStatus === "clear") return "none"; if (caseItem.insuranceStatus === "query") return "insurance query"; return "insurance pending"; }
+function expandCase(caseItem: ScheduledCase): ScheduledWorkBlock[] { const template = templateFor(caseItem.templateKey); const procedureStart = template.prepMinutes; const recoveryStart = template.prepMinutes + template.procedureMinutes; const updateStart = recoveryStart + template.recoveryMinutes; const blocker = caseItem.blocker || "none"; return [ makeTimedBlock(caseItem, template, caseItem.arrival, "arrival", `${caseItem.subject}: arrival`, caseItem.receptionOwner, "Reception", "check arrival and owner details", 15), makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.arrival) + 15), "reception", `${caseItem.subject}: check-in`, caseItem.receptionOwner, "Reception", "complete admin and consent pack", 15), makeTimedBlock(caseItem, template, caseItem.consult, "consult", `${caseItem.subject}: consult`, caseItem.owner, "Consult room", "confirm clinical plan", 30), makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.consult) + 15), "insurance", `${caseItem.subject}: estimate / insurance`, caseItem.insuranceOwner, "Admin queue", "check estimate, claim and payment status", 15, insuranceBlocker(caseItem)), makeBlock(caseItem, template, 0, "nursing", `${caseItem.subject}: prep`, "nurse", "prep patient and notes", template.prepMinutes), makeBlock(caseItem, template, procedureStart, template.resource === "MRI" || template.resource === "CT" ? "imaging" : "rooms", `${caseItem.subject}: ${template.label}`, caseItem.owner, "run procedure or workup", template.procedureMinutes, blocker), makeBlock(caseItem, template, recoveryStart, "care", `${caseItem.subject}: recovery / handover`, "nurse", "monitor recovery and handover", template.recoveryMinutes || 15), makeBlock(caseItem, template, updateStart, "client", `${caseItem.subject}: client update`, "client contact", "update owner from facts", template.updateMinutes, caseItem.status === "amber" ? "update not sent" : "none"), makeBlock(caseItem, template, updateStart + 15, "decision", `${caseItem.subject}: decision check`, caseItem.owner, "confirm next step", 15, caseItem.status === "red" ? "senior review needed" : "none") ]; }
+function pressureBlocks(): ScheduledWorkBlock[] { return [ { id: "pressure-breaks-1100", time: "11:00", lane: "breaks", what: "Break cover check", who: "ops manager", where: "Whole hospital", how: "protect breaks and cover", status: "amber", blocker: "thin cover", next: "move PCA cover", route: "/rota", durationMinutes: 15, assignedRole: "ops manager", resourceName: "Whole hospital" }, { id: "pressure-overload-1400", time: "14:00", lane: "breaks", what: "Overload review", who: "clinical lead", where: "Whole hospital", how: "review pressure before afternoon procedures", status: "red", blocker: "two active blockers", next: "senior review", route: "/rota", durationMinutes: 15, assignedRole: "clinical lead", resourceName: "Whole hospital" } ]; }
+export const dayControlTimes = quarterHourSlots(7, 19);
+export const scheduledWorkBlocks: ScheduledWorkBlock[] = [...scheduledCases.flatMap((item) => expandCase(item)), ...pressureBlocks()];
+export function blocksFor(time: string, lane: DayControlLane) { return scheduledWorkBlocks.filter((block) => block.time === time && block.lane === lane); }
+export function totalMinutesScheduled() { return scheduledWorkBlocks.reduce((sum, block) => sum + (block.durationMinutes || 0), 0); }
