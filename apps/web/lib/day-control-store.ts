@@ -5,6 +5,7 @@ import type { OperationalActionType } from "@/lib/operational-actions";
 import { scheduledWorkBlocks, type DayControlLane, type ScheduledWorkBlock } from "@/lib/day-control-work";
 
 const STORAGE_KEY = "lucyworks.day-control.blocks.v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 export function applyDayControlAction(block: ScheduledWorkBlock, action: OperationalActionType): ScheduledWorkBlock {
   if (action === "resolve") return { ...block, status: "green", blocker: "none", next: "complete or continue planned flow" };
@@ -32,11 +33,46 @@ function saveBlocks(blocks: ScheduledWorkBlock[]) {
   try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(blocks)); } catch {}
 }
 
+async function apiGetBlocks() {
+  const response = await fetch(`${API_BASE}/api/day-control/blocks`);
+  if (!response.ok) throw new Error("blocks request failed");
+  const data = await response.json();
+  return Array.isArray(data.blocks) ? data.blocks as ScheduledWorkBlock[] : [];
+}
+
+async function apiReplaceBlocks(blocks: ScheduledWorkBlock[]) {
+  await fetch(`${API_BASE}/api/day-control/blocks/bulk`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ blocks }) });
+}
+
+async function apiAction(blockId: string, action: OperationalActionType) {
+  const response = await fetch(`${API_BASE}/api/day-control/blocks/${blockId}/actions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, actor: "frontend" }) });
+  if (!response.ok) throw new Error("action request failed");
+  const data = await response.json();
+  return data.block as ScheduledWorkBlock;
+}
+
 export function useDayControlStore() {
   const [blocks, setBlocks] = useState<ScheduledWorkBlock[]>(scheduledWorkBlocks);
+  const [syncStatus, setSyncStatus] = useState<"local" | "api" | "offline">("local");
 
   useEffect(() => {
-    setBlocks(loadBlocks());
+    let active = true;
+    const localBlocks = loadBlocks();
+    setBlocks(localBlocks);
+    apiGetBlocks().then(async (apiBlocks) => {
+      if (!active) return;
+      if (apiBlocks.length) {
+        setBlocks(apiBlocks);
+        saveBlocks(apiBlocks);
+        setSyncStatus("api");
+      } else {
+        await apiReplaceBlocks(localBlocks);
+        setSyncStatus("api");
+      }
+    }).catch(() => {
+      if (active) setSyncStatus("offline");
+    });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -45,6 +81,10 @@ export function useDayControlStore() {
 
   function applyAction(blockId: string, action: OperationalActionType) {
     setBlocks((current) => current.map((block) => block.id === blockId ? applyDayControlAction(block, action) : block));
+    apiAction(blockId, action).then((updated) => {
+      setBlocks((current) => current.map((block) => block.id === blockId ? updated : block));
+      setSyncStatus("api");
+    }).catch(() => setSyncStatus("offline"));
   }
 
   function resetBlocks() {
@@ -52,6 +92,7 @@ export function useDayControlStore() {
     if (typeof window !== "undefined") {
       try { window.localStorage.removeItem(STORAGE_KEY); } catch {}
     }
+    apiReplaceBlocks(scheduledWorkBlocks).then(() => setSyncStatus("api")).catch(() => setSyncStatus("offline"));
   }
 
   function rowsForLanes(lanes: DayControlLane[]) {
@@ -73,5 +114,5 @@ export function useDayControlStore() {
   const pressure = useMemo(() => blocks.filter((block) => block.status === "red" || block.status === "amber" || block.blocker !== "none"), [blocks]);
   const blocked = useMemo(() => blocks.filter((block) => block.blocker !== "none"), [blocks]);
 
-  return { blocks, pressure, blocked, applyAction, resetBlocks, rowsForLanes };
+  return { blocks, pressure, blocked, applyAction, resetBlocks, rowsForLanes, syncStatus };
 }
