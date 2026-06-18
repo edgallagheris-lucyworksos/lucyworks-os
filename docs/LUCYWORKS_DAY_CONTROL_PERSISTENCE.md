@@ -34,19 +34,23 @@ POST  /api/day-control/blocks/{block_id}/actions
 GET   /api/day-control/conflicts
 GET   /api/day-control/audit
 GET   /api/day-control/staff-options
+POST  /api/day-control/staff-options
+PATCH /api/day-control/staff-options/{person_id}
 GET   /api/day-control/resource-options
+POST  /api/day-control/resource-options
+PATCH /api/day-control/resource-options/{resource_id}
 ```
 
 ## Database tables
 
-The SQLModel tables are defined in:
+The SQLModel schedule tables are defined in:
 
 ```text
 apps/api/app/schedule_state_models.py
 backend/app/schedule_state_models.py
 ```
 
-Tables:
+Schedule tables:
 
 ```text
 ScheduleStateBlock
@@ -62,6 +66,20 @@ assigned_staff_id
 assigned_staff_name
 resource_id
 resource_name
+```
+
+The SQLModel assignment directory tables are defined in:
+
+```text
+apps/api/app/assignment_directory_models.py
+backend/app/assignment_directory_models.py
+```
+
+Assignment directory tables:
+
+```text
+AssignmentPersonOption
+AssignmentResourceOption
 ```
 
 ## Route files
@@ -102,6 +120,13 @@ Controlled assignment picker:
 apps/web/components/day-control-assignment-picker.tsx
 ```
 
+Directory management page:
+
+```text
+apps/web/app/resource-directory/page.tsx
+apps/web/components/assignment-directory-manager.tsx
+```
+
 Drawer host:
 
 ```text
@@ -116,6 +141,15 @@ select resource
 PATCH /api/day-control/blocks/{block_id}
 store refetches persisted blocks
 warnings refresh from /api/day-control/conflicts
+```
+
+Directory flow:
+
+```text
+add staff option
+add resource option
+deactivate staff/resource option
+assignment picker reads refreshed options from DB
 ```
 
 ## Conflict rules
@@ -149,8 +183,8 @@ npm run backend:day-control-smoke
 The smoke test covers:
 
 ```text
-staff-options
-resource-options
+staff-options read/create/update
+resource-options read/create/update
 bulk seed
 list persisted blocks
 assignment patch
@@ -169,11 +203,12 @@ conflict output
 5. localStorage remains only as offline fallback.
 6. Staff/resource assignments must use controlled IDs where possible.
 7. Conflict detection must read persisted state, not static demo rows.
+8. Assignment directory options must be DB-backed, not hardcoded.
 
 ## Next persistence work
 
 1. Link block actions to authenticated user identity.
-2. Replace hardcoded staff/resource options with real staff and resource tables.
-3. Add case/episode foreign keys rather than loose episode_ref strings.
-4. Add schema migrations for ScheduleStateBlock and ScheduleStateEvent.
-5. Add WebSocket/SSE push so polling can be removed later.
+2. Add case/episode foreign keys rather than loose episode_ref strings.
+3. Add schema migrations for ScheduleStateBlock, ScheduleStateEvent, AssignmentPersonOption and AssignmentResourceOption.
+4. Add WebSocket/SSE push so polling can be removed later.
+5. Merge or retire the duplicate legacy backend tree once deployment uses one API root.
