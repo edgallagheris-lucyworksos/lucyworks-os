@@ -3,8 +3,8 @@
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
 import { WorkAreaBoard } from "@/components/work-area-board";
-import { workItemsForArea } from "@/lib/canonical-operational-work";
+import { workRowsForLanes } from "@/lib/day-control-views";
 
 export default function CareAreaPage() {
-  return <AuthGuard allowedRoles={["ops_manager", "clinical_director", "clinician", "nurse", "admin"]}>{() => <HospitalShell title="CARE AREA" subtitle="capacity and handover board"><WorkAreaBoard area="Care Area" purpose="Controls beds, handover, cover and destination capacity." explanation="This board shows each work row with owner, blocker, next action and due time." rows={workItemsForArea("care")} /></HospitalShell>}</AuthGuard>;
+  return <AuthGuard allowedRoles={["ops_manager", "clinical_director", "clinician", "nurse", "admin"]}>{() => <HospitalShell title="CARE AREA" subtitle="generated recovery and handover work"><WorkAreaBoard area="Care Area" purpose="Shows generated care, recovery and handover work from the 15-minute day-control schedule." explanation="This page is a filtered view of the generated schedule, not a separate standalone board." rows={workRowsForLanes(["care"])} /></HospitalShell>}</AuthGuard>;
 }
