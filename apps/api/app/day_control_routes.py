@@ -29,6 +29,12 @@ class BlockPatch(BaseModel):
     subject: str | None = None
     durationMinutes: int | None = None
     generatedFrom: str | None = None
+    episodeRef: str | None = None
+    assignedRole: str | None = None
+    assignedStaffId: int | None = None
+    assignedStaffName: str | None = None
+    resourceId: str | None = None
+    resourceName: str | None = None
 
 
 class BlockCreate(BaseModel):
@@ -46,6 +52,12 @@ class BlockCreate(BaseModel):
     subject: str | None = None
     durationMinutes: int | None = None
     generatedFrom: str | None = None
+    episodeRef: str | None = None
+    assignedRole: str | None = None
+    assignedStaffId: int | None = None
+    assignedStaffName: str | None = None
+    resourceId: str | None = None
+    resourceName: str | None = None
 
 
 class ActionPayload(BaseModel):
@@ -80,6 +92,12 @@ def _row_dict(row: ScheduleStateBlock) -> dict[str, Any]:
         "subject": row.subject,
         "durationMinutes": row.duration_minutes,
         "generatedFrom": row.generated_from,
+        "episodeRef": row.episode_ref,
+        "assignedRole": row.assigned_role,
+        "assignedStaffId": row.assigned_staff_id,
+        "assignedStaffName": row.assigned_staff_name,
+        "resourceId": row.resource_id,
+        "resourceName": row.resource_name,
         "createdAt": row.created_at.isoformat() if row.created_at else None,
         "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
     }
@@ -101,8 +119,28 @@ def _make_row(data: dict[str, Any]) -> ScheduleStateBlock:
         subject=data.get("subject"),
         duration_minutes=data.get("durationMinutes"),
         generated_from=data.get("generatedFrom"),
+        episode_ref=data.get("episodeRef"),
+        assigned_role=data.get("assignedRole"),
+        assigned_staff_id=data.get("assignedStaffId"),
+        assigned_staff_name=data.get("assignedStaffName"),
+        resource_id=data.get("resourceId"),
+        resource_name=data.get("resourceName"),
         updated_at=_now(),
     )
+
+
+def _set_patch_value(row: ScheduleStateBlock, key: str, value: Any) -> None:
+    mapping = {
+        "durationMinutes": "duration_minutes",
+        "generatedFrom": "generated_from",
+        "episodeRef": "episode_ref",
+        "assignedRole": "assigned_role",
+        "assignedStaffId": "assigned_staff_id",
+        "assignedStaffName": "assigned_staff_name",
+        "resourceId": "resource_id",
+        "resourceName": "resource_name",
+    }
+    setattr(row, mapping.get(key, key), value)
 
 
 def _add_event(session: Session, block_id: str, action: str, actor: str, before: dict[str, Any] | None, after: dict[str, Any] | None, reason: str | None = None) -> None:
@@ -168,11 +206,8 @@ def update_block(block_id: str, payload: BlockPatch, session: Session = Depends(
     if not row:
         raise HTTPException(status_code=404, detail="block not found")
     before = _row_dict(row)
-    changes = _payload_dict(payload, exclude_none=True)
-    for key, value in changes.items():
-        if key == "durationMinutes": setattr(row, "duration_minutes", value)
-        elif key == "generatedFrom": setattr(row, "generated_from", value)
-        else: setattr(row, key, value)
+    for key, value in _payload_dict(payload, exclude_none=True).items():
+        _set_patch_value(row, key, value)
     row.updated_at = _now()
     session.add(row)
     session.commit()
