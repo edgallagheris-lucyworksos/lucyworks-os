@@ -30,6 +30,7 @@ from app.realtime_routes import router as realtime_router
 from app.knowledge_routes import router as knowledge_router
 from app.queue_routes import router as queue_router
 from app.day_control_routes import router as day_control_router
+from app.day_control_conflict_routes import router as day_control_conflict_router
 
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
@@ -62,3 +63,4 @@ app.include_router(realtime_router)
 app.include_router(knowledge_router)
 app.include_router(queue_router)
 app.include_router(day_control_router)
+app.include_router(day_control_conflict_router)
