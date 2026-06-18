@@ -1,4 +1,4 @@
-export type DayControlLane = "intake" | "client" | "decision" | "nursing" | "rooms" | "imaging" | "care" | "supply" | "breaks";
+export type DayControlLane = "arrival" | "reception" | "consult" | "insurance" | "intake" | "client" | "decision" | "nursing" | "rooms" | "imaging" | "care" | "supply" | "breaks";
 export type DayControlStatus = "red" | "amber" | "green" | "blue";
 
 export type ScheduledWorkBlock = {
@@ -33,13 +33,22 @@ export type ScheduledCase = {
   id: string;
   subject: string;
   templateKey: string;
+  arrival: string;
+  consult: string;
   start: string;
   owner: string;
+  receptionOwner: string;
+  insuranceOwner: string;
+  insuranceStatus: "clear" | "pending" | "query";
   status: DayControlStatus;
   blocker?: string;
 };
 
 export const dayControlLanes: { key: DayControlLane; label: string; purpose: string }[] = [
+  { key: "arrival", label: "Arrivals", purpose: "Who is due in, when, and whether they have arrived." },
+  { key: "reception", label: "Reception", purpose: "Check-in, admin, consent pack and owner details." },
+  { key: "consult", label: "Consults", purpose: "Consult slots, clinician ownership and plan creation." },
+  { key: "insurance", label: "Insurance / admin", purpose: "Cover checks, estimates, claims and admin blockers." },
   { key: "intake", label: "Front door", purpose: "New work entering the hospital." },
   { key: "client", label: "Client contact", purpose: "Calls, consent, estimates and updates." },
   { key: "decision", label: "Clinical decision", purpose: "Review, signoff, plans and escalation." },
@@ -60,11 +69,11 @@ export const procedureTemplates: ProcedureTemplate[] = [
 ];
 
 export const scheduledCases: ScheduledCase[] = [
-  { id: "case-001", subject: "Bailey", templateKey: "mri", start: "08:00", owner: "imaging lead", status: "amber", blocker: "report owner not set" },
-  { id: "case-002", subject: "Milo", templateKey: "theatre_major", start: "09:00", owner: "surgical lead", status: "red", blocker: "staff cover thin" },
-  { id: "case-003", subject: "Poppy", templateKey: "ct", start: "10:15", owner: "imaging lead", status: "green" },
-  { id: "case-004", subject: "Luna", templateKey: "discharge", start: "12:30", owner: "nurse", status: "amber", blocker: "client update pending" },
-  { id: "case-005", subject: "Oscar", templateKey: "theatre_minor", start: "13:45", owner: "clinician", status: "amber", blocker: "room readiness pending" },
+  { id: "case-001", subject: "Bailey", templateKey: "mri", arrival: "07:30", consult: "08:00", start: "08:45", owner: "imaging lead", receptionOwner: "reception 1", insuranceOwner: "insurance/admin", insuranceStatus: "query", status: "amber", blocker: "report owner not set" },
+  { id: "case-002", subject: "Milo", templateKey: "theatre_major", arrival: "08:00", consult: "08:30", start: "09:30", owner: "surgical lead", receptionOwner: "reception 2", insuranceOwner: "insurance/admin", insuranceStatus: "pending", status: "red", blocker: "staff cover thin" },
+  { id: "case-003", subject: "Poppy", templateKey: "ct", arrival: "09:30", consult: "10:00", start: "10:30", owner: "imaging lead", receptionOwner: "reception 1", insuranceOwner: "insurance/admin", insuranceStatus: "clear", status: "green" },
+  { id: "case-004", subject: "Luna", templateKey: "discharge", arrival: "11:45", consult: "12:15", start: "12:45", owner: "nurse", receptionOwner: "reception 2", insuranceOwner: "insurance/admin", insuranceStatus: "clear", status: "amber", blocker: "client update pending" },
+  { id: "case-005", subject: "Oscar", templateKey: "theatre_minor", arrival: "12:45", consult: "13:15", start: "14:00", owner: "clinician", receptionOwner: "reception 1", insuranceOwner: "insurance/admin", insuranceStatus: "pending", status: "amber", blocker: "room readiness pending" },
 ];
 
 function quarterHourSlots(startHour: number, endHour: number) {
@@ -96,6 +105,10 @@ function templateFor(key: string) {
 }
 
 function routeForLane(lane: DayControlLane) {
+  if (lane === "arrival") return "/lucy-intake";
+  if (lane === "reception") return "/lucy-intake";
+  if (lane === "consult") return "/flow";
+  if (lane === "insurance") return "/flow";
   if (lane === "intake") return "/lucy-intake";
   if (lane === "client") return "/flow";
   if (lane === "decision") return "/my-shift";
@@ -107,15 +120,14 @@ function routeForLane(lane: DayControlLane) {
   return "/rota";
 }
 
-function makeBlock(caseItem: ScheduledCase, template: ProcedureTemplate, offset: number, lane: DayControlLane, what: string, who: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock {
-  const time = fromMinutes(toMinutes(caseItem.start) + offset);
+function makeTimedBlock(caseItem: ScheduledCase, template: ProcedureTemplate, time: string, lane: DayControlLane, what: string, who: string, where: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock {
   return {
-    id: `${caseItem.id}-${lane}-${offset}`,
+    id: `${caseItem.id}-${lane}-${time.replace(":", "")}`,
     time,
     lane,
     what,
     who,
-    where: template.resource,
+    where,
     how,
     status: blocker !== "none" ? "amber" : caseItem.status,
     blocker,
@@ -127,6 +139,16 @@ function makeBlock(caseItem: ScheduledCase, template: ProcedureTemplate, offset:
   };
 }
 
+function makeBlock(caseItem: ScheduledCase, template: ProcedureTemplate, offset: number, lane: DayControlLane, what: string, who: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock {
+  return makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.start) + offset), lane, what, who, template.resource, how, durationMinutes, blocker);
+}
+
+function insuranceBlocker(caseItem: ScheduledCase) {
+  if (caseItem.insuranceStatus === "clear") return "none";
+  if (caseItem.insuranceStatus === "query") return "insurance query";
+  return "insurance pending";
+}
+
 function expandCase(caseItem: ScheduledCase): ScheduledWorkBlock[] {
   const template = templateFor(caseItem.templateKey);
   const procedureStart = template.prepMinutes;
@@ -134,6 +156,10 @@ function expandCase(caseItem: ScheduledCase): ScheduledWorkBlock[] {
   const updateStart = recoveryStart + template.recoveryMinutes;
   const blocker = caseItem.blocker || "none";
   return [
+    makeTimedBlock(caseItem, template, caseItem.arrival, "arrival", `${caseItem.subject}: arrival`, caseItem.receptionOwner, "Reception", "check arrival and owner details", 15),
+    makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.arrival) + 15), "reception", `${caseItem.subject}: check-in`, caseItem.receptionOwner, "Reception", "complete admin and consent pack", 15),
+    makeTimedBlock(caseItem, template, caseItem.consult, "consult", `${caseItem.subject}: consult`, caseItem.owner, "Consult room", "consult and confirm plan", 30),
+    makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.consult) + 15), "insurance", `${caseItem.subject}: insurance/admin`, caseItem.insuranceOwner, "Admin queue", "check cover, estimate and admin status", 15, insuranceBlocker(caseItem)),
     makeBlock(caseItem, template, 0, "nursing", `${caseItem.subject}: prep`, template.staffRoles.join(" + "), "prepare and safety check", template.prepMinutes, blocker === "staff cover thin" ? blocker : "none"),
     makeBlock(caseItem, template, procedureStart, template.resource === "MRI" || template.resource === "CT" ? "imaging" : "rooms", `${caseItem.subject}: ${template.label}`, caseItem.owner, "run planned slot", template.procedureMinutes, blocker === "room readiness pending" ? blocker : "none"),
     makeBlock(caseItem, template, recoveryStart, "care", `${caseItem.subject}: recovery / handover`, "care area lead", "recover and hand over", template.recoveryMinutes, "none"),
