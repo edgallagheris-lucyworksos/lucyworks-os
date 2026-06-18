@@ -19,6 +19,16 @@ SQLModel.metadata.create_all(engine)
 
 try:
     with TestClient(app) as client:
+        r = client.get("/api/day-control/staff-options")
+        assert r.status_code == 200, r.text
+        assert len(r.json()["staff"]) >= 3
+        print("Day-control staff options OK")
+
+        r = client.get("/api/day-control/resource-options")
+        assert r.status_code == 200, r.text
+        assert len(r.json()["resources"]) >= 3
+        print("Day-control resource options OK")
+
         seed = {"blocks": [{"id": "smoke-block-1", "time": "08:00", "lane": "consult", "what": "Smoke consult", "who": "clinician", "where": "Consult room", "how": "confirm plan", "status": "amber", "blocker": "owner update pending", "next": "send update", "route": "/flow", "subject": "Smoke", "durationMinutes": 15, "generatedFrom": "smoke", "assignedRole": "clinician", "assignedStaffName": "Smoke Clinician", "resourceName": "Consult room"}, {"id": "smoke-block-2", "time": "08:00", "lane": "decision", "what": "Smoke decision", "who": "clinician", "where": "Consult room", "how": "review plan", "status": "amber", "blocker": "none", "next": "continue planned flow", "route": "/my-shift", "subject": "Smoke", "durationMinutes": 15, "generatedFrom": "smoke", "assignedRole": "clinician", "assignedStaffName": "Smoke Clinician", "resourceName": "Consult room"}]}
 
         r = client.put("/api/day-control/blocks/bulk", json=seed)
