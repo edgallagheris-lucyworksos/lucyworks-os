@@ -8,7 +8,7 @@ import { createQueueWorkItem } from "@/lib/queue-work-items";
 import type { ScheduledWorkBlock } from "@/lib/day-control-work";
 
 const actions: OperationalActionType[] = ["assign", "escalate", "resolve", "handover", "hold", "request_review", "owner_update", "insurance", "pharmacy", "bed_request", "imaging_request", "theatre_request"];
-
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 type PatchBlock = (blockId: string, patch: Partial<ScheduledWorkBlock>) => void;
 
 export function QueueDetailDrawer({ target, onClose, onActionComplete, onPatchBlock }: { target: OperationalTarget | null; onClose: () => void; onActionComplete?: (target: OperationalTarget, action: OperationalActionType) => void; onPatchBlock?: PatchBlock }) {
@@ -33,28 +33,25 @@ export function QueueDetailDrawer({ target, onClose, onActionComplete, onPatchBl
     }
   }
 
+  async function patchAssignment(patch: Record<string, string | number | null>) {
+    if (onPatchBlock) {
+      onPatchBlock(String(target.id), patch as Partial<ScheduledWorkBlock>);
+      return;
+    }
+    const response = await fetch(`${API_BASE}/api/day-control/blocks/${target.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    if (!response.ok) throw new Error("assignment patch failed");
+  }
+
   function assign() {
-    onPatchBlock?.(String(target.id), {
-      assignedStaffName: staffName || undefined,
-      assignedRole: staffRole || target.ownerRole || undefined,
-      resourceName: resourceName || undefined,
-      status: "amber",
-      next: "assignment updated",
-    });
-    setStatus("assignment updated");
+    patchAssignment({ assignedStaffName: staffName || null, assignedRole: staffRole || target.ownerRole || null, resourceName: resourceName || null, status: "amber", next: "assignment updated" })
+      .then(() => setStatus("assignment updated"))
+      .catch(() => setStatus("assignment saved locally only"));
   }
 
   function clearAssignment() {
-    onPatchBlock?.(String(target.id), {
-      assignedStaffName: null as unknown as undefined,
-      assignedRole: null as unknown as undefined,
-      assignedStaffId: null as unknown as undefined,
-      resourceId: null as unknown as undefined,
-      resourceName: null as unknown as undefined,
-      status: "amber",
-      next: "assignment cleared",
-    });
-    setStatus("assignment cleared");
+    patchAssignment({ assignedStaffName: null, assignedRole: null, assignedStaffId: null, resourceId: null, resourceName: null, status: "amber", next: "assignment cleared" })
+      .then(() => setStatus("assignment cleared"))
+      .catch(() => setStatus("assignment clear failed"));
   }
 
   return <div className="qback"><style>{css}</style><aside><header><b>{target.label}</b><button onClick={onClose}>Close</button></header><p>Owner: {target.ownerRole || "unassigned"}</p><p>Blocker: {target.blocker || "none"}</p><p>Next: {target.nextAction || "not set"}</p><p>Status: {status}</p><ContactUpdateDraft target={target} /><section className="assign"><b>Assign work</b><input value={staffName} onChange={(event) => setStaffName(event.target.value)} placeholder="Staff name" /><input value={staffRole} onChange={(event) => setStaffRole(event.target.value)} placeholder="Role" /><input value={resourceName} onChange={(event) => setResourceName(event.target.value)} placeholder="Room / resource" /><button onClick={assign}>Save assignment</button><button onClick={clearAssignment}>Clear assignment</button></section><div>{actions.map((action) => { const dest = destinationFor(action); return <button key={action} onClick={() => run(action, target)}><b>{dest.label}</b><small>{dest.destinationRole}<br />{dest.destinationQueue}</small></button>; })}</div></aside></div>;
