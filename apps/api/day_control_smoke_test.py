@@ -24,10 +24,31 @@ try:
         assert len(r.json()["staff"]) >= 3
         print("Day-control staff options OK")
 
+        r = client.post("/api/day-control/staff-options", json={"name": "Smoke Person", "role": "nurse", "area": "smoke"})
+        assert r.status_code == 200, r.text
+        person_id = r.json()["staff"]["id"]
+        assert r.json()["staff"]["name"] == "Smoke Person"
+        print("Day-control staff option create OK")
+
+        r = client.patch(f"/api/day-control/staff-options/{person_id}", json={"name": "Smoke Person Updated", "role": "lead nurse", "area": "smoke", "active": True})
+        assert r.status_code == 200, r.text
+        assert r.json()["staff"]["role"] == "lead nurse"
+        print("Day-control staff option update OK")
+
         r = client.get("/api/day-control/resource-options")
         assert r.status_code == 200, r.text
         assert len(r.json()["resources"]) >= 3
         print("Day-control resource options OK")
+
+        r = client.post("/api/day-control/resource-options", json={"id": "smoke-room", "name": "Smoke Room", "type": "test"})
+        assert r.status_code == 200, r.text
+        assert r.json()["resource"]["id"] == "smoke-room"
+        print("Day-control resource option create OK")
+
+        r = client.patch("/api/day-control/resource-options/smoke-room", json={"id": "smoke-room", "name": "Smoke Room Updated", "type": "test", "active": True})
+        assert r.status_code == 200, r.text
+        assert r.json()["resource"]["name"] == "Smoke Room Updated"
+        print("Day-control resource option update OK")
 
         seed = {"blocks": [{"id": "smoke-block-1", "time": "08:00", "lane": "consult", "what": "Smoke consult", "who": "clinician", "where": "Consult room", "how": "confirm plan", "status": "amber", "blocker": "owner update pending", "next": "send update", "route": "/flow", "subject": "Smoke", "durationMinutes": 15, "generatedFrom": "smoke", "assignedRole": "clinician", "assignedStaffName": "Smoke Clinician", "resourceName": "Consult room"}, {"id": "smoke-block-2", "time": "08:00", "lane": "decision", "what": "Smoke decision", "who": "clinician", "where": "Consult room", "how": "review plan", "status": "amber", "blocker": "none", "next": "continue planned flow", "route": "/my-shift", "subject": "Smoke", "durationMinutes": 15, "generatedFrom": "smoke", "assignedRole": "clinician", "assignedStaffName": "Smoke Clinician", "resourceName": "Consult room"}]}
 
