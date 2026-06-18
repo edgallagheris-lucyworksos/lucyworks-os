@@ -27,19 +27,32 @@ export const dayControlLanes: { key: DayControlLane; label: string; purpose: str
   { key: "breaks", label: "Breaks / welfare", purpose: "Break cover, overload and safe staffing." },
 ];
 
-export const dayControlTimes = ["07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
+function quarterHourSlots(startHour: number, endHour: number) {
+  const slots: string[] = [];
+  for (let hour = startHour; hour <= endHour; hour += 1) {
+    for (const minute of [0, 15, 30, 45]) {
+      if (hour === endHour && minute > 0) continue;
+      slots.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+    }
+  }
+  return slots;
+}
+
+export const dayControlTimes = quarterHourSlots(7, 20);
 
 export const scheduledWorkBlocks: ScheduledWorkBlock[] = [
   { id: "dc-001", time: "08:00", lane: "intake", what: "New intake route", who: "coordinator", where: "front desk", how: "triage and assign", status: "red", blocker: "route not set", next: "send to correct service", route: "/lucy-intake" },
-  { id: "dc-002", time: "09:00", lane: "client", what: "Client update", who: "client contact lead", where: "phone queue", how: "short generated update", status: "amber", blocker: "update not sent", next: "send client update", route: "/flow" },
-  { id: "dc-003", time: "09:00", lane: "decision", what: "Plan review", who: "clinical lead", where: "decision queue", how: "review and signoff", status: "amber", blocker: "owner unclear", next: "assign decision owner", route: "/my-shift" },
-  { id: "dc-004", time: "10:00", lane: "rooms", what: "Room readiness", who: "area support", where: "room", how: "ready check", status: "green", blocker: "none", next: "prepare next slot", route: "/theatre" },
-  { id: "dc-005", time: "10:00", lane: "imaging", what: "Slot order", who: "imaging lead", where: "scan queue", how: "priority check", status: "amber", blocker: "priority unclear", next: "confirm priority", route: "/imaging" },
-  { id: "dc-006", time: "11:00", lane: "care", what: "Capacity row", who: "area lead", where: "care area", how: "capacity check", status: "red", blocker: "destination full", next: "confirm movement plan", route: "/icu-wards" },
-  { id: "dc-007", time: "12:00", lane: "breaks", what: "Break cover", who: "ops manager", where: "staff rota", how: "rebalance cover", status: "amber", blocker: "thin cover", next: "move safe support", route: "/rota" },
-  { id: "dc-008", time: "13:00", lane: "supply", what: "Stock row", who: "area lead", where: "supply queue", how: "stock check", status: "amber", blocker: "low count", next: "request stock", route: "/lucy-pharm" },
-  { id: "dc-009", time: "14:00", lane: "nursing", what: "Handover row", who: "senior role", where: "team task", how: "write plan", status: "amber", blocker: "plan missing", next: "write plan", route: "/my-shift" },
-  { id: "dc-010", time: "15:00", lane: "client", what: "Release update", who: "client contact", where: "phone queue", how: "generated update", status: "amber", blocker: "final check", next: "clear priority items", route: "/flow" },
+  { id: "dc-002", time: "08:15", lane: "client", what: "Client update", who: "client contact lead", where: "phone queue", how: "short generated update", status: "amber", blocker: "update not sent", next: "send client update", route: "/flow" },
+  { id: "dc-003", time: "08:30", lane: "decision", what: "Plan review", who: "clinical lead", where: "decision queue", how: "review and signoff", status: "amber", blocker: "owner unclear", next: "assign decision owner", route: "/my-shift" },
+  { id: "dc-004", time: "09:15", lane: "rooms", what: "Room readiness", who: "area support", where: "room", how: "ready check", status: "green", blocker: "none", next: "prepare next slot", route: "/theatre" },
+  { id: "dc-005", time: "09:30", lane: "imaging", what: "Slot order", who: "imaging lead", where: "scan queue", how: "priority check", status: "amber", blocker: "priority unclear", next: "confirm priority", route: "/imaging" },
+  { id: "dc-006", time: "10:15", lane: "care", what: "Capacity row", who: "area lead", where: "care area", how: "capacity check", status: "red", blocker: "destination full", next: "confirm movement plan", route: "/icu-wards" },
+  { id: "dc-007", time: "10:45", lane: "breaks", what: "Break cover", who: "ops manager", where: "staff rota", how: "rebalance cover", status: "amber", blocker: "thin cover", next: "move safe support", route: "/rota" },
+  { id: "dc-008", time: "11:15", lane: "supply", what: "Stock row", who: "area lead", where: "supply queue", how: "stock check", status: "amber", blocker: "low count", next: "request stock", route: "/lucy-pharm" },
+  { id: "dc-009", time: "12:30", lane: "nursing", what: "Handover row", who: "senior role", where: "team task", how: "write plan", status: "amber", blocker: "plan missing", next: "write plan", route: "/my-shift" },
+  { id: "dc-010", time: "13:45", lane: "client", what: "Release update", who: "client contact", where: "phone queue", how: "generated update", status: "amber", blocker: "final check", next: "clear priority items", route: "/flow" },
+  { id: "dc-011", time: "14:15", lane: "decision", what: "Late decision", who: "clinical lead", where: "decision queue", how: "confirm next step", status: "red", blocker: "owner missing", next: "assign owner", route: "/my-shift" },
+  { id: "dc-012", time: "15:30", lane: "breaks", what: "Welfare check", who: "ops manager", where: "staff grid", how: "check missed breaks", status: "amber", blocker: "break missed", next: "restore cover", route: "/rota" },
 ];
 
 export function blocksFor(time: string, lane: DayControlLane) {
