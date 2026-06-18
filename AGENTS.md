@@ -17,6 +17,30 @@ Canonical names:
 
 Do not rename the system or invent replacement module names.
 
+## Mandatory continuation rule
+
+At the start of every LucyWorksOS coding session, read these files before making changes:
+
+1. `docs/LUCYWORKS_SYSTEM_CONTRACT.md`
+2. `docs/LUCYWORKS_CONTINUE_HERE.md`
+3. `apps/web/lib/day-control-work.ts`
+4. `apps/web/lib/day-control-views.ts`
+5. `apps/web/components/day-control-grid.tsx`
+
+The current frontend source of truth is the generated 15-minute day-control schedule in:
+
+```text
+apps/web/lib/day-control-work.ts
+```
+
+Department views must use:
+
+```text
+apps/web/lib/day-control-views.ts
+```
+
+Do not build any new module that invents a separate work model.
+
 ## Professional-grade standard
 
 A change is not good enough if it only makes the UI look better.
@@ -31,33 +55,45 @@ Minimum professional system capabilities:
    - one workflow engine
    - one hospital board
    - one audit/governance trail
+   - one generated 15-minute schedule model until backend persistence replaces it
 
 2. **Real operational entities**
-   Every visible item must map to real backend objects:
-   - Patient
-   - Episode
-   - TriageAssessment
+   Every visible item must map to real backend or generated schedule objects:
+   - Patient / subject
+   - Episode / visit
+   - Arrival
+   - Consult
+   - Admission
+   - Insurance/admin step
+   - Client/owner communication requirement
+   - ProcedureTemplate
+   - ScheduledCase
+   - ScheduledWorkBlock
    - WorkItem
    - StaffMember
    - Shift
-   - ScheduleBlock
-   - RoomState
-   - PharmacyRequest
-   - ResultReview
-   - OwnerCommsRequirement
-   - Blocker / EthicsFlag
+   - Staff skill / role requirement
+   - Resource / room state
+   - Pharmacy/supply request
+   - Result review
+   - Blocker / ethics flag
    - AuditEvent
 
 3. **Hospital-scale structure**
    The board must account for:
-   - Reception / Intake
-   - Triage / Consult
+   - Reception / intake
+   - Arrival times
+   - Consult times
+   - Consent / estimates / insurance
+   - Client or owner communication
+   - Triage / consult / decision ownership
    - Imaging: MRI, CT, X-ray, ultrasound
-   - Surgery / Theatre: prep, anaesthesia, procedure, recovery, cleaning / turnover
-   - ICU / Ward
+   - Procedure rooms: prep, anaesthesia, procedure, recovery, cleaning / turnover
+   - Ward / ICU / care area
    - Pharmacy / stock / medicines governance
-   - Discharge / owner communications
+   - Discharge / updates / collection
    - Staff / rota / skills / availability / load
+   - Breaks / welfare / thin cover
    - Safety / ethics / escalation / audit
 
 4. **Time-and-resource operating model**
@@ -69,253 +105,41 @@ Minimum professional system capabilities:
    - blockers and dependencies
    - handoffs and next actions
    - red / amber / green pressure
+   - generated blocks from procedure templates
 
-5. **No decorative-only actions**
+5. **Automation first**
+   Procedure templates must generate the required work chain:
+   - prep
+   - room/resource slot
+   - staff role requirements
+   - main procedure/workup
+   - recovery/handover
+   - client/contact update
+   - decision check
+
+6. **No decorative-only actions**
    Buttons and screens must create, update or inspect system state.
    No empty feature panels.
-   No fake cards that are not attached to backend state.
+   No fake cards that are not attached to the operating model.
 
-6. **Clinical-safety posture**
+7. **Clinical-safety posture**
    AI may assist but must not be the source of truth.
    Hard rules, audit and human authority decide.
-   RED cases, consent gaps, finance constraints, repeat sedation, pharmacy governance and unsafe discharge must create visible board pressure and audit.
 
-7. **Proof before claims**
-   Do not claim the system works unless commands actually passed:
-   - `python --version`
-   - `npm run check`
-   - `bash RUN_LUCYWORKSOS.sh`
+## Build direction from here
 
-## Codex Context Lock Protocol
+The next build work must continue in this order unless the user explicitly changes priority:
 
-Codex must lock the repo context before editing.
+1. Convert department pages to `day-control-views.ts`.
+2. Add local action persistence for `ScheduledWorkBlock` changes.
+3. Add backend persistence for scheduled blocks and audit events.
+4. Add arrivals, consults, insurance/admin and reception queues to the generated model.
+5. Add conflict detection for resources, staff skills, late updates, missed breaks and overrun work.
+6. Add voice-to-work capture that creates or updates scheduled blocks.
+7. Add patient/subject timeline views from the same block model.
 
-This means: extract the current repo truth, state what is confirmed, state what is not confirmed, then build against that truth only.
+## Hard rule
 
-### Step 0 — Read controls first
+If a change creates another disconnected board, dashboard, fake module or separate source of truth, it is wrong.
 
-Before changing files, read:
-
-```text
-AGENTS.md
-GitHub issue #14
-package.json
-RUN_LUCYWORKSOS.sh
-run_lucyworksos.sh
-scripts/run-dev.sh
-scripts/check-all.sh
-.devcontainer/devcontainer.json
-.python-version
-backend/requirements.txt
-backend/app/models.py
-backend/app/database.py
-backend/app/main.py
-backend/app/main_fixed.py
-backend/app/v3_operational_routes.py
-backend/app/dashboard_routes.py
-frontend/app/page.tsx
-frontend/app/hospital-board/page.tsx
-frontend/components/hospital-shell.tsx
-frontend/app/globals.css
-```
-
-### Step 1 — State confirmed reality
-
-Before editing, Codex must output:
-
-```text
-CONFIRMED:
-- current branch
-- upstream state
-- Python version
-- package scripts
-- backend entrypoint
-- frontend entrypoint
-- current failing command/error
-- primary board route
-
-NOT CONFIRMED:
-- anything not inspected or tested
-```
-
-### Step 2 — No invention rule
-
-Do not invent names, architecture, or modules unless they map to existing LucyWorksOS objects.
-
-Allowed canonical names only:
-
-```text
-LucyWorksOS
-LucyFlow
-LucyPulse
-LucyRota
-LucyWorksAI
-LucySafe
-```
-
-### Step 3 — Locked build passes
-
-Work in this order only:
-
-```text
-PASS 1: Runtime / runner
-PASS 2: Backend imports / SQLModel models
-PASS 3: Smoke tests / npm run check
-PASS 4: Full backend integration chain
-PASS 5: Hospital-board operating-system behaviour
-PASS 6: Real seed data / schedule / room / staff state
-PASS 7: Styling and polish
-```
-
-Do not jump to UI polish while runtime/tests/imports are broken.
-
-### Step 4 — Every claim needs proof
-
-Final claims require command evidence:
-
-```bash
-python --version
-npm run check
-bash RUN_LUCYWORKSOS.sh
-```
-
-If a command cannot run due environment/network limits, state the exact blocker.
-
-## Full integration chain
-
-A case is not integrated until this chain works:
-
-```text
-Referral / intake
-→ Patient
-→ Episode
-→ TriageAssessment
-→ WorkItem
-→ Staff/role ownership
-→ ScheduleBlock
-→ RoomState
-→ blocker/dependency check
-→ handoff / next action
-→ audit event
-→ visible board state
-```
-
-RED / AMBER / ethics / pharmacy / result-review pressure must propagate into:
-
-```text
-WorkItem
-Blocker or EthicsFlag where relevant
-AuditEvent
-/hospital-board pressure display
-```
-
-## Build priority order
-
-Always work in this order:
-
-1. Make the repo run.
-2. Make tests/checks pass.
-3. Fix backend imports/models.
-4. Connect data to actual operational objects.
-5. Improve `/hospital-board` as the primary system surface.
-6. Add real hospital seed data.
-7. Only then polish styling.
-
-Do not start with visual polish while startup, imports, tests, or backend routes are broken.
-
-## Required commands
-
-Primary run command:
-
-```bash
-bash RUN_LUCYWORKSOS.sh
-```
-
-Proof command:
-
-```bash
-npm run check
-```
-
-Development fallback:
-
-```bash
-npm run dev
-```
-
-## Runtime rules
-
-- Use Python 3.12.x.
-- Prefer 3.12.13 when configuring Codespaces.
-- Do not leave the repo depending on Python 3.14 behaviour.
-- If branch has no upstream tracking branch, runner must warn and continue safely rather than dying.
-- Runner must print backend/frontend links clearly.
-
-## Backend rules
-
-Before changing frontend, ensure backend imports cleanly.
-
-Must not leave:
-
-- `ModuleNotFoundError`
-- route imports to missing files
-- SQLModel/Pydantic import crashes
-- missing smoke tests for new route modules
-
-All user-facing operations must create/update real system objects.
-
-No decorative-only actions.
-
-## Hospital-board rules
-
-`/` must redirect to `/hospital-board`.
-
-`/hospital-board` is the primary operating surface.
-
-It must answer:
-
-- What is happening now?
-- Where is it happening?
-- Who owns it?
-- What is blocked?
-- What is next?
-- What is unsafe?
-- What rooms/staff are under pressure?
-- What will be delayed?
-
-Use a control-room layout:
-
-- 15-minute time axis
-- department / room lanes
-- patient / episode identity
-- owner role
-- urgency
-- blocker / dependency / handoff state
-- red/amber/green pressure
-- staff and pharmacy/imaging/ICU pressure
-
-Avoid primary UI made of launch cards, marketing panels, empty module tiles, or vague labels.
-
-## Testing rules
-
-When making changes, run the most relevant available checks.
-
-Minimum before declaring done:
-
-```bash
-npm run check
-```
-
-If unable to run because of environment restriction or package-network restriction, state the exact blocker and what was validated instead.
-
-## Output rule
-
-Final PR/commit summary must include:
-
-- files changed
-- commands run
-- pass/fail for `bash RUN_LUCYWORKSOS.sh`
-- pass/fail for `npm run check`
-- remaining blockers
-
-Do not claim the system works unless the relevant command actually passed.
+LucyWorksOS must remain one generated hospital operating model with multiple filtered views.
