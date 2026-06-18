@@ -3,6 +3,7 @@ export type HospitalModuleId =
   | "intake"
   | "flow"
   | "ops"
+  | "directory"
   | "hr"
   | "pulse"
   | "clinical"
@@ -70,6 +71,17 @@ export const hospitalModules: HospitalModule[] = [
     roles: ["clinical_director", "ops_manager", "clinician", "nurse", "admin"],
     linkedEntities: ["rooms", "room_states", "staff", "schedule_blocks", "pharmacy"],
     decision: "which resource is blocking hospital flow",
+  },
+  {
+    id: "directory",
+    label: "Directory",
+    route: "/resource-directory",
+    title: "RESOURCE DIRECTORY",
+    subtitle: "staff and resource assignment options",
+    endpoint: "/api/day-control/staff-options",
+    roles: ["clinical_director", "ops_manager", "admin"],
+    linkedEntities: ["staff", "resources", "schedule_blocks", "assignments"],
+    decision: "which staff and resource options are available for assignment",
   },
   {
     id: "hr",
@@ -184,7 +196,7 @@ export const hospitalModules: HospitalModule[] = [
 ];
 
 export const primaryHospitalModules = hospitalModules.filter((module) =>
-  ["now", "intake", "flow", "ops", "hr", "pulse", "clinical"].includes(module.id),
+  ["now", "intake", "flow", "ops", "directory", "hr", "pulse", "clinical"].includes(module.id),
 );
 
 export const secondaryHospitalModules = hospitalModules.filter((module) =>
