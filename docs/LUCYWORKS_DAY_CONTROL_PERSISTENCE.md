@@ -31,7 +31,10 @@ POST  /api/day-control/blocks
 PUT   /api/day-control/blocks/bulk
 PATCH /api/day-control/blocks/{block_id}
 POST  /api/day-control/blocks/{block_id}/actions
+GET   /api/day-control/conflicts
 GET   /api/day-control/audit
+GET   /api/day-control/staff-options
+GET   /api/day-control/resource-options
 ```
 
 ## Database tables
@@ -50,11 +53,25 @@ ScheduleStateBlock
 ScheduleStateEvent
 ```
 
+`ScheduleStateBlock` includes assignment fields:
+
+```text
+episode_ref
+assigned_role
+assigned_staff_id
+assigned_staff_name
+resource_id
+resource_name
+```
+
 ## Route files
 
 ```text
 apps/api/app/day_control_routes.py
+apps/api/app/day_control_conflict_routes.py
+apps/api/app/day_control_options_routes.py
 backend/app/day_control_routes.py
+backend/app/day_control_options_routes.py
 ```
 
 Both API trees must stay aligned until the repository is consolidated.
@@ -73,6 +90,46 @@ The store is API-first:
 try API
 seed API if empty
 fallback to localStorage if backend is offline
+poll API every 3 seconds
+refresh API on browser focus
+```
+
+## Frontend assignment UI
+
+Controlled assignment picker:
+
+```text
+apps/web/components/day-control-assignment-picker.tsx
+```
+
+Drawer host:
+
+```text
+apps/web/components/queue-detail-drawer.tsx
+```
+
+Assignment flow:
+
+```text
+select staff
+select resource
+PATCH /api/day-control/blocks/{block_id}
+store refetches persisted blocks
+warnings refresh from /api/day-control/conflicts
+```
+
+## Conflict rules
+
+Persisted conflicts are detected from saved DB state:
+
+```text
+resource_clash
+staff_clash
+unassigned_work
+missing_resource
+blocker
+admin_blocker
+contact_update_blocked
 ```
 
 ## Smoke test
@@ -89,6 +146,20 @@ Run:
 npm run backend:day-control-smoke
 ```
 
+The smoke test covers:
+
+```text
+staff-options
+resource-options
+bulk seed
+list persisted blocks
+assignment patch
+assignment clear
+action update
+audit output
+conflict output
+```
+
 ## Required invariants
 
 1. No page should create its own disconnected work model.
@@ -96,11 +167,13 @@ npm run backend:day-control-smoke
 3. Every action must create an auditable state change.
 4. Backend persistence must replace localStorage as the primary source.
 5. localStorage remains only as offline fallback.
+6. Staff/resource assignments must use controlled IDs where possible.
+7. Conflict detection must read persisted state, not static demo rows.
 
 ## Next persistence work
 
 1. Link block actions to authenticated user identity.
-2. Add case/episode references to ScheduleStateBlock.
-3. Add resource and staff assignment records.
-4. Add conflict detection that reads persisted blocks.
-5. Add migration strategy for schema changes.
+2. Replace hardcoded staff/resource options with real staff and resource tables.
+3. Add case/episode foreign keys rather than loose episode_ref strings.
+4. Add schema migrations for ScheduleStateBlock and ScheduleStateEvent.
+5. Add WebSocket/SSE push so polling can be removed later.
