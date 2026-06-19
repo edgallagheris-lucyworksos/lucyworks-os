@@ -9,7 +9,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 export type DayControlAssignmentPatch = Pick<ScheduledWorkBlock, "assignedRole" | "assignedStaffId" | "assignedStaffName" | "resourceId" | "resourceName">;
 
-type NullableBlockPatch = Partial<ScheduledWorkBlock> & {
+type NullableAssignmentKeys = "assignedRole" | "assignedStaffId" | "assignedStaffName" | "resourceId" | "resourceName";
+type NullableBlockPatch = Omit<Partial<ScheduledWorkBlock>, NullableAssignmentKeys> & {
   assignedRole?: string | null;
   assignedStaffId?: number | null;
   assignedStaffName?: string | null;
