@@ -6,6 +6,7 @@ checks = {
     "hospital board route": ROOT / "apps/web/app/hospital-board/page.tsx",
     "staff location grid": ROOT / "apps/web/components/staff-location-grid.tsx",
     "clinical catalogue": ROOT / "apps/web/lib/clinical-catalogue.ts",
+    "conflict route": ROOT / "apps/api/app/day_control_conflict_routes.py",
 }
 
 for label, path in checks.items():
@@ -15,6 +16,7 @@ for label, path in checks.items():
 route = checks["hospital board route"].read_text()
 grid = checks["staff location grid"].read_text()
 catalogue = checks["clinical catalogue"].read_text()
+conflict_route = checks["conflict route"].read_text()
 
 required_route = [
     "StaffLocationGrid",
@@ -72,5 +74,20 @@ required_catalogue = [
 for token in required_catalogue:
     if token not in catalogue:
         raise SystemExit(f"Clinical catalogue missing required referral contingency/procedure token: {token}")
+
+required_conflict_route = [
+    "PROCEDURE_PROFILES",
+    "_protected_window",
+    "_overlaps",
+    "staff_protected_time_overlap",
+    "resource_protected_time_overlap",
+    "protectedStart",
+    "protectedEnd",
+    "protectedMinutes",
+]
+
+for token in required_conflict_route:
+    if token not in conflict_route:
+        raise SystemExit(f"Conflict route missing protected-time capacity logic: {token}")
 
 print("STAFF LOCATION GRID VALIDATION PASSED")
