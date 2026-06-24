@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { QueueDetailDrawer } from "@/components/queue-detail-drawer";
 import { ScheduleWarningsPanel } from "@/components/schedule-warnings-panel";
-import { pharmacyLabels, procedureForWork } from "@/lib/clinical-catalogue";
+import { pharmacyLabels, procedureForWork, protectedTimeLabel } from "@/lib/clinical-catalogue";
 import { dayControlTimes, type ScheduledWorkBlock } from "@/lib/day-control-work";
 import { useDayControlStore } from "@/lib/day-control-store";
 import type { OperationalActionType, OperationalTarget } from "@/lib/operational-actions";
@@ -103,7 +103,7 @@ function hasPharmacyDependency(block: ScheduledWorkBlock) {
 function clinicalLine(block: ScheduledWorkBlock) {
   const item = procedure(block);
   if (!item) return "procedure: not templated";
-  return `${item.label} · ${item.defaultMinutes}m · ${item.resourceType}`;
+  return protectedTimeLabel(item);
 }
 
 function pharmacyLine(block: ScheduledWorkBlock) {
