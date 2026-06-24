@@ -55,17 +55,22 @@ for token in required_grid:
 required_catalogue = [
     "procedureCatalogue",
     "pharmacyCatalogue",
-    "MRI",
-    "CT",
-    "Major theatre",
-    "Recovery monitoring",
-    "Discharge",
+    "MRI referral pathway",
+    "CT referral pathway",
+    "Major surgery referral pathway",
+    "Referral discharge",
+    "setupMinutes",
+    "handoverMinutes",
+    "contingencyMinutes",
+    "referralAdminMinutes",
+    "protectedMinutesForProcedure",
+    "protectedTimeLabel",
     "anaesthetic-induction",
     "contrast-agent",
 ]
 
 for token in required_catalogue:
     if token not in catalogue:
-        raise SystemExit(f"Clinical catalogue missing required procedure/pharmacy token: {token}")
+        raise SystemExit(f"Clinical catalogue missing required referral contingency/procedure token: {token}")
 
 print("STAFF LOCATION GRID VALIDATION PASSED")
