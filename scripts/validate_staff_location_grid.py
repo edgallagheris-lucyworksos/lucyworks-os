@@ -45,6 +45,7 @@ required_grid = [
     "Theatre",
     "Ward",
     "procedureForWork",
+    "protectedTimeLabel",
     "pharmacyLabels",
     "missing owner/location/next",
     "procedure-generated medication dependencies",
