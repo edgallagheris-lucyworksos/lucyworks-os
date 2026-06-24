@@ -29,6 +29,8 @@ python canonical_v3_smoke_test.py
 python canonical_modules_smoke_test.py
 python knowledge_smoke_test.py
 python operational_action_smoke_test.py
+python day_control_smoke_test.py
+python protected_time_smoke_test.py
 [ -f queue_smoke_test.py ] && python queue_smoke_test.py || echo "WARN: queue_smoke_test.py not present"
 [ -f forecast_smoke_test.py ] && python forecast_smoke_test.py || echo "WARN: forecast_smoke_test.py not present"
 python -c "from app.main import app; print('API startup import OK', bool(app))"
