@@ -7,6 +7,7 @@ checks = {
     "staff location grid": ROOT / "apps/web/components/staff-location-grid.tsx",
     "clinical catalogue": ROOT / "apps/web/lib/clinical-catalogue.ts",
     "conflict route": ROOT / "apps/api/app/day_control_conflict_routes.py",
+    "referral pathway generator": ROOT / "apps/web/lib/referral-pathway.ts",
 }
 
 for label, path in checks.items():
@@ -17,6 +18,7 @@ route = checks["hospital board route"].read_text()
 grid = checks["staff location grid"].read_text()
 catalogue = checks["clinical catalogue"].read_text()
 conflict_route = checks["conflict route"].read_text()
+pathway = checks["referral pathway generator"].read_text()
 
 required_route = [
     "StaffLocationGrid",
@@ -90,5 +92,21 @@ required_conflict_route = [
 for token in required_conflict_route:
     if token not in conflict_route:
         raise SystemExit(f"Conflict route missing protected-time capacity logic: {token}")
+
+required_pathway = [
+    "generateReferralPathway",
+    "Referral triage",
+    "Consent and estimate gate",
+    "Pharmacy preparation",
+    "Clinical handover",
+    "Owner update",
+    "Report to referring vet",
+    "episodeRef",
+    "generatedFrom: \"referral-pathway\"",
+]
+
+for token in required_pathway:
+    if token not in pathway:
+        raise SystemExit(f"Referral pathway generator missing required workflow token: {token}")
 
 print("STAFF LOCATION GRID VALIDATION PASSED")
