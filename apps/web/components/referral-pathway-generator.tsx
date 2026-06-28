@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { generateReferralPathway } from "@/lib/referral-pathway";
-import { useDayControlStore } from "@/lib/day-control-store";
+import type { ScheduledWorkBlock } from "@/lib/day-control-work";
 
 const procedures = [
   { value: "consult", label: "Referral consult" },
@@ -12,12 +12,16 @@ const procedures = [
   { value: "discharge", label: "Discharge pathway" },
 ];
 
+type ReferralPathwayGeneratorProps = {
+  onGenerate: (blocks: ScheduledWorkBlock[]) => void;
+  syncStatus: string;
+};
+
 function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-export function ReferralPathwayGenerator() {
-  const { addBlocks, syncStatus } = useDayControlStore();
+export function ReferralPathwayGenerator({ onGenerate, syncStatus }: ReferralPathwayGeneratorProps) {
   const [subject, setSubject] = useState("New referral");
   const [startTime, setStartTime] = useState("09:00");
   const [procedureText, setProcedureText] = useState("mri");
@@ -34,7 +38,7 @@ export function ReferralPathwayGenerator() {
       ownerRole: ownerRole.trim() || undefined,
       ownerName: ownerName.trim() || undefined,
     });
-    addBlocks(blocks);
+    onGenerate(blocks);
   }
 
   return <section className="rpg"><style>{css}</style><div><b>Generate referral pathway</b><small>Creates triage, consent/estimate, procedure, pharmacy, handover, owner update and referring-vet report tasks.</small></div><label>Case<input value={subject} onChange={(event) => setSubject(event.target.value)} /></label><label>Start<input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} /></label><label>Procedure<select value={procedureText} onChange={(event) => setProcedureText(event.target.value)}>{procedures.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label><label>Lead role<input value={ownerRole} onChange={(event) => setOwnerRole(event.target.value)} /></label><label>Lead name<input value={ownerName} onChange={(event) => setOwnerName(event.target.value)} placeholder="optional" /></label><button onClick={generate}>Generate</button><small>Sync: {syncStatus}</small></section>;
