@@ -77,6 +77,18 @@ export function useDayControlStore() {
 
   useEffect(() => { saveBlocks(blocks); }, [blocks]);
 
+  function replaceAll(nextBlocks: ScheduledWorkBlock[]) {
+    setBlocks(nextBlocks);
+    saveBlocks(nextBlocks);
+    apiReplaceBlocks(nextBlocks).then(() => setSyncStatus("api")).catch(() => setSyncStatus("offline"));
+  }
+
+  function addBlocks(newBlocks: ScheduledWorkBlock[]) {
+    const ids = new Set(newBlocks.map((block) => block.id));
+    const nextBlocks = [...blocks.filter((block) => !ids.has(block.id)), ...newBlocks].sort((a, b) => a.time.localeCompare(b.time) || a.lane.localeCompare(b.lane));
+    replaceAll(nextBlocks);
+  }
+
   function applyAction(blockId: string, action: OperationalActionType) {
     setBlocks((current) => current.map((block) => block.id === blockId ? applyDayControlAction(block, action) : block));
     apiAction(blockId, action).then((updated) => { setBlocks((current) => current.map((block) => block.id === blockId ? updated : block)); setSyncStatus("api"); }).catch(() => setSyncStatus("offline"));
@@ -102,5 +114,5 @@ export function useDayControlStore() {
 
   const pressure = useMemo(() => blocks.filter((block) => block.status === "red" || block.status === "amber" || block.blocker !== "none"), [blocks]);
   const blocked = useMemo(() => blocks.filter((block) => block.blocker !== "none"), [blocks]);
-  return { blocks, pressure, blocked, applyAction, patchBlock, assignBlock, clearAssignment, refreshBlocks, resetBlocks, rowsForLanes, syncStatus };
+  return { blocks, pressure, blocked, addBlocks, applyAction, patchBlock, assignBlock, clearAssignment, refreshBlocks, resetBlocks, rowsForLanes, syncStatus };
 }
