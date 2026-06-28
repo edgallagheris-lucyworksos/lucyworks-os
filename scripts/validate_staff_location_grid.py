@@ -5,6 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 checks = {
     "hospital board route": ROOT / "apps/web/app/hospital-board/page.tsx",
     "staff location grid": ROOT / "apps/web/components/staff-location-grid.tsx",
+    "referral pathway panel": ROOT / "apps/web/components/referral-pathway-generator.tsx",
+    "day control store": ROOT / "apps/web/lib/day-control-store.ts",
     "clinical catalogue": ROOT / "apps/web/lib/clinical-catalogue.ts",
     "conflict route": ROOT / "apps/api/app/day_control_conflict_routes.py",
     "referral pathway generator": ROOT / "apps/web/lib/referral-pathway.ts",
@@ -16,6 +18,8 @@ for label, path in checks.items():
 
 route = checks["hospital board route"].read_text()
 grid = checks["staff location grid"].read_text()
+panel = checks["referral pathway panel"].read_text()
+store = checks["day control store"].read_text()
 catalogue = checks["clinical catalogue"].read_text()
 conflict_route = checks["conflict route"].read_text()
 pathway = checks["referral pathway generator"].read_text()
@@ -46,6 +50,9 @@ required_grid = [
     "MRI",
     "Theatre",
     "Ward",
+    "ReferralPathwayGenerator",
+    "onGenerate={addBlocks}",
+    "syncStatus={syncStatus}",
     "procedureForWork",
     "protectedTimeLabel",
     "pharmacyLabels",
@@ -56,6 +63,34 @@ required_grid = [
 for token in required_grid:
     if token not in grid:
         raise SystemExit(f"Staff location grid missing required usability/logic token: {token}")
+
+required_panel = [
+    "Generate referral pathway",
+    "onGenerate",
+    "generateReferralPathway",
+    "Referral consult",
+    "MRI pathway",
+    "CT pathway",
+    "Major surgery pathway",
+    "Discharge pathway",
+]
+
+for token in required_panel:
+    if token not in panel:
+        raise SystemExit(f"Referral pathway panel missing required UI token: {token}")
+
+if "useDayControlStore" in panel:
+    raise SystemExit("Referral pathway panel must use board-provided store actions, not its own store instance")
+
+required_store = [
+    "function addBlocks",
+    "apiReplaceBlocks(nextBlocks)",
+    "return { blocks, pressure, blocked, addBlocks",
+]
+
+for token in required_store:
+    if token not in store:
+        raise SystemExit(f"Day-control store missing generated-pathway append support: {token}")
 
 required_catalogue = [
     "procedureCatalogue",
