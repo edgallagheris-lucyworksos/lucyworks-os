@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 checks = {
     "hospital board route": ROOT / "apps/web/app/hospital-board/page.tsx",
     "staff location grid": ROOT / "apps/web/components/staff-location-grid.tsx",
+    "quick assignment strip": ROOT / "apps/web/components/quick-assignment-strip.tsx",
     "referral pathway panel": ROOT / "apps/web/components/referral-pathway-generator.tsx",
     "day control store": ROOT / "apps/web/lib/day-control-store.ts",
     "clinical catalogue": ROOT / "apps/web/lib/clinical-catalogue.ts",
@@ -18,6 +19,7 @@ for label, path in checks.items():
 
 route = checks["hospital board route"].read_text()
 grid = checks["staff location grid"].read_text()
+quick_assign = checks["quick assignment strip"].read_text()
 panel = checks["referral pathway panel"].read_text()
 store = checks["day control store"].read_text()
 catalogue = checks["clinical catalogue"].read_text()
@@ -51,8 +53,13 @@ required_grid = [
     "Theatre",
     "Ward",
     "ReferralPathwayGenerator",
+    "QuickAssignmentStrip",
     "onGenerate={addBlocks}",
     "syncStatus={syncStatus}",
+    "assignBlock",
+    "clearAssignment",
+    "onAssign={assignBlock}",
+    "onClear={clearAssignment}",
     "type BoardMode = \"role\" | \"person\"",
     "People columns",
     "Role columns",
@@ -70,6 +77,24 @@ required_grid = [
 for token in required_grid:
     if token not in grid:
         raise SystemExit(f"Staff location grid missing required usability/logic token: {token}")
+
+required_quick_assign = [
+    "QuickAssignmentStrip",
+    "staff-options",
+    "resource-options",
+    "matchesStaff",
+    "matchesResource",
+    "Quick staff",
+    "Resource",
+    "Assign",
+    "Clear",
+    "onAssign(block.id",
+    "onClear(block.id)",
+]
+
+for token in required_quick_assign:
+    if token not in quick_assign:
+        raise SystemExit(f"Quick assignment strip missing required token: {token}")
 
 required_panel = [
     "Generate referral pathway",
@@ -91,13 +116,15 @@ if "useDayControlStore" in panel:
 
 required_store = [
     "function addBlocks",
+    "function assignBlock",
+    "function clearAssignment",
     "apiReplaceBlocks(nextBlocks)",
     "return { blocks, pressure, blocked, addBlocks",
 ]
 
 for token in required_store:
     if token not in store:
-        raise SystemExit(f"Day-control store missing generated-pathway append support: {token}")
+        raise SystemExit(f"Day-control store missing generated-pathway or assignment support: {token}")
 
 required_catalogue = [
     "procedureCatalogue",
