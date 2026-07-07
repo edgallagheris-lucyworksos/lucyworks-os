@@ -54,6 +54,7 @@ required_grid = [
     "Ward",
     "ReferralPathwayGenerator",
     "QuickAssignmentStrip",
+    "blocks={blocks}",
     "onGenerate={addBlocks}",
     "syncStatus={syncStatus}",
     "assignBlock",
@@ -72,6 +73,7 @@ required_grid = [
     "pharmacyLabels",
     "missing owner/location/next",
     "procedure-generated medication dependencies",
+    "Smart quick assign recommends staff/resources",
 ]
 
 for token in required_grid:
@@ -82,19 +84,32 @@ required_quick_assign = [
     "QuickAssignmentStrip",
     "staff-options",
     "resource-options",
-    "matchesStaff",
-    "matchesResource",
+    "procedureForWork",
+    "type ProtectedWindow",
+    "type Candidate",
+    "protectedWindow",
+    "overlaps",
+    "sameCase",
+    "conflictFor",
+    "staffScore",
+    "resourceScore",
+    "staffCandidates",
+    "resourceCandidates",
+    "recommended:",
+    "busy until",
+    "Assign with warning",
     "Quick staff",
     "Resource",
     "Assign",
     "Clear",
     "onAssign(block.id",
     "onClear(block.id)",
+    "recommended by role, area and protected time",
 ]
 
 for token in required_quick_assign:
     if token not in quick_assign:
-        raise SystemExit(f"Quick assignment strip missing required token: {token}")
+        raise SystemExit(f"Quick assignment strip missing smart assignment token: {token}")
 
 required_panel = [
     "Generate referral pathway",
