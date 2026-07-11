@@ -8,6 +8,8 @@ checks = {
     "quick assignment strip": ROOT / "apps/web/components/quick-assignment-strip.tsx",
     "referral pathway panel": ROOT / "apps/web/components/referral-pathway-generator.tsx",
     "day control store": ROOT / "apps/web/lib/day-control-store.ts",
+    "api main": ROOT / "apps/api/app/main.py",
+    "safe assignment route": ROOT / "apps/api/app/day_control_assignment_routes.py",
     "clinical catalogue": ROOT / "apps/web/lib/clinical-catalogue.ts",
     "conflict route": ROOT / "apps/api/app/day_control_conflict_routes.py",
     "referral pathway generator": ROOT / "apps/web/lib/referral-pathway.ts",
@@ -22,6 +24,8 @@ grid = checks["staff location grid"].read_text()
 quick_assign = checks["quick assignment strip"].read_text()
 panel = checks["referral pathway panel"].read_text()
 store = checks["day control store"].read_text()
+api_main = checks["api main"].read_text()
+safe_assignment_route = checks["safe assignment route"].read_text()
 catalogue = checks["clinical catalogue"].read_text()
 conflict_route = checks["conflict route"].read_text()
 pathway = checks["referral pathway generator"].read_text()
@@ -134,12 +138,52 @@ required_store = [
     "function assignBlock",
     "function clearAssignment",
     "apiReplaceBlocks(nextBlocks)",
+    "apiSafeAssign",
+    "/safe-assign",
+    "allowWarning: true",
+    "assignment checking",
+    "safe assignment request failed",
     "return { blocks, pressure, blocked, addBlocks",
 ]
 
 for token in required_store:
     if token not in store:
-        raise SystemExit(f"Day-control store missing generated-pathway or assignment support: {token}")
+        raise SystemExit(f"Day-control store missing generated-pathway, assignment or safe-assign support: {token}")
+
+required_api_main = [
+    "day_control_assignment_router",
+    "day_control_assignment_routes",
+    "app.include_router(day_control_assignment_router)",
+]
+
+for token in required_api_main:
+    if token not in api_main:
+        raise SystemExit(f"API main missing safe assignment router wiring: {token}")
+
+required_safe_assignment_route = [
+    "AssignmentRecommendationRequest",
+    "SafeAssignPayload",
+    "@router.post(\"/assignment-recommendations\")",
+    "@router.patch(\"/blocks/{block_id}/safe-assign\")",
+    "safe_assign_block",
+    "allowWarning",
+    "decision",
+    "allowed",
+    "warn",
+    "block",
+    "_protected_window",
+    "_overlaps",
+    "_candidate_staff",
+    "_candidate_resources",
+    "_assignment_warnings",
+    "staff_protected_time_overlap",
+    "resource_protected_time_overlap",
+    "safe_assign",
+]
+
+for token in required_safe_assignment_route:
+    if token not in safe_assignment_route:
+        raise SystemExit(f"Safe assignment route missing backend safety token: {token}")
 
 required_catalogue = [
     "procedureCatalogue",
