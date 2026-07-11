@@ -22,6 +22,13 @@ export type ScheduledWorkBlock = {
   assignedStaffName?: string;
   resourceId?: string;
   resourceName?: string;
+  consentStatus?: string;
+  estimateStatus?: string;
+  insuranceStatus?: string;
+  pharmacyReady?: boolean;
+  ownerUpdated?: boolean;
+  referringVetReportSent?: boolean;
+  dischargeClear?: boolean;
 };
 
 export type ProcedureTemplate = {
@@ -88,8 +95,22 @@ function fromMinutes(total: number) { const hour = Math.floor(total / 60); const
 function templateFor(key: string) { const template = procedureTemplates.find((item) => item.key === key); if (!template) throw new Error(`Missing procedure template: ${key}`); return template; }
 function routeForLane(lane: DayControlLane) { if (lane === "arrival") return "/lucy-intake"; if (lane === "reception") return "/lucy-intake"; if (lane === "consult") return "/flow"; if (lane === "insurance") return "/flow"; if (lane === "intake") return "/lucy-intake"; if (lane === "client") return "/flow"; if (lane === "decision") return "/my-shift"; if (lane === "nursing") return "/my-shift"; if (lane === "rooms") return "/theatre"; if (lane === "imaging") return "/imaging"; if (lane === "care") return "/icu-wards"; if (lane === "supply") return "/lucy-pharm"; return "/rota"; }
 
+function governanceFor(caseItem: ScheduledCase, what: string, lane: DayControlLane, blocker: string): Partial<ScheduledWorkBlock> {
+  const label = `${what} ${lane}`.toLowerCase();
+  const clear = blocker === "none";
+  return {
+    consentStatus: label.includes("check-in") || label.includes("consent") ? (clear ? "clear" : "pending") : undefined,
+    estimateStatus: label.includes("estimate") || label.includes("insurance") ? (caseItem.insuranceStatus === "clear" ? "clear" : "pending") : undefined,
+    insuranceStatus: caseItem.insuranceStatus,
+    pharmacyReady: label.includes("prep") || label.includes("workup") || label.includes("procedure") ? clear : undefined,
+    ownerUpdated: label.includes("client update") ? clear : undefined,
+    referringVetReportSent: label.includes("decision check") ? caseItem.status === "green" : undefined,
+    dischargeClear: caseItem.templateKey === "discharge" && label.includes("client update") ? clear : undefined,
+  };
+}
+
 function makeTimedBlock(caseItem: ScheduledCase, template: ProcedureTemplate, time: string, lane: DayControlLane, what: string, who: string, where: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock {
-  return { id: `${caseItem.id}-${lane}-${time.replace(":", "")}`, time, lane, what, who, where, how, status: blocker !== "none" ? "amber" : caseItem.status, blocker, next: blocker !== "none" ? "clear blocker" : "continue planned flow", route: routeForLane(lane), subject: caseItem.subject, durationMinutes, generatedFrom: template.key, episodeRef: caseItem.id, assignedRole: who, resourceName: where };
+  return { id: `${caseItem.id}-${lane}-${time.replace(":", "")}`, time, lane, what, who, where, how, status: blocker !== "none" ? "amber" : caseItem.status, blocker, next: blocker !== "none" ? "clear blocker" : "continue planned flow", route: routeForLane(lane), subject: caseItem.subject, durationMinutes, generatedFrom: template.key, episodeRef: caseItem.id, assignedRole: who, resourceName: where, ...governanceFor(caseItem, what, lane, blocker) };
 }
 function makeBlock(caseItem: ScheduledCase, template: ProcedureTemplate, offset: number, lane: DayControlLane, what: string, who: string, how: string, durationMinutes: number, blocker = "none"): ScheduledWorkBlock { return makeTimedBlock(caseItem, template, fromMinutes(toMinutes(caseItem.start) + offset), lane, what, who, template.resource, how, durationMinutes, blocker); }
 function insuranceBlocker(caseItem: ScheduledCase) { if (caseItem.insuranceStatus === "clear") return "none"; if (caseItem.insuranceStatus === "query") return "insurance query"; return "insurance pending"; }
