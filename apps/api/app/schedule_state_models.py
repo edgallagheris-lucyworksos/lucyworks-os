@@ -29,6 +29,13 @@ class ScheduleStateBlock(SQLModel, table=True):
     assigned_staff_name: Optional[str] = None
     resource_id: Optional[str] = None
     resource_name: Optional[str] = None
+    consent_status: Optional[str] = None
+    estimate_status: Optional[str] = None
+    insurance_status: Optional[str] = None
+    pharmacy_ready: Optional[bool] = None
+    owner_updated: Optional[bool] = None
+    referring_vet_report_sent: Optional[bool] = None
+    discharge_clear: Optional[bool] = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
