@@ -18,6 +18,8 @@ type NullableBlockPatch = Omit<Partial<ScheduledWorkBlock>, NullableAssignmentKe
   resourceName?: string | null;
 };
 
+type SafeAssignResponse = { allowed?: boolean; decision?: "allow" | "warn" | "block" | string; warnings?: unknown[]; block?: ScheduledWorkBlock };
+
 export function applyDayControlAction(block: ScheduledWorkBlock, action: OperationalActionType): ScheduledWorkBlock {
   if (action === "resolve") return { ...block, status: "green", blocker: "none", next: "complete or continue planned flow" };
   if (action === "hold") return { ...block, status: "blue", blocker: "on hold", next: "review hold reason" };
@@ -38,6 +40,7 @@ async function apiGetBlocks() { const response = await fetch(`${API_BASE}/api/da
 async function apiReplaceBlocks(blocks: ScheduledWorkBlock[]) { await fetch(`${API_BASE}/api/day-control/blocks/bulk`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ blocks }) }); }
 async function apiAction(blockId: string, action: OperationalActionType) { const response = await fetch(`${API_BASE}/api/day-control/blocks/${blockId}/actions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, actor: "frontend" }) }); if (!response.ok) throw new Error("action request failed"); const data = await response.json(); return data.block as ScheduledWorkBlock; }
 async function apiPatchBlock(blockId: string, patch: NullableBlockPatch) { const response = await fetch(`${API_BASE}/api/day-control/blocks/${blockId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }); if (!response.ok) throw new Error("patch request failed"); const data = await response.json(); return data.block as ScheduledWorkBlock; }
+async function apiSafeAssign(blockId: string, patch: DayControlAssignmentPatch) { const response = await fetch(`${API_BASE}/api/day-control/blocks/${blockId}/safe-assign`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...patch, allowWarning: true, actor: "frontend", reason: "smart quick assignment" }) }); if (!response.ok) throw new Error("safe assignment request failed"); return await response.json() as SafeAssignResponse; }
 
 export function useDayControlStore() {
   const [blocks, setBlocks] = useState<ScheduledWorkBlock[]>(scheduledWorkBlocks);
@@ -99,7 +102,18 @@ export function useDayControlStore() {
     apiPatchBlock(blockId, patch).then((updated) => { setBlocks((current) => current.map((block) => block.id === blockId ? updated : block)); setSyncStatus("api"); }).catch(() => setSyncStatus("offline"));
   }
 
-  function assignBlock(blockId: string, patch: DayControlAssignmentPatch) { patchBlock(blockId, { ...patch, next: "assignment updated", status: "amber" }); }
+  function assignBlock(blockId: string, patch: DayControlAssignmentPatch) {
+    const pending = { ...patch, next: "assignment checking", status: "amber" };
+    setBlocks((current) => current.map((block) => block.id === blockId ? { ...block, ...pending } as ScheduledWorkBlock : block));
+    apiSafeAssign(blockId, patch).then((result) => {
+      if (result.block) setBlocks((current) => current.map((block) => block.id === blockId ? result.block as ScheduledWorkBlock : block));
+      setSyncStatus("api");
+    }).catch(() => {
+      setSyncStatus("offline");
+      patchBlock(blockId, { ...patch, next: "assignment saved locally only", status: "amber" });
+    });
+  }
+
   function clearAssignment(blockId: string) { patchBlock(blockId, { assignedRole: null, assignedStaffId: null, assignedStaffName: null, resourceId: null, resourceName: null, next: "assignment cleared", status: "amber" }); }
 
   function resetBlocks() {
