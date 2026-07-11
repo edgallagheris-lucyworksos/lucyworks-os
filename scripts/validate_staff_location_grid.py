@@ -9,9 +9,13 @@ checks = {
     "governance gates panel": ROOT / "apps/web/components/governance-gates-panel.tsx",
     "referral pathway panel": ROOT / "apps/web/components/referral-pathway-generator.tsx",
     "day control store": ROOT / "apps/web/lib/day-control-store.ts",
+    "day control work": ROOT / "apps/web/lib/day-control-work.ts",
     "api main": ROOT / "apps/api/app/main.py",
+    "database": ROOT / "apps/api/app/database.py",
+    "schedule state models": ROOT / "apps/api/app/schedule_state_models.py",
     "safe assignment route": ROOT / "apps/api/app/day_control_assignment_routes.py",
     "governance route": ROOT / "apps/api/app/day_control_governance_routes.py",
+    "day control route": ROOT / "apps/api/app/day_control_routes.py",
     "clinical catalogue": ROOT / "apps/web/lib/clinical-catalogue.ts",
     "conflict route": ROOT / "apps/api/app/day_control_conflict_routes.py",
     "referral pathway generator": ROOT / "apps/web/lib/referral-pathway.ts",
@@ -27,9 +31,13 @@ quick_assign = checks["quick assignment strip"].read_text()
 governance_panel = checks["governance gates panel"].read_text()
 panel = checks["referral pathway panel"].read_text()
 store = checks["day control store"].read_text()
+work = checks["day control work"].read_text()
 api_main = checks["api main"].read_text()
+database = checks["database"].read_text()
+models = checks["schedule state models"].read_text()
 safe_assignment_route = checks["safe assignment route"].read_text()
 governance_route = checks["governance route"].read_text()
+day_control_route = checks["day control route"].read_text()
 catalogue = checks["clinical catalogue"].read_text()
 conflict_route = checks["conflict route"].read_text()
 pathway = checks["referral pathway generator"].read_text()
@@ -122,7 +130,14 @@ required_governance_panel = [
     "GovernanceGatesPanel",
     "/api/day-control/governance-gates",
     "Clinical/admin gates",
-    "Consent, estimate, insurance, pharmacy, owner update and referring-vet report governance",
+    "Explicit state is used before text fallback",
+    "consentStatus",
+    "estimateStatus",
+    "insuranceStatus",
+    "pharmacyReady",
+    "ownerUpdated",
+    "referringVetReportSent",
+    "dischargeClear",
     "hard blocks",
     "warnings",
 ]
@@ -166,6 +181,52 @@ for token in required_store:
     if token not in store:
         raise SystemExit(f"Day-control store missing generated-pathway, assignment or safe-assign support: {token}")
 
+required_work = [
+    "consentStatus?: string",
+    "estimateStatus?: string",
+    "insuranceStatus?: string",
+    "pharmacyReady?: boolean",
+    "ownerUpdated?: boolean",
+    "referringVetReportSent?: boolean",
+    "dischargeClear?: boolean",
+    "governanceFor",
+]
+
+for token in required_work:
+    if token not in work:
+        raise SystemExit(f"Day-control work type/seed data missing explicit governance token: {token}")
+
+required_models = [
+    "consent_status",
+    "estimate_status",
+    "insurance_status",
+    "pharmacy_ready",
+    "owner_updated",
+    "referring_vet_report_sent",
+    "discharge_clear",
+]
+
+for token in required_models:
+    if token not in models:
+        raise SystemExit(f"Schedule state model missing explicit governance field: {token}")
+
+required_database = [
+    "GOVERNANCE_COLUMNS",
+    "consent_status",
+    "estimate_status",
+    "insurance_status",
+    "pharmacy_ready",
+    "owner_updated",
+    "referring_vet_report_sent",
+    "discharge_clear",
+    "ALTER TABLE schedulestateblock ADD COLUMN",
+    "_ensure_schedule_state_governance_columns",
+]
+
+for token in required_database:
+    if token not in database:
+        raise SystemExit(f"Database missing governance migration token: {token}")
+
 required_api_main = [
     "day_control_assignment_router",
     "day_control_assignment_routes",
@@ -204,6 +265,28 @@ for token in required_safe_assignment_route:
     if token not in safe_assignment_route:
         raise SystemExit(f"Safe assignment route missing backend safety token: {token}")
 
+required_day_control_route = [
+    "class GovernanceFields",
+    "consentStatus",
+    "estimateStatus",
+    "insuranceStatus",
+    "pharmacyReady",
+    "ownerUpdated",
+    "referringVetReportSent",
+    "dischargeClear",
+    "consent_status",
+    "estimate_status",
+    "insurance_status",
+    "pharmacy_ready",
+    "owner_updated",
+    "referring_vet_report_sent",
+    "discharge_clear",
+]
+
+for token in required_day_control_route:
+    if token not in day_control_route:
+        raise SystemExit(f"Day-control route missing explicit governance API token: {token}")
+
 required_governance_route = [
     "@router.get(\"/governance-gates\")",
     "list_governance_gates",
@@ -213,6 +296,18 @@ required_governance_route = [
     "pharmacy_gate",
     "owner_update_gate",
     "referring_vet_report_gate",
+    "discharge_clear_gate",
+    "consent_status",
+    "estimate_status",
+    "insurance_status",
+    "pharmacy_ready",
+    "owner_updated",
+    "referring_vet_report_sent",
+    "discharge_clear",
+    "explicit_state",
+    "text_fallback",
+    "_explicit_clear",
+    "_explicit_bool_clear",
     "Procedure blocked: consent not clear",
     "Procedure blocked: estimate not clear",
     "Procedure blocked: pharmacy not ready",
@@ -270,6 +365,13 @@ required_pathway = [
     "Report to referring vet",
     "episodeRef",
     "generatedFrom: \"referral-pathway\"",
+    "consentStatus",
+    "estimateStatus",
+    "insuranceStatus",
+    "pharmacyReady",
+    "ownerUpdated",
+    "referringVetReportSent",
+    "dischargeClear",
 ]
 
 for token in required_pathway:
