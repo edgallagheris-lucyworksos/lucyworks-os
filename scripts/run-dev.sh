@@ -4,12 +4,13 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-echo "== LucyWorks OS: dev runner =="
-echo "Backend:  http://localhost:8000"
-echo "Frontend: http://localhost:3000"
+echo "== LucyWorks OS: monorepo dev runner =="
+echo "API:  http://localhost:8000"
+echo "Web:  http://localhost:3000"
+echo "Board: http://localhost:3000/hospital-board"
 echo ""
 
-echo "Starting backend and frontend. Press Ctrl+C to stop both."
+echo "Starting apps/api and apps/web. Press Ctrl+C to stop both."
 
 cleanup() {
   echo "\nStopping LucyWorks OS..."
@@ -18,14 +19,14 @@ cleanup() {
 trap cleanup EXIT
 
 (
-  cd "$ROOT_DIR/backend"
+  cd "$ROOT_DIR/apps/api"
   python -m pip install --upgrade pip >/dev/null
-  pip install -r requirements.txt >/dev/null
-  uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+  python -m pip install -r requirements.txt >/dev/null
+  python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ) &
 
 (
-  cd "$ROOT_DIR/frontend"
+  cd "$ROOT_DIR/apps/web"
   npm install >/dev/null
   NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run dev -- --hostname 0.0.0.0 --port 3000
 ) &
