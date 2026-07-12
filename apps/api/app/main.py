@@ -34,6 +34,7 @@ from app.day_control_conflict_routes import router as day_control_conflict_route
 from app.day_control_options_routes import router as day_control_options_router
 from app.day_control_assignment_routes import router as day_control_assignment_router
 from app.day_control_governance_routes import router as day_control_governance_router
+from app.patient_care_routes import router as patient_care_router
 
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
@@ -70,3 +71,4 @@ app.include_router(day_control_conflict_router)
 app.include_router(day_control_options_router)
 app.include_router(day_control_assignment_router)
 app.include_router(day_control_governance_router)
+app.include_router(patient_care_router)
