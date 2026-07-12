@@ -7,7 +7,7 @@ import { QuickAssignmentStrip } from "@/components/quick-assignment-strip";
 import { ReferralPathwayGenerator } from "@/components/referral-pathway-generator";
 import { ScheduleWarningsPanel } from "@/components/schedule-warnings-panel";
 import { pharmacyLabels, procedureForWork, protectedTimeLabel } from "@/lib/clinical-catalogue";
-import { dayControlTimes, type ScheduledWorkBlock } from "@/lib/day-control-work";
+import type { ScheduledWorkBlock } from "@/lib/day-control-work";
 import { useDayControlStore } from "@/lib/day-control-store";
 import type { OperationalActionType, OperationalTarget } from "@/lib/operational-actions";
 
@@ -97,16 +97,16 @@ function integrityClass(block: ScheduledWorkBlock) {
 
 function movement(block: ScheduledWorkBlock) {
   const next = safe(block.next).toLowerCase();
-  if (next.includes("mri")) return "-> MRI";
-  if (next.includes("ct")) return "-> CT";
-  if (next.includes("theatre")) return "-> theatre";
-  if (next.includes("ward")) return "-> ward";
-  if (next.includes("owner") || next.includes("client")) return "-> client";
+  if (next.includes("mri")) return "to MRI";
+  if (next.includes("ct")) return "to CT";
+  if (next.includes("theatre")) return "to theatre";
+  if (next.includes("ward")) return "to ward";
+  if (next.includes("owner") || next.includes("client")) return "owner/client contact";
   return safe(block.next) || "NO NEXT ACTION";
 }
 
 function procedure(block: ScheduledWorkBlock) {
-  return procedureForWork(`${block.what} ${block.how} ${block.where} ${block.next}`, block.lane);
+  return procedureForWork(`${safe(block.what)} ${safe(block.how)} ${safe(block.where)} ${safe(block.next)}`, block.lane);
 }
 
 function hasPharmacyDependency(block: ScheduledWorkBlock) {
@@ -115,13 +115,13 @@ function hasPharmacyDependency(block: ScheduledWorkBlock) {
 
 function clinicalLine(block: ScheduledWorkBlock) {
   const item = procedure(block);
-  if (!item) return "procedure: not templated";
+  if (!item) return "general work";
   return protectedTimeLabel(item);
 }
 
 function pharmacyLine(block: ScheduledWorkBlock) {
   const item = procedure(block);
-  if (!item || item.pharmacyRefs.length === 0) return "pharmacy: none";
+  if (!item || item.pharmacyRefs.length === 0) return "pharmacy clear";
   return `pharmacy: ${pharmacyLabels(item.pharmacyRefs).join(" / ")}`;
 }
 
@@ -164,10 +164,22 @@ function blockVisible(block: ScheduledWorkBlock, view: ViewKey) {
   return columnKey(block) === view;
 }
 
-function cellBlocks(blocks: ScheduledWorkBlock[], time: string, column: DisplayColumn, view: ViewKey, mode: BoardMode) {
-  if (mode === "person") return blocks.filter((block) => block.time === time && personColumnKey(block) === column.key);
-  if (view === "pharmacy" && column.roleKey === "pharmacy") return blocks.filter((block) => block.time === time && (columnKey(block) === "pharmacy" || hasPharmacyDependency(block)));
-  return blocks.filter((block) => block.time === time && columnKey(block) === column.roleKey);
+function blockSort(left: ScheduledWorkBlock, right: ScheduledWorkBlock) {
+  return safe(left.time).localeCompare(safe(right.time)) || safe(left.subject || left.what).localeCompare(safe(right.subject || right.what));
+}
+
+function columnBlocks(blocks: ScheduledWorkBlock[], column: DisplayColumn, mode: BoardMode) {
+  if (mode === "person") return blocks.filter((block) => personColumnKey(block) === column.key).sort(blockSort);
+  return blocks.filter((block) => columnKey(block) === column.roleKey).sort(blockSort);
+}
+
+function groupedByTime(blocks: ScheduledWorkBlock[]) {
+  const map = new Map<string, ScheduledWorkBlock[]>();
+  for (const block of [...blocks].sort(blockSort)) {
+    const time = safe(block.time) || "time unset";
+    map.set(time, [...(map.get(time) || []), block]);
+  }
+  return Array.from(map.entries());
 }
 
 export function StaffLocationGrid() {
@@ -177,10 +189,10 @@ export function StaffLocationGrid() {
   const [mode, setMode] = useState<BoardMode>("person");
   const filteredBlocks = useMemo(() => blocks.filter((block) => blockVisible(block, view)), [blocks, view]);
   const visibleColumns = useMemo(() => mode === "person" ? personViewColumns(filteredBlocks) : roleViewColumns(view), [filteredBlocks, mode, view]);
-  const timesWithWork = dayControlTimes.filter((time) => filteredBlocks.some((block) => block.time === time));
-  const visibleTimes = timesWithWork.length ? timesWithWork : dayControlTimes;
+  const visibleGroups = useMemo(() => groupedByTime(filteredBlocks), [filteredBlocks]);
   const integrityWarnings = blocks.filter((block) => !hasOwner(block) || !hasLocation(block) || !hasNext(block)).length;
   const namedPeople = blocks.filter((block) => safe(block.assignedStaffName)).length;
+  const blockedCount = blocked.length + integrityWarnings;
 
   function onActionComplete(item: OperationalTarget, action: OperationalActionType) {
     applyAction(String(item.id), action);
@@ -188,10 +200,82 @@ export function StaffLocationGrid() {
 
   function workCard(block: ScheduledWorkBlock) {
     const blocker = safe(block.blocker) || "none";
-    return <div key={block.id} className="workcard"><button type="button" className={`work ${block.status}${integrityClass(block)}`} onClick={() => setSelected(target(block))}><b>{block.subject || block.what}</b><span>{block.what}</span><small>{owner(block) || "NO OWNER"} - {block.where || "NO LOCATION"}</small><small className="clinical">{clinicalLine(block)}</small><small className="clinical">{pharmacyLine(block)}</small><em>{blocker.toLowerCase() !== "none" ? blocker : movement(block)}</em></button><QuickAssignmentStrip block={block} blocks={blocks} onAssign={assignBlock} onClear={clearAssignment} /></div>;
+    const isBlocked = blocker.toLowerCase() !== "none";
+    return <article key={block.id} className={`workcard ${block.status}${integrityClass(block)}`}>
+      <button type="button" className="work" onClick={() => setSelected(target(block))}>
+        <span className="eyebrow">{block.time} · {roleColumn(columnKey(block)).label}</span>
+        <b>{block.subject || block.what}</b>
+        <strong>{block.what}</strong>
+        <small>{owner(block) || "NO OWNER"} · {block.where || "NO LOCATION"}</small>
+        <small>{clinicalLine(block)}</small>
+        <small>{pharmacyLine(block)}</small>
+        <em>{isBlocked ? `Blocked: ${blocker}` : movement(block)}</em>
+      </button>
+      <details className="assignment">
+        <summary>Assign staff / resource</summary>
+        <QuickAssignmentStrip block={block} blocks={blocks} onAssign={assignBlock} onClear={clearAssignment} />
+      </details>
+    </article>;
   }
 
-  return <main className="slg"><style>{css}</style><header><div><span>LucyWorks OS</span><h1>Staff location grid</h1><p>Time down the side. People mode shows named staff columns first, then unassigned role columns. Role mode keeps the old operational group view.</p></div><aside><b>{blocked.length + integrityWarnings}</b><small>blocked / incomplete</small><button onClick={resetBlocks}>Reset</button></aside></header><ReferralPathwayGenerator onGenerate={addBlocks} syncStatus={syncStatus} /><section className="modebar"><button className={mode === "person" ? "active" : ""} onClick={() => setMode("person")}>People columns</button><button className={mode === "role" ? "active" : ""} onClick={() => setMode("role")}>Role columns</button><small>{namedPeople} named assignments - unassigned work stays visible</small></section><nav>{views.map((item) => <button key={item.key} className={view === item.key ? "active" : ""} onClick={() => setView(item.key)}>{item.label}</button>)}</nav><section className="summary"><div><b>Pressure</b><small>{pressure.length} rows</small></div><div><b>Visible</b><small>{filteredBlocks.length} tasks</small></div><div><b>Integrity</b><small>{integrityWarnings} missing owner/location/next</small></div></section><ScheduleWarningsPanel /><GovernanceGatesPanel /><section className="gridWrap"><section className="grid" style={{ gridTemplateColumns: `84px repeat(${Math.max(visibleColumns.length, 1)}, minmax(235px, 1fr))`, minWidth: `${84 + Math.max(visibleColumns.length, 1) * 235}px` }}><div className="corner">Time</div>{visibleColumns.length ? visibleColumns.map((column) => <div className={`head ${column.kind}`} key={column.key}>{column.label}</div>) : <div className="head">No visible work</div>}{visibleTimes.map((time) => <div className="row" key={time}><div className="time">{time}</div>{visibleColumns.length ? visibleColumns.map((column) => { const cell = cellBlocks(filteredBlocks, time, column, view, mode); return <div className="cell" key={`${time}-${column.key}`}>{cell.length ? cell.map(workCard) : <span className="empty">.</span>}</div>; }) : <div className="cell"><span className="empty">.</span></div>}</div>)}</section></section><section className="rule"><b>Rule:</b> person first. A named person column shows real capacity. Governance gates stop unsafe referral flow: consent, estimate, pharmacy, owner update and referring-vet report must be clear.</section><QueueDetailDrawer target={selected} onClose={() => setSelected(null)} onActionComplete={onActionComplete} /></main>;
+  return <main className="slg"><style>{css}</style>
+    <section className="topbar">
+      <div>
+        <span>LucyWorks OS</span>
+        <h1>Hospital command board</h1>
+        <p>Person / role / location / time. Mobile-first case flow with the master board still underneath.</p>
+      </div>
+      <div className="topActions">
+        <a href="/hospital-board">Board</a>
+        <a href="/system-control">System</a>
+        <a href="/workspace">Workspace</a>
+        <button type="button" onClick={resetBlocks}>Reset</button>
+      </div>
+    </section>
+
+    <section className="commandStrip">
+      <div><b>{blockedCount}</b><small>blocked / incomplete</small></div>
+      <div><b>{pressure.length}</b><small>pressure rows</small></div>
+      <div><b>{filteredBlocks.length}</b><small>visible tasks</small></div>
+      <div><b>{namedPeople}</b><small>named assignments</small></div>
+    </section>
+
+    <ReferralPathwayGenerator onGenerate={addBlocks} syncStatus={syncStatus} />
+
+    <section className="modebar">
+      <button className={mode === "person" ? "active" : ""} onClick={() => setMode("person")}>People columns</button>
+      <button className={mode === "role" ? "active" : ""} onClick={() => setMode("role")}>Role columns</button>
+      <small>{namedPeople} named assignments · Unassigned work stays visible</small>
+    </section>
+
+    <nav className="filters" aria-label="Board filters">{views.map((item) => <button key={item.key} className={view === item.key ? "active" : ""} onClick={() => setView(item.key)}>{item.label}</button>)}</nav>
+
+    <details className="diagnostics">
+      <summary>Warnings and governance</summary>
+      <ScheduleWarningsPanel />
+      <GovernanceGatesPanel />
+    </details>
+
+    <section className="mobileTimeline" aria-label="Mobile hospital timeline">
+      {visibleGroups.map(([time, rows]) => <section className="timeGroup" key={time}>
+        <h2>{time}</h2>
+        <div>{rows.map(workCard)}</div>
+      </section>)}
+    </section>
+
+    <section className="desktopBoard" aria-label="Grouped master board">
+      {visibleColumns.length ? visibleColumns.map((column) => {
+        const rows = columnBlocks(filteredBlocks, column, mode);
+        return <section className={`column ${column.kind}`} key={column.key}>
+          <h2>{column.label}</h2>
+          {rows.length ? rows.map(workCard) : <p className="empty">No visible work.</p>}
+        </section>;
+      }) : <section className="column"><h2>No visible work</h2></section>}
+    </section>
+
+    <section className="rule"><b>Rule:</b> person first. A named person column shows real capacity. Governance gates stop unsafe referral flow: consent, estimate, pharmacy, owner update and referring-vet report must be clear.</section>
+    <QueueDetailDrawer target={selected} onClose={() => setSelected(null)} onActionComplete={onActionComplete} />
+  </main>;
 }
 
-const css = `.slg{min-height:100vh;background:#020617;color:#e5e7eb;padding:12px;font-family:Inter,system-ui,sans-serif;overflow:auto}header{display:flex;justify-content:space-between;gap:16px;background:#06101f;border:1px solid #26364f;border-radius:18px;padding:14px}header span{text-transform:uppercase;letter-spacing:.16em;color:#67e8f9;font-size:11px;font-weight:900}h1{font-size:clamp(34px,5vw,70px);line-height:.9;margin:6px 0}p,small{color:#9fb0c6}aside{display:grid;gap:6px;place-items:center;min-width:120px;border:1px solid #334155;background:#0f172a;border-radius:16px;padding:10px}aside b{font-size:38px}button{font:inherit}.modebar,nav{display:flex;gap:6px;overflow:auto;margin:10px 0;align-items:center}.modebar button,nav button,aside button{border:1px solid #31557f;background:#10223c;color:#e6edf7;border-radius:999px;padding:7px 10px;white-space:nowrap}.modebar button.active,nav button.active{background:#0e7490;color:white;border-color:#67e8f9}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.summary div,.rule{border:1px solid #26364f;background:#07111f;border-radius:14px;padding:10px}.summary b,.summary small{display:block}.gridWrap{max-height:76vh;overflow:auto;border:1px solid #26364f;border-radius:16px}.grid{display:grid}.corner,.head,.time,.cell{border-right:1px solid #26364f;border-bottom:1px solid #26364f;background:#07111f}.corner,.head{position:sticky;top:0;z-index:4;min-height:48px;padding:10px;background:#111827;color:#bae6fd;font-weight:900;text-transform:uppercase;font-size:11px;letter-spacing:.08em}.head.person{color:#bbf7d0}.head.unassigned{color:#fecaca}.corner{left:0;z-index:5}.row{display:contents}.time{position:sticky;left:0;z-index:3;padding:8px;font-weight:900;color:#bae6fd;background:#0f172a}.cell{min-height:132px;padding:5px;display:grid;gap:7px;align-content:start}.empty{color:#334155}.workcard{display:grid;gap:4px}.work{display:grid;gap:2px;width:100%;border:1px solid #334155;background:#0b1220;color:#e5e7eb;border-radius:10px;padding:7px;text-align:left}.work:hover{outline:2px solid #67e8f9}.work b{font-size:12px}.work span{font-size:11px;color:#f8fafc}.work small{font-size:10px}.work .clinical{color:#a5f3fc}.work em{font-style:normal;font-size:10px;color:#cbd5e1}.qas{display:grid;grid-template-columns:1fr 1fr auto auto;gap:4px}.qas select,.qas button{min-width:0;border:1px solid #26364f;background:#020617;color:#dbeafe;border-radius:8px;padding:5px;font-size:10px}.qas button{background:#10223c}.qas button.warn{border-color:#f59e0b;color:#fde68a}.qas small{grid-column:1/-1;font-size:10px;line-height:1.2}.qasReason{color:#93c5fd}.qasWarn{color:#fbbf24}.red{border-left:5px solid #ef4444}.amber{border-left:5px solid #f59e0b}.green{border-left:5px solid #22c55e}.blue{border-left:5px solid #38bdf8}.integrity{box-shadow:inset 0 0 0 2px #ef4444}.rule{margin-top:10px}@media(max-width:1100px){.summary{grid-template-columns:1fr}header{flex-direction:column}.modebar{align-items:flex-start;flex-direction:column}.qas{grid-template-columns:1fr 1fr}}`;
+const css = `.slg{min-height:100vh;background:#f5f7fb;color:#111827;padding:12px;font-family:Inter,system-ui,sans-serif;overflow:auto}.slg *{box-sizing:border-box}.slg .topbar{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;background:white;border:1px solid #d8e0ec;border-radius:18px;padding:16px;box-shadow:0 10px 28px rgba(15,23,42,.06)}.slg .topbar span{display:block;text-transform:uppercase;letter-spacing:.14em;color:#2563eb;font-size:11px;font-weight:900}.slg .topbar h1{font-size:clamp(30px,7vw,58px);line-height:.95;margin:6px 0;color:#111827}.slg .topbar p{max-width:760px;color:#475569;margin:0;font-size:15px}.slg .topActions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.slg a,.slg button{font:inherit}.slg .topActions a,.slg .topActions button,.slg .modebar button,.slg .filters button,.slg .assignment summary{border:1px solid #cbd5e1;background:white;color:#0f172a;border-radius:999px;padding:9px 12px;text-decoration:none;font-weight:800;cursor:pointer}.slg .topActions button{background:#0f172a;color:white}.slg .commandStrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}.slg .commandStrip div{background:white;border:1px solid #d8e0ec;border-radius:16px;padding:14px}.slg .commandStrip b{display:block;font-size:32px;line-height:1;color:#0f172a}.slg .commandStrip small{display:block;margin-top:4px;color:#64748b}.slg .modebar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}.slg .modebar .active,.slg .filters .active{background:#0f172a;color:white;border-color:#0f172a}.slg .modebar small{color:#64748b}.slg .filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px}.slg .filters button{white-space:nowrap}.slg .diagnostics{background:white;border:1px solid #d8e0ec;border-radius:16px;padding:10px;margin:10px 0}.slg .diagnostics>summary{cursor:pointer;font-weight:900;color:#0f172a}.slg .mobileTimeline{display:none}.slg .desktopBoard{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.slg .column{background:white;border:1px solid #d8e0ec;border-radius:18px;padding:12px;min-height:140px}.slg .column h2,.slg .timeGroup h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#475569;margin:0 0 10px}.slg .workcard{border:1px solid #cbd5e1;border-left:5px solid #f59e0b;border-radius:14px;margin-bottom:10px;background:#fff;overflow:hidden}.slg .workcard.red{border-left-color:#dc2626}.slg .workcard.green{border-left-color:#16a34a}.slg .workcard.blue{border-left-color:#2563eb}.slg .workcard.integrity{outline:2px solid #fb923c}.slg .work{display:grid;text-align:left;width:100%;gap:3px;border:0;background:white;color:#111827;padding:12px;cursor:pointer;-webkit-user-select:none;user-select:none}.slg .work .eyebrow{font-size:11px;color:#2563eb;text-transform:uppercase;letter-spacing:.08em;font-weight:900}.slg .work b{font-size:20px}.slg .work strong{font-size:14px;font-weight:700;color:#334155}.slg .work small{color:#475569;font-size:13px}.slg .work em{font-style:normal;color:#92400e;background:#fffbeb;border-radius:8px;padding:5px 7px;font-size:12px;margin-top:4px}.slg .assignment{border-top:1px solid #e2e8f0;background:#f8fafc}.slg .assignment summary{display:inline-block;margin:8px 10px;border-radius:10px}.slg .qas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0 10px 10px}.slg .qas select,.slg .qas button{min-height:42px;border-radius:10px;border:1px solid #cbd5e1;background:white;color:#0f172a;padding:8px}.slg .qas small{grid-column:1/-1;color:#2563eb;font-size:11px}.slg .qas .warn{border-color:#d97706;color:#92400e}.slg .empty{color:#94a3b8}.slg .rule{margin-top:12px;background:#e0f2fe;border:1px solid #bae6fd;color:#0f172a;border-radius:16px;padding:12px}@media(max-width:760px){.slg{padding:10px}.slg .topbar{display:grid}.slg .topActions{justify-content:stretch}.slg .topActions a,.slg .topActions button{flex:1;text-align:center}.slg .commandStrip{grid-template-columns:repeat(2,minmax(0,1fr))}.slg .commandStrip div{padding:10px}.slg .commandStrip b{font-size:25px}.slg .desktopBoard{display:none}.slg .mobileTimeline{display:grid;gap:10px}.slg .timeGroup{display:grid;grid-template-columns:64px 1fr;gap:8px;align-items:start}.slg .timeGroup h2{position:sticky;top:8px;margin:0;background:#e0f2fe;color:#075985;border-radius:12px;text-align:center;padding:8px 4px;font-size:16px;letter-spacing:0}.slg .work b{font-size:18px}.slg .qas{grid-template-columns:1fr}.slg .diagnostics{padding:8px}}`;
