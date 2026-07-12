@@ -1,155 +1,61 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
-import { HospitalShell } from "@/components/hospital-shell";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
-type Check = { key: string; label: string; url: string; ok: boolean; status: string; detail: string; data?: any };
+type CheckResult = { label: string; ok: boolean; detail: string };
 
-const checks = [
-  { key: "health", label: "Backend health", url: "/api/health" },
-  { key: "readiness", label: "BVS readiness", url: "/api/readiness/bvs" },
-  { key: "departments", label: "Department Ops", url: "/api/departments" },
-  { key: "workspace", label: "Workspace queue", url: "/api/workspace?role=ops_manager" },
-  { key: "flow", label: "Flow state", url: "/api/flow-state" },
-  { key: "catalogues", label: "Catalogues", url: "/api/catalogues" },
-  { key: "hr", label: "HR / LucyRota", url: "/api/hr" },
-  { key: "forecast", label: "Forecast / Lucy Pulse", url: "/api/forecast/hospital?hours=12&slot_minutes=60" },
-];
+const primaryLinks = [
+  { href: "/hospital-board", label: "Hospital board", detail: "Person / role / location / time. Start here." },
+  { href: "/workspace", label: "Workspace", detail: "Queued operational work and ownership." },
+  { href: "/actions", label: "Actions", detail: "Escalate, assign, hold, resolve and hand over." },
+  { href: "/flow-state", label: "Flow state", detail: "Live gates, bottlenecks and movement." },
+] as const;
 
-function statusTone(ok: boolean) {
-  return ok ? { border: "#14532d", text: "#86efac", label: "OK" } : { border: "#7f1d1d", text: "#fca5a5", label: "FAIL" };
-}
+const secondaryLinks = [
+  { href: "/readiness", label: "Readiness" },
+  { href: "/departments", label: "Departments" },
+  { href: "/lucy-pharm", label: "Pharmacy" },
+  { href: "/lucyhr", label: "LucyHR" },
+  { href: "/lucypulse", label: "LucyPulse" },
+  { href: "/directory", label: "Directory" },
+] as const;
 
-function CountCard({ label, value }: { label: string; value: number | string }) {
-  return <div className="lw-kpi"><div className="lw-kpi-label">{label}</div><div className="lw-kpi-value">{value}</div></div>;
-}
-
-function numericSummaryTotal(summary: unknown): number {
-  if (!summary || typeof summary !== "object") return 0;
-  return Object.values(summary as Record<string, unknown>).reduce<number>((total, value) => {
-    const numericValue = typeof value === "number" ? value : Number(value);
-    return total + (Number.isFinite(numericValue) ? numericValue : 0);
-  }, 0);
+async function check(url: string, label: string): Promise<CheckResult> {
+  try {
+    const response = await fetch(`${API_BASE}${url}`, { cache: "no-store" });
+    return { label, ok: response.ok, detail: response.ok ? "online" : `HTTP ${response.status}` };
+  } catch {
+    return { label, ok: false, detail: "offline" };
+  }
 }
 
 function SystemControlInner() {
-  const [results, setResults] = useState<Check[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [seeding, setSeeding] = useState(false);
-  const [lastRun, setLastRun] = useState<string>("");
-  const [notice, setNotice] = useState("");
-  const [seedError, setSeedError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [results, setResults] = useState<CheckResult[]>([]);
 
   async function runChecks() {
-    setLoading(true);
-    const next: Check[] = [];
-    for (const check of checks) {
-      try {
-        const res = await fetch(`${API_BASE}${check.url}`, { cache: "no-store" });
-        const data = await res.json().catch(() => null);
-        next.push({ ...check, ok: res.ok, status: String(res.status), detail: res.ok ? "Connected" : JSON.stringify(data || {}).slice(0, 180), data });
-      } catch (err) {
-        next.push({ ...check, ok: false, status: "offline", detail: err instanceof Error ? err.message : "Connection failed" });
-      }
-    }
+    setChecking(true);
+    const next = await Promise.all([
+      check("/api/health", "Backend"),
+      check("/api/day-control/blocks", "Day control"),
+      check("/api/day-control/governance-gates", "Governance gates"),
+    ]);
     setResults(next);
-    setLastRun(new Date().toLocaleString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-    setLoading(false);
+    setChecking(false);
   }
 
-  async function firstRun() {
-    setSeeding(true);
-    setNotice("");
-    setSeedError("");
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/first-run`, { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(JSON.stringify(data));
-      setNotice("First Run complete: hospital scale + department ops seeded.");
-      await runChecks();
-    } catch (err) {
-      setSeedError(err instanceof Error ? err.message : "First Run failed");
-    } finally {
-      setSeeding(false);
-    }
-  }
+  const ok = results.filter((item) => item.ok).length;
+  const fail = results.filter((item) => !item.ok).length;
 
-  useEffect(() => { runChecks(); }, []);
-
-  const okCount = results.filter((r) => r.ok).length;
-  const failCount = results.filter((r) => !r.ok).length;
-  const readiness = results.find((r) => r.key === "readiness")?.data;
-  const flow = results.find((r) => r.key === "flow")?.data;
-  const workspace = results.find((r) => r.key === "workspace")?.data;
-  const forecast = results.find((r) => r.key === "forecast")?.data;
-  const departments = results.find((r) => r.key === "departments")?.data;
-  const workspaceTotal = numericSummaryTotal(workspace?.summary);
-
-  return <HospitalShell title="System Control" subtitle="One mobile control surface for running LucyWorks OS as one system">
-    <div style={{ display: "grid", gap: 12 }}>
-      <section className="lw-command-panel">
-        <div className="lw-command-header">
-          <div>
-            <div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>Phone control surface</div>
-            <h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Start here. Seed, check, then operate.</h1>
-            <p style={{ color: "#94a3b8", marginBottom: 0 }}>One button seeds the hospital operating data. One check confirms backend, departments, readiness, workspace, flow-state, catalogues, HR and forecast.</p>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="lw-pill lw-btn-primary" onClick={firstRun} disabled={seeding}>{seeding ? "Seeding..." : "First Run / Seed System"}</button>
-            <button className="lw-pill" onClick={runChecks} disabled={loading}>{loading ? "Checking..." : "Check system"}</button>
-            <Link href="/departments" className="lw-pill">Department Ops</Link>
-            <Link href="/actions" className="lw-pill">Actions</Link>
-          </div>
-        </div>
-        <div style={{ padding: 12 }}>
-          {notice ? <p style={{ color: "#86efac", marginTop: 0 }}>{notice}</p> : null}
-          {seedError ? <p style={{ color: "#fca5a5", marginTop: 0 }}>{seedError}</p> : null}
-          {lastRun ? <p style={{ color: "#94a3b8", margin: 0 }}>Last check: {lastRun}</p> : null}
-        </div>
-      </section>
-
-      <section className="lw-kpi-strip">
-        <CountCard label="Checks OK" value={okCount} />
-        <CountCard label="Checks failing" value={failCount} />
-        <CountCard label="Readiness" value={readiness?.overall_status || "-"} />
-        <CountCard label="Departments" value={departments?.summary?.departments ?? "-"} />
-        <CountCard label="Blocked gates" value={flow?.summary?.blocked_live_gates ?? "-"} />
-        <CountCard label="Workspace items" value={workspaceTotal || "-"} />
-        <CountCard label="Forecast red slots" value={forecast?.summary?.red_slots ?? "-"} />
-      </section>
-
-      <section className="lw-command-panel">
-        <div className="lw-command-header"><h2 className="lw-section-title">System checks</h2><span className="lw-status-meta">Live API checks</span></div>
-        <div>
-          {results.map((r) => {
-            const tone = statusTone(r.ok);
-            return <div key={r.key} className="lw-status-row">
-              <div className="lw-status-title">{r.label}</div>
-              <span className="lw-pill" style={{ borderColor: tone.border, color: tone.text }}>{tone.label} {r.status}</span>
-              <div className="lw-status-detail">{r.detail}</div>
-              <div className="lw-status-meta">{r.url}</div>
-            </div>;
-          })}
-        </div>
-      </section>
-
-      <section className="lw-mobile-actionbar">
-        <Link href="/readiness" className="lw-pill">Readiness</Link>
-        <Link href="/command" className="lw-pill">Command</Link>
-        <Link href="/workspace" className="lw-pill">Workspace</Link>
-        <Link href="/actions" className="lw-pill">Actions</Link>
-        <Link href="/flow-state" className="lw-pill">Flow State</Link>
-        <Link href="/overnight" className="lw-pill">Lucy Care</Link>
-        <Link href="/departments" className="lw-pill">Departments</Link>
-      </section>
-    </div>
-  </HospitalShell>;
+  return <main className="sys"><style>{css}</style><header><div><span>LucyWorks OS</span><h1>Clinical operations control</h1><p>Use the hospital board first. Backend checks are secondary and do not own the screen.</p></div><Link href="/hospital-board" className="primary">Open hospital board</Link></header><section className="notice"><b>Better operating model</b><p>This page is now a launch surface, not a wall of failing API diagnostics. If the backend is offline, open the board and use local/synced day-control state while the API is fixed.</p></section><section className="cards">{primaryLinks.map((item) => <Link href={item.href} className="card" key={item.href}><small>Open</small><b>{item.label}</b><p>{item.detail}</p></Link>)}</section><section className="panel"><div className="panelHead"><div><b>Backend status</b><p>Optional check. Failure here should not make the product unusable.</p></div><button onClick={runChecks} disabled={checking}>{checking ? "Checking..." : "Check backend"}</button></div>{results.length ? <div className="checks"><strong>{ok} online / {fail} offline</strong>{results.map((item) => <div className="check" key={item.label}><span>{item.label}</span><em className={item.ok ? "ok" : "bad"}>{item.detail}</em></div>)}</div> : <p className="muted">No check run yet.</p>}</section><nav>{secondaryLinks.map((item) => <Link href={item.href} key={item.href}>{item.label}</Link>)}</nav></main>;
 }
 
 export default function SystemControlPage() {
   return <AuthGuard allowedRoles={["ops_manager", "clinical_director", "clinician", "nurse", "admin"]}>{() => <SystemControlInner />}</AuthGuard>;
 }
+
+const css = `.sys{min-height:100vh;background:#f3f4f6;color:#0f172a;padding:14px;font-family:Inter,system-ui,sans-serif}header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;background:#fff;border:1px solid #dbe3ef;border-radius:18px;padding:16px;box-shadow:0 10px 30px rgba(15,23,42,.06)}header span{display:block;color:#475569;text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:900}h1{font-size:clamp(28px,7vw,54px);line-height:.95;margin:6px 0;color:#111827}p{color:#475569;margin:6px 0 0}.primary,button{border:0;border-radius:12px;background:#0f172a;color:white;padding:12px 14px;text-decoration:none;font-weight:800;white-space:nowrap}.notice{margin:12px 0;background:#e0f2fe;border:1px solid #bae6fd;border-radius:14px;padding:12px}.notice b{display:block}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.card{display:block;background:#fff;border:1px solid #dbe3ef;border-radius:16px;padding:14px;text-decoration:none;color:#0f172a;min-height:125px}.card small{color:#2563eb;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.card b{display:block;font-size:22px;margin-top:12px}.panel{margin-top:12px;background:#fff;border:1px solid #dbe3ef;border-radius:16px;padding:14px}.panelHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.panelHead b{font-size:20px}.muted{color:#64748b}.checks{display:grid;gap:8px;margin-top:10px}.checks strong{font-size:14px}.check{display:flex;justify-content:space-between;gap:8px;border-top:1px solid #e5e7eb;padding-top:8px}.check em{font-style:normal;border-radius:999px;padding:3px 9px;font-size:12px;font-weight:800}.ok{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}nav a{background:#fff;border:1px solid #dbe3ef;border-radius:999px;padding:9px 12px;color:#0f172a;text-decoration:none;font-weight:700}@media(max-width:700px){header,.panelHead{display:grid}.primary,button{width:100%;text-align:center}.card{min-height:auto}}`;
