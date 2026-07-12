@@ -12,7 +12,7 @@ cd "$ROOT"
   echo "== LucyWorks OS Codespace runner =="
   echo "Root: $ROOT"
   echo "Started: $(date -Iseconds)"
-  echo "Mode: foreground runner for ports 8000 and 3000"
+  echo "Mode: resilient foreground runner for ports 8000 and 3000"
 } | tee "$LOG_FILE"
 
 # Kill stale processes that can leave Codespaces port previews blank/502.
@@ -27,7 +27,7 @@ done
 
 cleanup() {
   echo "Stopping LucyWorks OS dev servers..." | tee -a "$LOG_FILE"
-  kill "$API_PID" "$WEB_PID" >/dev/null 2>&1 || true
+  jobs -p | xargs -r kill >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
 
@@ -37,7 +37,8 @@ trap cleanup EXIT INT TERM
   echo "Installing API dependencies..." | tee -a "$LOG_FILE"
   python -m pip install -r requirements.txt 2>&1 | tee "$API_LOG"
   echo "Starting API on 8000..." | tee -a "$LOG_FILE"
-  exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 2>&1 | tee -a "$API_LOG"
+  python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 2>&1 | tee -a "$API_LOG"
+  echo "API process exited. Web may still be running; check $API_LOG" | tee -a "$LOG_FILE"
 ) &
 API_PID=$!
 
@@ -47,7 +48,8 @@ API_PID=$!
   echo "Installing web dependencies..." | tee -a "$LOG_FILE"
   npm install 2>&1 | tee "$WEB_LOG"
   echo "Starting web on 3000..." | tee -a "$LOG_FILE"
-  exec env NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run dev -- --hostname 0.0.0.0 --port 3000 2>&1 | tee -a "$WEB_LOG"
+  env NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run dev -- --hostname 0.0.0.0 --port 3000 2>&1 | tee -a "$WEB_LOG"
+  echo "Web process exited. Check $WEB_LOG" | tee -a "$LOG_FILE"
 ) &
 WEB_PID=$!
 
@@ -60,10 +62,17 @@ WEB_PID=$!
   echo "API log: $API_LOG"
   echo "Web log: $WEB_LOG"
   echo ""
-  echo "Keep this terminal open. If the browser shows 502, read the red error above or run: npm run codespace:health"
+  echo "Keep this terminal open. Backend failure will not kill the web preview."
+  echo "If the browser shows 502, run: npm run codespace:health"
 } | tee -a "$LOG_FILE"
 
-wait -n "$API_PID" "$WEB_PID"
-EXIT_CODE=$?
-echo "One dev server exited with code $EXIT_CODE" | tee -a "$LOG_FILE"
-exit "$EXIT_CODE"
+set +e
+wait "$WEB_PID"
+WEB_EXIT=$?
+wait "$API_PID"
+API_EXIT=$?
+set -e
+
+echo "Web exited with code $WEB_EXIT" | tee -a "$LOG_FILE"
+echo "API exited with code $API_EXIT" | tee -a "$LOG_FILE"
+exit "$WEB_EXIT"
