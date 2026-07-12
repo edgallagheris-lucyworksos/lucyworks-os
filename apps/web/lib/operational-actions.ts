@@ -8,6 +8,8 @@ export type OperationalActionType =
   | "hold"
   | "request_review"
   | "owner_update"
+  | "referring_vet_report"
+  | "clear_discharge"
   | "insurance"
   | "pharmacy"
   | "bed_request"
