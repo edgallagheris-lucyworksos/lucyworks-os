@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ApprovalQueuePanel } from "@/components/approval-queue-panel";
 import { EvidenceControlPanel } from "@/components/evidence-control-panel";
 import { useDayControlStore } from "@/lib/day-control-store";
 import type { ScheduledWorkBlock } from "@/lib/day-control-work";
@@ -16,7 +17,6 @@ const stages = [
 ] as const;
 
 type StageKey = (typeof stages)[number]["key"];
-
 type ApiEvent = { id?: number; eventType?: string; action?: string; actor?: string; note?: string | null; atTime?: string | null; createdAt?: string | null };
 type ApiEpisode = { id: string; episodeRef: string; stage: StageKey | string; ownerRole?: string | null; ownerName?: string | null; currentLocation?: string | null; nextAction?: string | null; blocker?: string | null; status?: string | null; consentStatus?: string | null; estimateStatus?: string | null; insuranceStatus?: string | null; pharmacyReady?: boolean | null; ownerUpdated?: boolean | null; referringVetReportSent?: boolean | null; dischargeClear?: boolean | null; events?: ApiEvent[] };
 type ApiCase = { id: string; patientName: string; species?: string | null; ownerName?: string | null; referralReason?: string | null; riskLevel?: string | null; status?: string | null; episodes?: ApiEpisode[] };
@@ -83,7 +83,7 @@ export function PatientCareWorkflow() {
   }
 
   return <main className="pcw"><style>{css}</style>
-    <header className="hero"><div><span>LucyWorks OS</span><h1>Patient care workflow</h1><p>Referral episodes first. Every consent, estimate, override, AI output and clinical/admin decision should create evidence.</p></div><nav><a href="/patient-care">Care workflow</a><a href="/hospital-board">Schedule board</a><a href="/workspace">Workspace</a></nav></header>
+    <header className="hero"><div><span>LucyWorks OS</span><h1>Patient care workflow</h1><p>Referral episodes first. Every consent, estimate, override, AI output and clinical/admin decision should create evidence and, where needed, named approval.</p></div><nav><a href="/patient-care">Care workflow</a><a href="/approvals">Approvals</a><a href="/compliance">Compliance</a><a href="/hospital-board">Board</a></nav></header>
     <section className="kpis"><article><b>{cases.length}</b><small>active episodes</small></article><article><b>{blockedCases}</b><small>blocked cases</small></article><article><b>{blocks.length}</b><small>schedule tasks</small></article><article><b>{apiStatus === "api" ? "case DB" : syncStatus}</b><small>source</small></article></section>
     <section className="layout">
       <aside className="caseList"><h2>Patient episodes</h2>{cases.map((item) => <button key={`${item.id}-${item.episodeId || item.episodeRef}`} className={selected?.episodeRef === item.episodeRef ? "active" : ""} onClick={() => setSelectedId(item.episodeId || item.id)}><b>{item.patient}</b><small>{stageLabel(item.stage)} · {item.owner}</small><em>{item.blocker !== "none" ? item.blocker : item.status}</em></button>)}</aside>
@@ -92,6 +92,7 @@ export function PatientCareWorkflow() {
         <section className="nextAction"><b>Next clinical/admin action</b><p>{selected.next}</p><div>{selected.blocker !== "none" || selectedBlockedBlock ? <button onClick={() => void updateSelected({ blocker: "none", status: "active", nextAction: "blocker cleared", note: "blocker cleared from patient workflow" }, selectedBlockedBlock?.id, "resolve")}>Resolve blocker</button> : null}<button onClick={() => void updateSelected({ ownerUpdated: true, nextAction: "owner updated", note: "owner update recorded" }, selectedOwnerBlock?.id, selectedOwnerBlock ? "owner_update" : undefined)}>Mark owner updated</button><button onClick={() => void updateSelected({ referringVetReportSent: true, nextAction: "referring-vet report sent", note: "referring vet report recorded" }, selectedReportBlock?.id, selectedReportBlock ? "referring_vet_report" : undefined)}>Mark report sent</button>{selected.blocker !== "none" || selectedBlockedBlock ? <button onClick={() => void updateSelected({ status: "escalated", nextAction: "senior review required", note: "case escalated" }, selectedBlockedBlock?.id, "escalate")}>Escalate</button> : null}</div></section>
         <section className="gates">{gateRows(selected.gates).map(([label, value]) => <article key={label} className={String(value).includes("pending") || String(value).includes("not") ? "gateBad" : ""}><small>{label}</small><b>{value}</b></article>)}</section>
         <EvidenceControlPanel patientCaseId={selected.id} referralEpisodeId={selected.episodeId} episodeRef={selected.episodeRef} patientName={selected.patient} onEvidenceChange={loadCases} />
+        <ApprovalQueuePanel patientCaseId={selected.id} referralEpisodeId={selected.episodeId} onDecision={loadCases} />
         <section className="timeline"><h3>Workflow evidence</h3>{selected.blocks.length ? selected.blocks.map((block) => <article key={block.id} className={tone(block)}><time>{block.time}</time><div><b>{block.what}</b><p>{block.who} · {block.where}</p><small>{safe(block.blocker).toLowerCase() !== "none" ? `Blocked: ${block.blocker}` : block.next}</small></div></article>) : <p className="empty">No schedule timeline attached yet.</p>}{selected.events.length ? <div className="events"><h3>Case record events</h3>{selected.events.slice(0, 6).map((event) => <article key={`${event.id}-${event.createdAt}`} className="event"><time>{event.atTime || "record"}</time><div><b>{event.action || event.eventType}</b><small>{event.note || event.actor || "workflow event"}</small></div></article>)}</div> : null}</section>
       </section> : <section className="caseDetail"><h2>No cases</h2><p>Create a referral episode from the hospital board.</p></section>}
     </section>
