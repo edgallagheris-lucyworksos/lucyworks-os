@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { EvidenceControlPanel } from "@/components/evidence-control-panel";
 import { useDayControlStore } from "@/lib/day-control-store";
 import type { ScheduledWorkBlock } from "@/lib/day-control-work";
 
@@ -16,255 +17,49 @@ const stages = [
 
 type StageKey = (typeof stages)[number]["key"];
 
-type ApiEvent = {
-  id?: number;
-  eventType?: string;
-  action?: string;
-  actor?: string;
-  note?: string | null;
-  atTime?: string | null;
-  createdAt?: string | null;
-};
+type ApiEvent = { id?: number; eventType?: string; action?: string; actor?: string; note?: string | null; atTime?: string | null; createdAt?: string | null };
+type ApiEpisode = { id: string; episodeRef: string; stage: StageKey | string; ownerRole?: string | null; ownerName?: string | null; currentLocation?: string | null; nextAction?: string | null; blocker?: string | null; status?: string | null; consentStatus?: string | null; estimateStatus?: string | null; insuranceStatus?: string | null; pharmacyReady?: boolean | null; ownerUpdated?: boolean | null; referringVetReportSent?: boolean | null; dischargeClear?: boolean | null; events?: ApiEvent[] };
+type ApiCase = { id: string; patientName: string; species?: string | null; ownerName?: string | null; referralReason?: string | null; riskLevel?: string | null; status?: string | null; episodes?: ApiEpisode[] };
+type GateState = { consent?: string | null; estimate?: string | null; insurance?: string | null; pharmacy?: boolean | null; owner?: boolean | null; report?: boolean | null; discharge?: boolean | null };
+type CareCase = { id: string; patient: string; source: "api" | "local"; episodeId?: string; episodeRef: string; blocks: ScheduledWorkBlock[]; events: ApiEvent[]; stage: StageKey; owner: string; location: string; next: string; blocker: string; status: string; risk: string; gates: GateState; blockers: ScheduledWorkBlock[] };
 
-type ApiEpisode = {
-  id: string;
-  episodeRef: string;
-  stage: StageKey | string;
-  ownerRole?: string | null;
-  ownerName?: string | null;
-  currentLocation?: string | null;
-  nextAction?: string | null;
-  blocker?: string | null;
-  status?: string | null;
-  consentStatus?: string | null;
-  estimateStatus?: string | null;
-  insuranceStatus?: string | null;
-  pharmacyReady?: boolean | null;
-  ownerUpdated?: boolean | null;
-  referringVetReportSent?: boolean | null;
-  dischargeClear?: boolean | null;
-  events?: ApiEvent[];
-};
-
-type ApiCase = {
-  id: string;
-  patientName: string;
-  species?: string | null;
-  ownerName?: string | null;
-  referralReason?: string | null;
-  riskLevel?: string | null;
-  status?: string | null;
-  episodes?: ApiEpisode[];
-};
-
-type GateState = {
-  consent?: string | null;
-  estimate?: string | null;
-  insurance?: string | null;
-  pharmacy?: boolean | null;
-  owner?: boolean | null;
-  report?: boolean | null;
-  discharge?: boolean | null;
-};
-
-type CareCase = {
-  id: string;
-  patient: string;
-  source: "api" | "local";
-  episodeId?: string;
-  episodeRef: string;
-  blocks: ScheduledWorkBlock[];
-  events: ApiEvent[];
-  stage: StageKey;
-  owner: string;
-  location: string;
-  next: string;
-  blocker: string;
-  status: string;
-  risk: string;
-  gates: GateState;
-  blockers: ScheduledWorkBlock[];
-};
-
-function safe(value: string | number | null | undefined) {
-  return String(value || "").trim();
-}
-
-function isStage(value: string | null | undefined): value is StageKey {
-  return Boolean(value && stages.some((stage) => stage.key === value));
-}
-
-function stageLabel(key: StageKey) {
-  return stages.find((stage) => stage.key === key)?.label || "Workflow";
-}
-
-function caseKey(block: ScheduledWorkBlock) {
-  return safe(block.episodeRef) || safe(block.subject) || safe(block.id);
-}
-
-function blockText(block: ScheduledWorkBlock) {
-  return `${safe(block.lane)} ${safe(block.what)} ${safe(block.how)} ${safe(block.where)} ${safe(block.next)} ${safe(block.blocker)}`.toLowerCase();
-}
-
-function stageFor(blocks: ScheduledWorkBlock[]): StageKey {
-  const open = blocks.filter((block) => safe(block.blocker).toLowerCase() !== "none" || block.status !== "green");
-  const source = open.length ? open : blocks;
-  const text = source.map(blockText).join(" ");
-  return stages.find((stage) => stage.words.some((word) => text.includes(word)))?.key || "intake";
-}
-
-function blockTimeSort(left: ScheduledWorkBlock, right: ScheduledWorkBlock) {
-  return safe(left.time).localeCompare(safe(right.time)) || safe(left.what).localeCompare(safe(right.what));
-}
-
-function ownerFor(blocks: ScheduledWorkBlock[]) {
-  const named = blocks.find((block) => safe(block.assignedStaffName));
-  if (named) return safe(named.assignedStaffName);
-  const role = blocks.find((block) => safe(block.assignedRole));
-  if (role) return safe(role.assignedRole);
-  return safe(blocks[0]?.who) || "unassigned";
-}
-
-function nextFor(blocks: ScheduledWorkBlock[]) {
-  const blocked = blocks.find((block) => safe(block.blocker).toLowerCase() !== "none");
-  if (blocked) return `${blocked.time} · clear blocker: ${blocked.blocker}`;
-  const open = blocks.find((block) => block.status !== "green");
-  if (open) return `${open.time} · ${open.next}`;
-  const last = blocks[blocks.length - 1];
-  return last ? `${last.time} · ${last.next}` : "no next action";
-}
-
-function localGates(blocks: ScheduledWorkBlock[]): GateState {
-  return {
-    consent: blocks.map((b) => b.consentStatus).find(Boolean),
-    estimate: blocks.map((b) => b.estimateStatus).find(Boolean),
-    insurance: blocks.map((b) => b.insuranceStatus).find(Boolean),
-    pharmacy: blocks.map((b) => b.pharmacyReady).find((value) => value !== undefined),
-    owner: blocks.map((b) => b.ownerUpdated).find((value) => value !== undefined),
-    report: blocks.map((b) => b.referringVetReportSent).find((value) => value !== undefined),
-    discharge: blocks.map((b) => b.dischargeClear).find((value) => value !== undefined),
-  };
-}
-
-function gateRows(values: GateState) {
-  return [
-    ["Consent", values.consent || "not set"],
-    ["Estimate", values.estimate || "not set"],
-    ["Insurance", values.insurance || "not set"],
-    ["Pharmacy", values.pharmacy === undefined || values.pharmacy === null ? "not set" : values.pharmacy ? "ready" : "not ready"],
-    ["Owner", values.owner === undefined || values.owner === null ? "not set" : values.owner ? "updated" : "not updated"],
-    ["Report", values.report === undefined || values.report === null ? "not set" : values.report ? "sent" : "not sent"],
-    ["Discharge", values.discharge === undefined || values.discharge === null ? "not set" : values.discharge ? "clear" : "not clear"],
-  ];
-}
+function safe(value: string | number | null | undefined) { return String(value || "").trim(); }
+function isStage(value: string | null | undefined): value is StageKey { return Boolean(value && stages.some((stage) => stage.key === value)); }
+function stageLabel(key: StageKey) { return stages.find((stage) => stage.key === key)?.label || "Workflow"; }
+function caseKey(block: ScheduledWorkBlock) { return safe(block.episodeRef) || safe(block.subject) || safe(block.id); }
+function blockText(block: ScheduledWorkBlock) { return `${safe(block.lane)} ${safe(block.what)} ${safe(block.how)} ${safe(block.where)} ${safe(block.next)} ${safe(block.blocker)}`.toLowerCase(); }
+function stageFor(blocks: ScheduledWorkBlock[]): StageKey { const open = blocks.filter((block) => safe(block.blocker).toLowerCase() !== "none" || block.status !== "green"); const text = (open.length ? open : blocks).map(blockText).join(" "); return stages.find((stage) => stage.words.some((word) => text.includes(word)))?.key || "intake"; }
+function blockTimeSort(left: ScheduledWorkBlock, right: ScheduledWorkBlock) { return safe(left.time).localeCompare(safe(right.time)) || safe(left.what).localeCompare(safe(right.what)); }
+function ownerFor(blocks: ScheduledWorkBlock[]) { const named = blocks.find((block) => safe(block.assignedStaffName)); if (named) return safe(named.assignedStaffName); const role = blocks.find((block) => safe(block.assignedRole)); if (role) return safe(role.assignedRole); return safe(blocks[0]?.who) || "unassigned"; }
+function nextFor(blocks: ScheduledWorkBlock[]) { const blocked = blocks.find((block) => safe(block.blocker).toLowerCase() !== "none"); if (blocked) return `${blocked.time} · clear blocker: ${blocked.blocker}`; const open = blocks.find((block) => block.status !== "green"); if (open) return `${open.time} · ${open.next}`; const last = blocks[blocks.length - 1]; return last ? `${last.time} · ${last.next}` : "no next action"; }
+function localGates(blocks: ScheduledWorkBlock[]): GateState { return { consent: blocks.map((b) => b.consentStatus).find(Boolean), estimate: blocks.map((b) => b.estimateStatus).find(Boolean), insurance: blocks.map((b) => b.insuranceStatus).find(Boolean), pharmacy: blocks.map((b) => b.pharmacyReady).find((value) => value !== undefined), owner: blocks.map((b) => b.ownerUpdated).find((value) => value !== undefined), report: blocks.map((b) => b.referringVetReportSent).find((value) => value !== undefined), discharge: blocks.map((b) => b.dischargeClear).find((value) => value !== undefined) }; }
+function gateRows(values: GateState) { return [["Consent", values.consent || "not set"], ["Estimate", values.estimate || "not set"], ["Insurance", values.insurance || "not set"], ["Pharmacy", values.pharmacy === undefined || values.pharmacy === null ? "not set" : values.pharmacy ? "ready" : "not ready"], ["Owner", values.owner === undefined || values.owner === null ? "not set" : values.owner ? "updated" : "not updated"], ["Report", values.report === undefined || values.report === null ? "not set" : values.report ? "sent" : "not sent"], ["Discharge", values.discharge === undefined || values.discharge === null ? "not set" : values.discharge ? "clear" : "not clear"]]; }
 
 function localCases(blocks: ScheduledWorkBlock[]): CareCase[] {
   const grouped = new Map<string, ScheduledWorkBlock[]>();
-  for (const block of blocks) {
-    if (block.lane === "breaks") continue;
-    const key = caseKey(block);
-    grouped.set(key, [...(grouped.get(key) || []), block]);
-  }
+  for (const block of blocks) { if (block.lane === "breaks") continue; const key = caseKey(block); grouped.set(key, [...(grouped.get(key) || []), block]); }
   return Array.from(grouped.entries()).map(([id, rows]) => {
     const sorted = [...rows].sort(blockTimeSort);
     const blocker = sorted.find((block) => safe(block.blocker).toLowerCase() !== "none")?.blocker || "none";
-    return {
-      id,
-      patient: safe(sorted.find((block) => safe(block.subject))?.subject) || id,
-      source: "local",
-      episodeRef: id,
-      blocks: sorted,
-      events: [],
-      stage: stageFor(sorted),
-      owner: ownerFor(sorted),
-      location: safe(sorted.find((block) => safe(block.where))?.where) || "not set",
-      next: nextFor(sorted),
-      blocker,
-      status: blocker !== "none" ? "blocked" : "active",
-      risk: sorted.some((block) => block.status === "red" || safe(block.blocker).toLowerCase() !== "none") ? "red" : sorted.some((block) => block.status === "amber") ? "amber" : "green",
-      gates: localGates(sorted),
-      blockers: sorted.filter((block) => safe(block.blocker).toLowerCase() !== "none"),
-    };
+    return { id, patient: safe(sorted.find((block) => safe(block.subject))?.subject) || id, source: "local", episodeRef: id, blocks: sorted, events: [], stage: stageFor(sorted), owner: ownerFor(sorted), location: safe(sorted.find((block) => safe(block.where))?.where) || "not set", next: nextFor(sorted), blocker, status: blocker !== "none" ? "blocked" : "active", risk: sorted.some((block) => block.status === "red" || safe(block.blocker).toLowerCase() !== "none") ? "red" : sorted.some((block) => block.status === "amber") ? "amber" : "green", gates: localGates(sorted), blockers: sorted.filter((block) => safe(block.blocker).toLowerCase() !== "none") };
   });
 }
 
 function apiCasesToCareCases(apiCases: ApiCase[], blocks: ScheduledWorkBlock[]): CareCase[] {
   return apiCases.flatMap((item) => {
     const episodes = item.episodes?.length ? item.episodes : [];
-    if (!episodes.length) {
-      return [{
-        id: item.id,
-        patient: item.patientName,
-        source: "api" as const,
-        episodeRef: item.id,
-        blocks: [],
-        events: [],
-        stage: "intake" as StageKey,
-        owner: "unassigned",
-        location: "not set",
-        next: item.referralReason || "confirm referral plan",
-        blocker: "none",
-        status: item.status || "active",
-        risk: item.riskLevel || "amber",
-        gates: {},
-        blockers: [],
-      }];
-    }
+    if (!episodes.length) return [{ id: item.id, patient: item.patientName, source: "api" as const, episodeRef: item.id, blocks: [], events: [], stage: "intake" as StageKey, owner: "unassigned", location: "not set", next: item.referralReason || "confirm referral plan", blocker: "none", status: item.status || "active", risk: item.riskLevel || "amber", gates: {}, blockers: [] }];
     return episodes.map((episode) => {
       const matchingBlocks = blocks.filter((block) => caseKey(block) === episode.episodeRef || caseKey(block) === item.patientName || safe(block.subject) === item.patientName).sort(blockTimeSort);
       const blocker = safe(episode.blocker) || "none";
-      return {
-        id: item.id,
-        patient: item.patientName,
-        source: "api" as const,
-        episodeId: episode.id,
-        episodeRef: episode.episodeRef,
-        blocks: matchingBlocks,
-        events: episode.events || [],
-        stage: isStage(episode.stage) ? episode.stage : stageFor(matchingBlocks),
-        owner: safe(episode.ownerName) || safe(episode.ownerRole) || "unassigned",
-        location: safe(episode.currentLocation) || "not set",
-        next: safe(episode.nextAction) || nextFor(matchingBlocks),
-        blocker,
-        status: episode.status || item.status || "active",
-        risk: item.riskLevel || (blocker !== "none" ? "red" : "amber"),
-        gates: {
-          consent: episode.consentStatus,
-          estimate: episode.estimateStatus,
-          insurance: episode.insuranceStatus,
-          pharmacy: episode.pharmacyReady,
-          owner: episode.ownerUpdated,
-          report: episode.referringVetReportSent,
-          discharge: episode.dischargeClear,
-        },
-        blockers: matchingBlocks.filter((block) => safe(block.blocker).toLowerCase() !== "none"),
-      };
+      return { id: item.id, patient: item.patientName, source: "api" as const, episodeId: episode.id, episodeRef: episode.episodeRef, blocks: matchingBlocks, events: episode.events || [], stage: isStage(episode.stage) ? episode.stage : stageFor(matchingBlocks), owner: safe(episode.ownerName) || safe(episode.ownerRole) || "unassigned", location: safe(episode.currentLocation) || "not set", next: safe(episode.nextAction) || nextFor(matchingBlocks), blocker, status: episode.status || item.status || "active", risk: item.riskLevel || (blocker !== "none" ? "red" : "amber"), gates: { consent: episode.consentStatus, estimate: episode.estimateStatus, insurance: episode.insuranceStatus, pharmacy: episode.pharmacyReady, owner: episode.ownerUpdated, report: episode.referringVetReportSent, discharge: episode.dischargeClear }, blockers: matchingBlocks.filter((block) => safe(block.blocker).toLowerCase() !== "none") };
     });
   });
 }
 
-function tone(block: ScheduledWorkBlock) {
-  if (safe(block.blocker).toLowerCase() !== "none" || block.status === "red") return "blocked";
-  if (block.status === "green") return "clear";
-  return "open";
-}
-
-async function fetchPatientCases(): Promise<ApiCase[]> {
-  const response = await fetch(`${API_BASE}/api/patient-care/cases`, { cache: "no-store" });
-  if (!response.ok) throw new Error("patient care request failed");
-  const data = await response.json();
-  return Array.isArray(data.cases) ? data.cases : [];
-}
-
-async function patchEpisode(episodeId: string, patch: Record<string, unknown>) {
-  const response = await fetch(`${API_BASE}/api/patient-care/episodes/${episodeId}/state`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...patch, actor: "frontend" }),
-  });
-  if (!response.ok) throw new Error("episode patch failed");
-  return response.json();
-}
+function tone(block: ScheduledWorkBlock) { if (safe(block.blocker).toLowerCase() !== "none" || block.status === "red") return "blocked"; if (block.status === "green") return "clear"; return "open"; }
+async function fetchPatientCases(): Promise<ApiCase[]> { const response = await fetch(`${API_BASE}/api/patient-care/cases`, { cache: "no-store" }); if (!response.ok) throw new Error("patient care request failed"); const data = await response.json(); return Array.isArray(data.cases) ? data.cases : []; }
+async function patchEpisode(episodeId: string, patch: Record<string, unknown>) { const response = await fetch(`${API_BASE}/api/patient-care/episodes/${episodeId}/state`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...patch, actor: "frontend" }) }); if (!response.ok) throw new Error("episode patch failed"); return response.json(); }
 
 export function PatientCareWorkflow() {
   const { blocks, applyAction, syncStatus } = useDayControlStore();
@@ -272,23 +67,10 @@ export function PatientCareWorkflow() {
   const [apiStatus, setApiStatus] = useState<"loading" | "api" | "offline">("loading");
   const [selectedId, setSelectedId] = useState("");
 
-  async function loadCases() {
-    try {
-      const rows = await fetchPatientCases();
-      setApiCases(rows);
-      setApiStatus("api");
-    } catch {
-      setApiStatus("offline");
-    }
-  }
-
+  async function loadCases() { try { const rows = await fetchPatientCases(); setApiCases(rows); setApiStatus("api"); } catch { setApiStatus("offline"); } }
   useEffect(() => { void loadCases(); }, []);
 
-  const cases = useMemo(() => {
-    const fromApi = apiCasesToCareCases(apiCases, blocks);
-    return (fromApi.length ? fromApi : localCases(blocks)).sort((a, b) => Number(b.blocker !== "none") - Number(a.blocker !== "none") || a.patient.localeCompare(b.patient));
-  }, [apiCases, blocks]);
-
+  const cases = useMemo(() => { const fromApi = apiCasesToCareCases(apiCases, blocks); return (fromApi.length ? fromApi : localCases(blocks)).sort((a, b) => Number(b.blocker !== "none") - Number(a.blocker !== "none") || a.patient.localeCompare(b.patient)); }, [apiCases, blocks]);
   const selected = cases.find((item) => item.episodeId === selectedId || item.id === selectedId) || cases[0];
   const blockedCases = cases.filter((item) => item.blocker !== "none" || item.blockers.length).length;
   const selectedOwnerBlock = selected?.blocks.find((block) => block.what.toLowerCase().includes("owner"));
@@ -297,90 +79,23 @@ export function PatientCareWorkflow() {
 
   async function updateSelected(patch: Record<string, unknown>, localBlockId?: string, localAction?: "resolve" | "escalate" | "owner_update" | "referring_vet_report") {
     if (localBlockId && localAction) applyAction(localBlockId, localAction);
-    if (selected?.episodeId) {
-      try {
-        await patchEpisode(selected.episodeId, patch);
-        await loadCases();
-      } catch {
-        setApiStatus("offline");
-      }
-    }
+    if (selected?.episodeId) { try { await patchEpisode(selected.episodeId, patch); await loadCases(); } catch { setApiStatus("offline"); } }
   }
 
   return <main className="pcw"><style>{css}</style>
-    <header className="hero">
-      <div>
-        <span>LucyWorks OS</span>
-        <h1>Patient care workflow</h1>
-        <p>Referral episodes first. Board, staff and rooms sit underneath the patient journey.</p>
-      </div>
-      <nav>
-        <a href="/patient-care">Care workflow</a>
-        <a href="/hospital-board">Schedule board</a>
-        <a href="/workspace">Workspace</a>
-      </nav>
-    </header>
-
-    <section className="kpis">
-      <article><b>{cases.length}</b><small>active episodes</small></article>
-      <article><b>{blockedCases}</b><small>blocked cases</small></article>
-      <article><b>{blocks.length}</b><small>schedule tasks</small></article>
-      <article><b>{apiStatus === "api" ? "case DB" : syncStatus}</b><small>source</small></article>
-    </section>
-
+    <header className="hero"><div><span>LucyWorks OS</span><h1>Patient care workflow</h1><p>Referral episodes first. Every consent, estimate, override, AI output and clinical/admin decision should create evidence.</p></div><nav><a href="/patient-care">Care workflow</a><a href="/hospital-board">Schedule board</a><a href="/workspace">Workspace</a></nav></header>
+    <section className="kpis"><article><b>{cases.length}</b><small>active episodes</small></article><article><b>{blockedCases}</b><small>blocked cases</small></article><article><b>{blocks.length}</b><small>schedule tasks</small></article><article><b>{apiStatus === "api" ? "case DB" : syncStatus}</b><small>source</small></article></section>
     <section className="layout">
-      <aside className="caseList">
-        <h2>Patient episodes</h2>
-        {cases.map((item) => <button key={`${item.id}-${item.episodeId || item.episodeRef}`} className={selected?.episodeRef === item.episodeRef ? "active" : ""} onClick={() => setSelectedId(item.episodeId || item.id)}>
-          <b>{item.patient}</b>
-          <small>{stageLabel(item.stage)} · {item.owner}</small>
-          <em>{item.blocker !== "none" ? item.blocker : item.status}</em>
-        </button>)}
-      </aside>
-
+      <aside className="caseList"><h2>Patient episodes</h2>{cases.map((item) => <button key={`${item.id}-${item.episodeId || item.episodeRef}`} className={selected?.episodeRef === item.episodeRef ? "active" : ""} onClick={() => setSelectedId(item.episodeId || item.id)}><b>{item.patient}</b><small>{stageLabel(item.stage)} · {item.owner}</small><em>{item.blocker !== "none" ? item.blocker : item.status}</em></button>)}</aside>
       {selected ? <section className="caseDetail">
-        <div className="caseHeader">
-          <div>
-            <span>{selected.source === "api" ? "case record" : "local fallback"} · {selected.episodeRef}</span>
-            <h2>{selected.patient}</h2>
-            <p>{stageLabel(selected.stage)} · Owner: {selected.owner} · Location: {selected.location}</p>
-          </div>
-          <strong className={selected.blocker !== "none" || selected.blockers.length ? "bad" : "good"}>{selected.blocker !== "none" || selected.blockers.length ? "Blocked" : "In flow"}</strong>
-        </div>
-
-        <section className="nextAction">
-          <b>Next clinical/admin action</b>
-          <p>{selected.next}</p>
-          <div>
-            {selected.blocker !== "none" || selectedBlockedBlock ? <button onClick={() => void updateSelected({ blocker: "none", status: "active", nextAction: "blocker cleared", note: "blocker cleared from patient workflow" }, selectedBlockedBlock?.id, "resolve")}>Resolve blocker</button> : null}
-            <button onClick={() => void updateSelected({ ownerUpdated: true, nextAction: "owner updated", note: "owner update recorded" }, selectedOwnerBlock?.id, selectedOwnerBlock ? "owner_update" : undefined)}>Mark owner updated</button>
-            <button onClick={() => void updateSelected({ referringVetReportSent: true, nextAction: "referring-vet report sent", note: "referring vet report recorded" }, selectedReportBlock?.id, selectedReportBlock ? "referring_vet_report" : undefined)}>Mark report sent</button>
-            {selected.blocker !== "none" || selectedBlockedBlock ? <button onClick={() => void updateSelected({ status: "escalated", nextAction: "senior review required", note: "case escalated" }, selectedBlockedBlock?.id, "escalate")}>Escalate</button> : null}
-          </div>
-        </section>
-
-        <section className="gates">
-          {gateRows(selected.gates).map(([label, value]) => <article key={label} className={String(value).includes("pending") || String(value).includes("not") ? "gateBad" : ""}>
-            <small>{label}</small>
-            <b>{value}</b>
-          </article>)}
-        </section>
-
-        <section className="timeline">
-          <h3>Workflow evidence</h3>
-          {selected.blocks.length ? selected.blocks.map((block) => <article key={block.id} className={tone(block)}>
-            <time>{block.time}</time>
-            <div>
-              <b>{block.what}</b>
-              <p>{block.who} · {block.where}</p>
-              <small>{safe(block.blocker).toLowerCase() !== "none" ? `Blocked: ${block.blocker}` : block.next}</small>
-            </div>
-          </article>) : <p className="empty">No schedule timeline attached yet.</p>}
-          {selected.events.length ? <div className="events"><h3>Case record events</h3>{selected.events.slice(0, 6).map((event) => <article key={`${event.id}-${event.createdAt}`} className="event"><time>{event.atTime || "record"}</time><div><b>{event.action || event.eventType}</b><small>{event.note || event.actor || "workflow event"}</small></div></article>)}</div> : null}
-        </section>
+        <div className="caseHeader"><div><span>{selected.source === "api" ? "case record" : "local fallback"} · {selected.episodeRef}</span><h2>{selected.patient}</h2><p>{stageLabel(selected.stage)} · Owner: {selected.owner} · Location: {selected.location}</p></div><strong className={selected.blocker !== "none" || selected.blockers.length ? "bad" : "good"}>{selected.blocker !== "none" || selected.blockers.length ? "Blocked" : "In flow"}</strong></div>
+        <section className="nextAction"><b>Next clinical/admin action</b><p>{selected.next}</p><div>{selected.blocker !== "none" || selectedBlockedBlock ? <button onClick={() => void updateSelected({ blocker: "none", status: "active", nextAction: "blocker cleared", note: "blocker cleared from patient workflow" }, selectedBlockedBlock?.id, "resolve")}>Resolve blocker</button> : null}<button onClick={() => void updateSelected({ ownerUpdated: true, nextAction: "owner updated", note: "owner update recorded" }, selectedOwnerBlock?.id, selectedOwnerBlock ? "owner_update" : undefined)}>Mark owner updated</button><button onClick={() => void updateSelected({ referringVetReportSent: true, nextAction: "referring-vet report sent", note: "referring vet report recorded" }, selectedReportBlock?.id, selectedReportBlock ? "referring_vet_report" : undefined)}>Mark report sent</button>{selected.blocker !== "none" || selectedBlockedBlock ? <button onClick={() => void updateSelected({ status: "escalated", nextAction: "senior review required", note: "case escalated" }, selectedBlockedBlock?.id, "escalate")}>Escalate</button> : null}</div></section>
+        <section className="gates">{gateRows(selected.gates).map(([label, value]) => <article key={label} className={String(value).includes("pending") || String(value).includes("not") ? "gateBad" : ""}><small>{label}</small><b>{value}</b></article>)}</section>
+        <EvidenceControlPanel patientCaseId={selected.id} referralEpisodeId={selected.episodeId} episodeRef={selected.episodeRef} patientName={selected.patient} onEvidenceChange={loadCases} />
+        <section className="timeline"><h3>Workflow evidence</h3>{selected.blocks.length ? selected.blocks.map((block) => <article key={block.id} className={tone(block)}><time>{block.time}</time><div><b>{block.what}</b><p>{block.who} · {block.where}</p><small>{safe(block.blocker).toLowerCase() !== "none" ? `Blocked: ${block.blocker}` : block.next}</small></div></article>) : <p className="empty">No schedule timeline attached yet.</p>}{selected.events.length ? <div className="events"><h3>Case record events</h3>{selected.events.slice(0, 6).map((event) => <article key={`${event.id}-${event.createdAt}`} className="event"><time>{event.atTime || "record"}</time><div><b>{event.action || event.eventType}</b><small>{event.note || event.actor || "workflow event"}</small></div></article>)}</div> : null}</section>
       </section> : <section className="caseDetail"><h2>No cases</h2><p>Create a referral episode from the hospital board.</p></section>}
     </section>
   </main>;
 }
 
-const css = `.pcw{min-height:100vh;background:#f5f7fb;color:#111827;padding:14px;font-family:Inter,system-ui,sans-serif}.pcw *{box-sizing:border-box}.hero{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;background:white;border:1px solid #d8e0ec;border-radius:18px;padding:16px;box-shadow:0 10px 28px rgba(15,23,42,.06)}.hero span,.caseHeader span{display:block;text-transform:uppercase;letter-spacing:.14em;color:#2563eb;font-size:11px;font-weight:900}.hero h1{font-size:clamp(34px,7vw,64px);line-height:.95;margin:6px 0;color:#111827}.hero p,.caseHeader p,.nextAction p,.timeline p{color:#475569;margin:6px 0 0}.hero nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.hero a,.nextAction button{border:1px solid #cbd5e1;background:white;color:#0f172a;border-radius:999px;padding:9px 12px;text-decoration:none;font-weight:800}.hero a:first-child,.nextAction button:first-child{background:#0f172a;color:white;border-color:#0f172a}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}.kpis article,.caseList,.caseDetail{background:white;border:1px solid #d8e0ec;border-radius:18px;padding:14px}.kpis b{display:block;font-size:32px;line-height:1}.kpis small{display:block;color:#64748b;margin-top:4px}.layout{display:grid;grid-template-columns:minmax(260px,.35fr) 1fr;gap:12px}.caseList{display:grid;gap:8px;align-content:start}.caseList h2{margin:0 0 4px}.caseList button{display:grid;gap:3px;text-align:left;border:1px solid #d8e0ec;background:#f8fafc;border-radius:14px;padding:11px;color:#0f172a}.caseList button.active{border-color:#2563eb;background:#eff6ff}.caseList small{color:#475569}.caseList em{font-style:normal;color:#92400e;font-size:12px}.caseHeader{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e5e7eb;padding-bottom:12px}.caseHeader h2{font-size:clamp(30px,5vw,52px);line-height:1;margin:5px 0}.caseHeader strong{border-radius:999px;padding:8px 11px;font-size:13px}.good{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}.nextAction{background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:12px;margin:12px 0}.nextAction b{font-size:18px}.nextAction div{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.nextAction button{cursor:pointer}.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.gates article{border:1px solid #d8e0ec;background:#f8fafc;border-radius:13px;padding:10px}.gates .gateBad{border-color:#f59e0b;background:#fffbeb}.gates small{display:block;color:#64748b}.gates b{display:block;margin-top:4px;text-transform:capitalize}.timeline{margin-top:14px}.timeline h3{margin:0 0 8px}.timeline article{display:grid;grid-template-columns:68px 1fr;gap:10px;border:1px solid #d8e0ec;border-left-width:6px;border-radius:14px;padding:10px;margin-bottom:8px;background:white}.timeline article.blocked{border-left-color:#dc2626}.timeline article.open{border-left-color:#f59e0b}.timeline article.clear{border-left-color:#16a34a}.timeline article.event{border-left-color:#2563eb;background:#eff6ff}.timeline time{font-weight:900;color:#0f172a}.timeline b{display:block}.timeline small{display:block;color:#475569;margin-top:4px}.empty{color:#64748b}@media(max-width:760px){.pcw{padding:10px}.hero{display:grid}.hero nav{justify-content:stretch}.hero a{flex:1;text-align:center}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}.caseList{max-height:42vh;overflow:auto}.caseHeader{display:grid}.nextAction div{display:grid}.nextAction button{width:100%}}`;
+const css = `.pcw{min-height:100vh;background:#f5f7fb;color:#111827;padding:14px;font-family:Inter,system-ui,sans-serif}.pcw *{box-sizing:border-box}.hero{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;background:white;border:1px solid #d8e0ec;border-radius:18px;padding:16px;box-shadow:0 10px 28px rgba(15,23,42,.06)}.hero span,.caseHeader span,.evidenceHead span{display:block;text-transform:uppercase;letter-spacing:.14em;color:#2563eb;font-size:11px;font-weight:900}.hero h1{font-size:clamp(34px,7vw,64px);line-height:.95;margin:6px 0;color:#111827}.hero p,.caseHeader p,.nextAction p,.timeline p,.evidenceHead p{color:#475569;margin:6px 0 0}.hero nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.hero a,.nextAction button,.evidencePanel button{border:1px solid #cbd5e1;background:white;color:#0f172a;border-radius:999px;padding:9px 12px;text-decoration:none;font-weight:800}.hero a:first-child,.nextAction button:first-child,.evidencePanel button:first-of-type{background:#0f172a;color:white;border-color:#0f172a}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}.kpis article,.caseList,.caseDetail,.evidencePanel{background:white;border:1px solid #d8e0ec;border-radius:18px;padding:14px}.kpis b{display:block;font-size:32px;line-height:1}.kpis small{display:block;color:#64748b;margin-top:4px}.layout{display:grid;grid-template-columns:minmax(260px,.35fr) 1fr;gap:12px}.caseList{display:grid;gap:8px;align-content:start}.caseList h2{margin:0 0 4px}.caseList button{display:grid;gap:3px;text-align:left;border:1px solid #d8e0ec;background:#f8fafc;border-radius:14px;padding:11px;color:#0f172a}.caseList button.active{border-color:#2563eb;background:#eff6ff}.caseList small{color:#475569}.caseList em{font-style:normal;color:#92400e;font-size:12px}.caseHeader{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e5e7eb;padding-bottom:12px}.caseHeader h2{font-size:clamp(30px,5vw,52px);line-height:1;margin:5px 0}.caseHeader strong{border-radius:999px;padding:8px 11px;font-size:13px}.good{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}.nextAction{background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:12px;margin:12px 0}.nextAction b{font-size:18px}.nextAction div{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.nextAction button,.evidencePanel button{cursor:pointer}.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.gates article{border:1px solid #d8e0ec;background:#f8fafc;border-radius:13px;padding:10px}.gates .gateBad{border-color:#f59e0b;background:#fffbeb}.gates small{display:block;color:#64748b}.gates b{display:block;margin-top:4px;text-transform:capitalize}.evidencePanel{margin-top:12px}.evidenceHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e5e7eb;padding-bottom:10px}.evidenceHead h3{font-size:24px;margin:3px 0}.evidenceForm{border:1px solid #d8e0ec;background:#f8fafc;border-radius:14px;padding:10px;margin-top:10px}.evidenceForm summary{font-weight:900;cursor:pointer}.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;margin:10px 0}.formGrid label{display:grid;gap:4px;color:#475569;font-size:12px;font-weight:800}.formGrid .check{display:flex;gap:8px;align-items:center}.formGrid input,.formGrid select,.formGrid textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:9px;background:white;color:#0f172a;font:inherit}.formGrid textarea{min-height:72px}.eventList{margin-top:12px}.eventList article,.timeline article{display:grid;grid-template-columns:72px 1fr;gap:10px;border:1px solid #d8e0ec;border-left-width:6px;border-radius:14px;padding:10px;margin-bottom:8px;background:white}.eventList article{border-left-color:#2563eb}.eventList time,.timeline time{font-weight:900;color:#0f172a}.eventList b,.timeline b{display:block}.eventList small,.timeline small{display:block;color:#475569;margin-top:4px}.timeline{margin-top:14px}.timeline h3,.eventList h3{margin:0 0 8px}.timeline article.blocked{border-left-color:#dc2626}.timeline article.open{border-left-color:#f59e0b}.timeline article.clear{border-left-color:#16a34a}.timeline article.event{border-left-color:#2563eb;background:#eff6ff}.empty{color:#64748b}@media(max-width:760px){.pcw{padding:10px}.hero,.evidenceHead{display:grid}.hero nav{justify-content:stretch}.hero a{flex:1;text-align:center}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}.caseList{max-height:42vh;overflow:auto}.caseHeader{display:grid}.nextAction div{display:grid}.nextAction button,.evidencePanel button{width:100%}.eventList article,.timeline article{grid-template-columns:1fr}}`;
