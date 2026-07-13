@@ -79,7 +79,10 @@ try:
         assert episode["consentStatus"] == "pending"
         print("Patient-care sync OK")
 
-        r = client.patch(f"/api/patient-care/episodes/{episode_id}/state", json={"ownerUpdated": True, "consentStatus": "approved", "estimateStatus": "approved", "actor": "smoke", "note": "manual state should survive resync"})
+        r = client.patch(
+            f"/api/patient-care/episodes/{episode_id}/state",
+            json={"ownerUpdated": True, "consentStatus": "approved", "estimateStatus": "approved", "actor": "smoke", "note": "manual state should survive resync"},
+        )
         assert r.status_code == 200, r.text
         assert r.json()["episode"]["ownerUpdated"] is True
         print("Patient-care patch OK")
@@ -114,6 +117,55 @@ try:
         assert r.status_code == 200, r.text
         assert r.json()["event"]["aiModel"] == "smoke-model"
         print("Evidence event OK")
+
+        r = client.post("/api/evidence/events", json={
+            "eventType": "decision",
+            "patientCaseId": patient_case_id,
+            "referralEpisodeId": episode_id,
+            "actorName": "Smoke Junior Clinician",
+            "actorRole": "clinician",
+            "professionalRole": "vet",
+            "action": "override consent gate for urgent imaging",
+            "reason": "urgent imaging decision smoke test",
+            "justification": "patient deterioration and owner unreachable",
+            "aiSystem": "smoke-ai",
+            "aiModel": "smoke-model-red",
+            "aiOutputRef": "smoke-output-red",
+            "humanReviewStatus": "required",
+            "supervisorRequired": True,
+            "supervisorApprovalStatus": "required",
+            "overrideReason": "urgent welfare risk; owner unreachable",
+            "complianceDomain": "clinical_governance",
+            "riskLevel": "red",
+            "sourceModule": "smoke-test",
+        })
+        assert r.status_code == 200, r.text
+        red_event_ref = r.json()["event"]["eventRef"]
+        print("Red evidence event OK")
+
+        r = client.get(f"/api/evidence/approvals?status=pending&patient_case_id={patient_case_id}")
+        assert r.status_code == 200, r.text
+        approvals = r.json()["approvals"]
+        assert approvals, r.text
+        approval = next(item for item in approvals if item["evidenceEventRef"] == red_event_ref)
+        approval_id = approval["id"]
+        assert approval["status"] == "pending"
+        assert "approval" in approval["reason"] or "red" in approval["reason"] or "override" in approval["reason"]
+        print("Approval task generated OK")
+
+        r = client.patch(f"/api/evidence/approvals/{approval_id}", json={"decision": "approved", "decidedBy": "Smoke Clinician", "decidedByRole": "clinician", "note": "should be blocked"})
+        assert r.status_code == 403, r.text
+        print("Approval role guard OK")
+
+        r = client.patch(f"/api/evidence/approvals/{approval_id}", json={"decision": "approved", "decidedBy": "Smoke Clinical Director", "decidedByRole": "clinical_director", "note": "approved by senior supervisor"})
+        assert r.status_code == 200, r.text
+        assert r.json()["approval"]["status"] == "approved"
+        print("Approval decision OK")
+
+        r = client.get(f"/api/evidence/approvals?status=approved&patient_case_id={patient_case_id}")
+        assert r.status_code == 200, r.text
+        assert any(item["evidenceEventRef"] == red_event_ref for item in r.json()["approvals"])
+        print("Approved queue list OK")
 
         for amount in [1200, 1500]:
             r = client.post("/api/evidence/estimates", json={
@@ -166,8 +218,10 @@ try:
 
         r = client.get(f"/api/evidence/events?patient_case_id={patient_case_id}")
         assert r.status_code == 200, r.text
-        assert r.json()["count"] >= 1
-        print("Evidence event list OK")
+        assert r.json()["count"] >= 3
+        assert any(event["eventType"] == "approval_decision" for event in r.json()["events"])
+        assert any(event["eventRef"] == red_event_ref and event["supervisorApprovalStatus"] == "approved" for event in r.json()["events"])
+        print("Evidence event list and approval audit OK")
 
     print("\n--- EVIDENCE PATIENT CARE SMOKE TEST PASSED ---\n")
 finally:
