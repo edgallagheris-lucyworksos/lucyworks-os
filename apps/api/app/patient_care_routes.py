@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.database import get_session
+from app.evidence_event_models import EvidenceEvent
 from app.patient_care_models import PatientCase, PatientWorkflowEvent, ReferralEpisode
 from app.schedule_state_models import ScheduleStateBlock
 
@@ -54,6 +56,16 @@ class WorkflowEventCreate(BaseModel):
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _event_ref() -> str:
+    return f"patient-care-evidence-{int(_now().timestamp() * 1000)}"
+
+
+def _json(value: Any) -> str | None:
+    if value is None:
+        return None
+    return json.dumps(value, default=str)
 
 
 def _slug(value: str) -> str:
@@ -143,6 +155,15 @@ def _risk_level(rows: list[ScheduleStateBlock]) -> str:
     return "green"
 
 
+def _fill_if_missing(row: ReferralEpisode, attr: str, value: Any) -> None:
+    if getattr(row, attr) is None and value is not None:
+        setattr(row, attr, value)
+
+
+def _has_manual_episode_events(session: Session, episode_id: str) -> bool:
+    return session.exec(select(PatientWorkflowEvent).where(PatientWorkflowEvent.episode_id == episode_id)).first() is not None
+
+
 def _case_dict(row: PatientCase) -> dict[str, Any]:
     return {
         "id": row.id,
@@ -197,6 +218,24 @@ def _event_dict(row: PatientWorkflowEvent) -> dict[str, Any]:
     }
 
 
+def _record_evidence(session: Session, episode: ReferralEpisode, action: str, actor: str, previous: dict[str, Any] | None, new: dict[str, Any] | None, note: str | None = None) -> None:
+    session.add(EvidenceEvent(
+        event_ref=_event_ref(),
+        event_type="patient_workflow_state",
+        patient_case_id=episode.patient_case_id,
+        referral_episode_id=episode.id,
+        actor_name=actor,
+        actor_role="workflow_user",
+        action=action,
+        previous_state_json=_json(previous),
+        new_state_json=_json(new),
+        reason=note,
+        compliance_domain="clinical_governance",
+        risk_level="red" if episode.blocker != "none" or episode.status == "blocked" else "amber",
+        source_module="patient-care",
+    ))
+
+
 def _sync_from_blocks(session: Session) -> None:
     rows = session.exec(select(ScheduleStateBlock).order_by(ScheduleStateBlock.time, ScheduleStateBlock.lane)).all()
     grouped: dict[str, list[ScheduleStateBlock]] = defaultdict(list)
@@ -223,24 +262,33 @@ def _sync_from_blocks(session: Session) -> None:
         session.add(patient)
 
         episode = session.get(ReferralEpisode, episode_id)
+        is_new_episode = episode is None
         if not episode:
             episode = ReferralEpisode(id=episode_id, patient_case_id=case_id, episode_ref=key)
+        has_manual_state = False if is_new_episode else _has_manual_episode_events(session, episode_id)
         episode.patient_case_id = case_id
         episode.episode_ref = key
-        episode.stage = _stage_for(blocks)
-        episode.owner_role = _owner_role(blocks)
-        episode.owner_name = _owner_name(blocks)
-        episode.current_location = _location(blocks)
-        episode.next_action = _next_action(blocks)
-        episode.blocker = _blocker(blocks)
-        episode.status = "blocked" if episode.blocker != "none" else "active"
-        episode.consent_status = _first_status(blocks, "consent_status")
-        episode.estimate_status = _first_status(blocks, "estimate_status")
-        episode.insurance_status = _first_status(blocks, "insurance_status")
-        episode.pharmacy_ready = _first_status(blocks, "pharmacy_ready")
-        episode.owner_updated = _first_status(blocks, "owner_updated")
-        episode.referring_vet_report_sent = _first_status(blocks, "referring_vet_report_sent")
-        episode.discharge_clear = _first_status(blocks, "discharge_clear")
+
+        if is_new_episode or not has_manual_state:
+            episode.stage = _stage_for(blocks)
+            episode.owner_role = _owner_role(blocks)
+            episode.owner_name = _owner_name(blocks)
+            episode.current_location = _location(blocks)
+            episode.next_action = _next_action(blocks)
+            episode.blocker = _blocker(blocks)
+            episode.status = "blocked" if episode.blocker != "none" else "active"
+        else:
+            episode.owner_role = episode.owner_role or _owner_role(blocks)
+            episode.owner_name = episode.owner_name or _owner_name(blocks)
+            episode.current_location = episode.current_location or _location(blocks)
+
+        _fill_if_missing(episode, "consent_status", _first_status(blocks, "consent_status"))
+        _fill_if_missing(episode, "estimate_status", _first_status(blocks, "estimate_status"))
+        _fill_if_missing(episode, "insurance_status", _first_status(blocks, "insurance_status"))
+        _fill_if_missing(episode, "pharmacy_ready", _first_status(blocks, "pharmacy_ready"))
+        _fill_if_missing(episode, "owner_updated", _first_status(blocks, "owner_updated"))
+        _fill_if_missing(episode, "referring_vet_report_sent", _first_status(blocks, "referring_vet_report_sent"))
+        _fill_if_missing(episode, "discharge_clear", _first_status(blocks, "discharge_clear"))
         episode.updated_at = _now()
         session.add(episode)
     session.commit()
@@ -283,6 +331,7 @@ def update_episode_state(episode_id: str, payload: EpisodeStatePatch, session: S
     episode = session.get(ReferralEpisode, episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="episode not found")
+    before = _episode_dict(episode)
     updates = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
     mapping = {
         "ownerRole": "owner_role",
@@ -305,6 +354,8 @@ def update_episode_state(episode_id: str, payload: EpisodeStatePatch, session: S
     session.add(episode)
     event = PatientWorkflowEvent(episode_id=episode.id, patient_case_id=episode.patient_case_id, event_type="state_change", action="update_episode_state", actor=payload.actor, note=payload.note or "episode state updated")
     session.add(event)
+    after = _episode_dict(episode)
+    _record_evidence(session, episode, "update_episode_state", payload.actor, before, after, payload.note)
     session.commit()
     session.refresh(episode)
     return {"episode": _episode_dict(episode), "event": _event_dict(event)}
@@ -315,11 +366,14 @@ def create_workflow_event(episode_id: str, payload: WorkflowEventCreate, session
     episode = session.get(ReferralEpisode, episode_id)
     if not episode:
         raise HTTPException(status_code=404, detail="episode not found")
+    before = _episode_dict(episode)
     event = PatientWorkflowEvent(episode_id=episode.id, patient_case_id=episode.patient_case_id, event_type=payload.eventType, action=payload.action, actor=payload.actor, note=payload.note, source_block_id=payload.sourceBlockId, at_time=payload.atTime)
     episode.next_action = payload.note or payload.action.replace("_", " ")
     episode.updated_at = _now()
     session.add(episode)
     session.add(event)
+    after = _episode_dict(episode)
+    _record_evidence(session, episode, payload.action, payload.actor, before, after, payload.note)
     session.commit()
     session.refresh(event)
     return {"episode": _episode_dict(episode), "event": _event_dict(event)}
