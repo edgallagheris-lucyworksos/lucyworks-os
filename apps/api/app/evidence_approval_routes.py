@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -177,7 +178,7 @@ def decide_approval(approval_id: int, payload: ApprovalDecision, session: Sessio
             action=f"approval {payload.decision}",
             reason=row.reason,
             justification=payload.note,
-            evidence_links_json=f"[{ { 'type': 'evidence_event', 'id': row.evidence_event_ref } }]".replace("'", '"'),
+            evidence_links_json=json.dumps([{"type": "evidence_event", "id": row.evidence_event_ref}, {"type": "approval_task", "id": row.id}]),
             supervisor_name=payload.decidedBy,
             supervisor_approval_status=payload.decision,
             compliance_domain="governance_approval",
