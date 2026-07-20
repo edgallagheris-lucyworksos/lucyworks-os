@@ -1,0 +1,127 @@
+name: lucyworks-production
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lucyworks}
+      POSTGRES_USER: ${POSTGRES_USER:-lucyworks}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lucyworks} -d ${POSTGRES_DB:-lucyworks}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [backend]
+    security_opt: ["no-new-privileges:true"]
+
+  migrate:
+    build:
+      context: ../apps/api
+    restart: "no"
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lucyworks}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lucyworks}
+      AUTO_CREATE_SCHEMA: "false"
+      RUN_MIGRATIONS_ON_START: "true"
+    command: ["sh", "-c", "echo migrations-complete"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+    security_opt: ["no-new-privileges:true"]
+
+  api:
+    build:
+      context: ../apps/api
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lucyworks}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lucyworks}
+      AUTO_CREATE_SCHEMA: "false"
+      RUN_MIGRATIONS_ON_START: "false"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose: ["8000"]
+    networks: [backend, frontend]
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+  web:
+    build:
+      context: ../apps/web
+      args:
+        API_INTERNAL_BASE: http://api:8000
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_BASE: http://api:8000
+      NODE_ENV: production
+    depends_on:
+      api:
+        condition: service_healthy
+    expose: ["3000"]
+    networks: [frontend]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:?PUBLIC_DOMAIN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_started
+    networks: [frontend]
+    security_opt: ["no-new-privileges:true"]
+
+  backup:
+    image: postgres:16-alpine
+    profiles: ["maintenance"]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - ./backups:/backups
+    networks: [backend]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        umask 077
+        stamp=$$(date -u +%Y%m%dT%H%M%SZ)
+        pg_dump -h postgres -U ${POSTGRES_USER:-lucyworks} -d ${POSTGRES_DB:-lucyworks} -Fc -f /backups/lucyworks-$${stamp}.dump
+        sha256sum /backups/lucyworks-$${stamp}.dump > /backups/lucyworks-$${stamp}.dump.sha256
+        find /backups -type f -mtime +${BACKUP_RETENTION_DAYS:-35} -delete
+        echo "backup=/backups/lucyworks-$${stamp}.dump"
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
