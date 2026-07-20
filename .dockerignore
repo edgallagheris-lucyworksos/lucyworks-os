@@ -1,0 +1,12 @@
+.git
+.github
+**/node_modules
+**/.next
+**/__pycache__
+**/*.pyc
+**/*.db
+**/*.sqlite*
+**/.env*
+**/*.log
+deploy/backups
+deploy/secrets
