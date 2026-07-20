@@ -10,6 +10,7 @@ from app.auth import AuthContext, require_roles
 from app.database import get_session
 from app.production_readiness_service import (
     add_observation,
+    control_dict,
     create_pilot,
     dashboard,
     evidence_dict,
@@ -118,7 +119,7 @@ def patch_control(
         row = update_control(session, control_ref, payload.model_dump(exclude_none=True), auth)
         session.commit()
         session.refresh(row)
-        return {"control": dashboard(session)["controls"][[item["controlRef"] for item in dashboard(session)["controls"]].index(row.control_ref)]}
+        return {"control": control_dict(row)}
     except Exception as exc:
         session.rollback()
         raise translate_error(exc) from exc
@@ -144,7 +145,7 @@ def post_evidence(
 @router.post("/security/self-test")
 def post_security_self_test(
     session: Session = Depends(get_session),
-    auth: AuthContext = Depends(require_roles("admin", "governance_lead", "hospital_director")),
+    auth: AuthContext = Depends(require_roles("admin", "governance_lead", "hospital_director", "ops_manager")),
 ) -> dict[str, Any]:
     seed_controls(session)
     run = security_self_test(session, auth)
