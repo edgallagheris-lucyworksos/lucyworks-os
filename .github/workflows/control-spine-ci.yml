@@ -32,6 +32,10 @@ jobs:
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile API modules
         run: python -m compileall -q app migrations
+      - name: Run hospital operating system v3 test
+        id: hospital_ops_v3
+        continue-on-error: true
+        run: python hospital_ops_v3_smoke_test.py > hospital-ops-v3.log 2>&1
       - name: Run verified identity smoke test
         id: identity
         continue-on-error: true
@@ -68,6 +72,7 @@ jobs:
         with:
           name: verified-api-logs
           path: |
+            apps/api/hospital-ops-v3.log
             apps/api/identity.log
             apps/api/integrations.log
             apps/api/control-spine.log
@@ -75,11 +80,11 @@ jobs:
             apps/api/migration.log
           if-no-files-found: error
       - name: Report API validation failures
-        if: steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
+        if: steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
         run: |
-          for file in identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
+          for file in hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
             echo "--- $file ---"
-            tail -n 140 "$file" || true
+            tail -n 180 "$file" || true
           done
           exit 1
 
@@ -133,14 +138,25 @@ jobs:
               "integrationconnection",
               "integrationenvelope",
               "integrationentitylink",
+              "hospitalpremises",
+              "operationalarea",
+              "canonicalepisodestate",
+              "operationalblock",
+              "operationaldependency",
+              "operationalcommand",
+              "operationalconflict",
+              "boardchangeevent",
+              "scenariorun",
+              "importbatch",
+              "importreconciliationitem",
               "alembic_version",
           }
           missing = required - set(inspector.get_table_names())
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0003_external_integrations", version
-          print("PostgreSQL migration verified", version)
+          assert version == "0004_hospital_operating_system_v3", version
+          print("PostgreSQL hospital operating migration verified", version)
           PY
 
   web-build:
@@ -168,4 +184,4 @@ jobs:
           if-no-files-found: error
       - name: Report web build failure
         if: steps.web_build.outcome == 'failure'
-        run: tail -n 140 web-build.log && exit 1
+        run: tail -n 180 web-build.log && exit 1
