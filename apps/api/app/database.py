@@ -4,9 +4,25 @@ import os
 from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./lucyworks.db")
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(DATABASE_URL, echo=False, connect_args=connect_args)
+
+def _normalise_database_url(value: str) -> str:
+    value = value.strip()
+    if value.startswith("postgres://"):
+        return value.replace("postgres://", "postgresql+psycopg://", 1)
+    if value.startswith("postgresql://") and "+" not in value.split("://", 1)[0]:
+        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+    return value
+
+
+DATABASE_URL = _normalise_database_url(os.getenv("DATABASE_URL", "sqlite:///./lucyworks.db"))
+IS_SQLITE = DATABASE_URL.startswith("sqlite")
+connect_args = {"check_same_thread": False} if IS_SQLITE else {}
+engine = create_engine(
+    DATABASE_URL,
+    echo=os.getenv("DATABASE_ECHO", "false").lower() in {"1", "true", "yes"},
+    connect_args=connect_args,
+    pool_pre_ping=not IS_SQLITE,
+)
 
 SCHEDULE_STATE_COLUMNS = {
     "consent_status": "VARCHAR",
@@ -18,9 +34,8 @@ SCHEDULE_STATE_COLUMNS = {
     "discharge_clear": "BOOLEAN",
 }
 
-# Lightweight compatibility migration for the current SQLite development
-# database. Production deployments should use a formal migration tool before
-# switching to PostgreSQL.
+# Temporary compatibility for old local SQLite files. Production databases are
+# migrated with Alembic and never altered through this map.
 SQLITE_COLUMN_MIGRATIONS: dict[str, dict[str, str]] = {
     "schedulestateblock": SCHEDULE_STATE_COLUMNS,
     "evidenceevent": {
@@ -59,8 +74,15 @@ SQLITE_COLUMN_MIGRATIONS: dict[str, dict[str, str]] = {
 }
 
 
+def _truthy(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.lower() in {"1", "true", "yes", "on"}
+
+
 def _ensure_sqlite_columns() -> None:
-    if not DATABASE_URL.startswith("sqlite"):
+    if not IS_SQLITE:
         return
     inspector = inspect(engine)
     table_names = set(inspector.get_table_names())
@@ -76,8 +98,17 @@ def _ensure_sqlite_columns() -> None:
 
 
 def create_db_and_tables() -> None:
-    SQLModel.metadata.create_all(engine)
-    _ensure_sqlite_columns()
+    auto_create = _truthy("AUTO_CREATE_SCHEMA", IS_SQLITE)
+    if auto_create:
+        SQLModel.metadata.create_all(engine)
+        _ensure_sqlite_columns()
+        return
+
+    # Production schema creation is intentionally disabled. This catches a
+    # deployment that forgot `alembic upgrade head` before serving traffic.
+    inspector = inspect(engine)
+    if "alembic_version" not in inspector.get_table_names():
+        raise RuntimeError("database is not migrated; run 'alembic upgrade head' before starting LucyWorks")
 
 
 def get_session() -> Generator[Session, None, None]:
