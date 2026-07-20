@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import { apiFetch } from "@/lib/api";
 
 type Episode = {
   id: string;
@@ -96,14 +95,14 @@ function gapsFor(cases: PatientCase[], events: EvidenceEvent[]): ComplianceGap[]
 }
 
 async function loadCases(): Promise<PatientCase[]> {
-  const response = await fetch(`${API_BASE}/api/patient-care/cases`, { cache: "no-store" });
+  const response = await apiFetch("/api/patient-care/cases", { cache: "no-store" });
   if (!response.ok) throw new Error("patient-care unavailable");
   const data = await response.json();
   return Array.isArray(data.cases) ? data.cases : [];
 }
 
 async function loadEvents(): Promise<EvidenceEvent[]> {
-  const response = await fetch(`${API_BASE}/api/evidence/events`, { cache: "no-store" });
+  const response = await apiFetch("/api/evidence/events", { cache: "no-store" });
   if (!response.ok) throw new Error("evidence unavailable");
   const data = await response.json();
   return Array.isArray(data.events) ? data.events : [];
@@ -120,8 +119,8 @@ export function ComplianceDashboard() {
       setCases(nextCases);
       setEvents(nextEvents);
       setStatus("live database");
-    } catch {
-      setStatus("offline");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "offline");
     }
   }
 
