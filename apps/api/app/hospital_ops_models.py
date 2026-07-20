@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Optional
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -11,6 +12,8 @@ def utc_now() -> datetime:
 
 
 class HospitalPremises(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("premises_ref", name="uq_hospitalpremises_ref"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     premises_ref: str = Field(index=True)
     name: str
@@ -21,6 +24,8 @@ class HospitalPremises(SQLModel, table=True):
 
 
 class OperationalArea(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("premises_ref", "area_ref", name="uq_operationalarea_premises_ref"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     area_ref: str = Field(index=True)
     premises_ref: str = Field(index=True)
@@ -38,6 +43,8 @@ class OperationalArea(SQLModel, table=True):
 
 
 class CanonicalEpisodeState(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("episode_ref", name="uq_canonicalepisode_ref"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     episode_ref: str = Field(index=True)
     patient_ref: Optional[str] = Field(default=None, index=True)
@@ -60,6 +67,8 @@ class CanonicalEpisodeState(SQLModel, table=True):
 
 
 class OperationalBlock(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("block_ref", name="uq_operationalblock_ref"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     block_ref: str = Field(index=True)
     premises_ref: str = Field(index=True)
@@ -100,6 +109,11 @@ class OperationalBlock(SQLModel, table=True):
 
 
 class OperationalDependency(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("dependency_ref", name="uq_operationaldependency_ref"),
+        UniqueConstraint("predecessor_block_ref", "successor_block_ref", "dependency_type", name="uq_operationaldependency_edge"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     dependency_ref: str = Field(index=True)
     premises_ref: str = Field(index=True)
@@ -112,6 +126,11 @@ class OperationalDependency(SQLModel, table=True):
 
 
 class OperationalCommand(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("command_ref", name="uq_operationalcommand_ref"),
+        UniqueConstraint("idempotency_key", name="uq_operationalcommand_idempotency"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     command_ref: str = Field(index=True)
     command_type: str = Field(index=True)
@@ -132,6 +151,8 @@ class OperationalCommand(SQLModel, table=True):
 
 
 class OperationalConflict(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("conflict_ref", name="uq_operationalconflict_ref"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     conflict_ref: str = Field(index=True)
     premises_ref: str = Field(index=True)
@@ -150,6 +171,8 @@ class OperationalConflict(SQLModel, table=True):
 
 
 class BoardChangeEvent(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("event_ref", name="uq_boardchangeevent_ref"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     event_ref: str = Field(index=True)
     premises_ref: str = Field(index=True)
@@ -164,6 +187,8 @@ class BoardChangeEvent(SQLModel, table=True):
 
 
 class ScenarioRun(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("run_ref", name="uq_scenariorun_ref"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     run_ref: str = Field(index=True)
     scenario_name: str
@@ -180,6 +205,11 @@ class ScenarioRun(SQLModel, table=True):
 
 
 class ImportBatch(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("batch_ref", name="uq_importbatch_ref"),
+        UniqueConstraint("premises_ref", "source_hash", name="uq_importbatch_source_hash"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     batch_ref: str = Field(index=True)
     source_type: str = Field(index=True)
@@ -198,6 +228,11 @@ class ImportBatch(SQLModel, table=True):
 
 
 class ImportReconciliationItem(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("item_ref", name="uq_importreconciliation_ref"),
+        UniqueConstraint("batch_ref", "row_number", name="uq_importreconciliation_row"),
+    )
+
     id: Optional[int] = Field(default=None, primary_key=True)
     item_ref: str = Field(index=True)
     batch_ref: str = Field(index=True)
