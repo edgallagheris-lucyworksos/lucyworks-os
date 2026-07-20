@@ -217,10 +217,31 @@ jobs:
           PY
           bash -n scripts/production-preflight.sh scripts/production-backup.sh scripts/restore-rehearsal.sh
           python -m py_compile scripts/security-probe.py
-      - name: Build production containers
+      - name: Build API production image
+        id: api_image
+        continue-on-error: true
+        run: docker build --progress=plain -t lucyworks-api-ci apps/api > api-image.log 2>&1
+      - name: Build web production image
+        id: web_image
+        continue-on-error: true
+        run: docker build --progress=plain --build-arg API_INTERNAL_BASE=http://api:8000 -t lucyworks-web-ci apps/web > web-image.log 2>&1
+      - name: Upload production image logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-image-logs
+          path: |
+            api-image.log
+            web-image.log
+          if-no-files-found: error
+      - name: Report image build failure
+        if: steps.api_image.outcome == 'failure' || steps.web_image.outcome == 'failure'
         run: |
-          docker build -t lucyworks-api-ci apps/api
-          docker build --build-arg API_INTERNAL_BASE=http://api:8000 -t lucyworks-web-ci apps/web
+          echo "--- API image ---"
+          tail -n 220 api-image.log || true
+          echo "--- Web image ---"
+          tail -n 220 web-image.log || true
+          exit 1
       - name: Validate production Compose stack
         run: |
           cat > deploy/.env.production <<'EOF'
