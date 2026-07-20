@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -9,10 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
+from app.auth import get_current_auth_context
 from app.database import get_session
 from app.schedule_state_models import ScheduleStateBlock, ScheduleStateEvent
 
-router = APIRouter(prefix="/api/day-control", tags=["day-control"])
+router = APIRouter(prefix="/api/day-control", tags=["day-control-legacy"])
 
 
 class GovernanceFields(BaseModel):
@@ -72,12 +74,17 @@ class BlockCreate(GovernanceFields):
 
 class ActionPayload(BaseModel):
     action: str = Field(min_length=1)
-    actor: str = "system"
+    actor: str = "legacy-client"
     reason: str | None = None
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _verified_actor(fallback: str = "legacy-system") -> str:
+    auth = get_current_auth_context()
+    return auth.actor_name if auth.verified else fallback
 
 
 def _payload_dict(payload: BaseModel, exclude_none: bool = False, exclude_unset: bool = False) -> dict[str, Any]:
@@ -112,7 +119,7 @@ def _set_patch_value(row: ScheduleStateBlock, key: str, value: Any) -> None:
 
 
 def _add_event(session: Session, block_id: str, action: str, actor: str, before: dict[str, Any] | None, after: dict[str, Any] | None, reason: str | None = None) -> None:
-    session.add(ScheduleStateEvent(block_id=block_id, action=action, actor=actor, reason=reason, before_json=json.dumps(before or {}), after_json=json.dumps(after or {})))
+    session.add(ScheduleStateEvent(block_id=block_id, action=action, actor=_verified_actor(actor), reason=reason, before_json=json.dumps(before or {}), after_json=json.dumps(after or {})))
 
 
 def _apply_action(row: ScheduleStateBlock, action: str) -> None:
@@ -132,28 +139,31 @@ def _apply_action(row: ScheduleStateBlock, action: str) -> None:
 @router.get("/blocks")
 def list_blocks(session: Session = Depends(get_session)) -> dict[str, Any]:
     rows = session.exec(select(ScheduleStateBlock).order_by(ScheduleStateBlock.time, ScheduleStateBlock.lane)).all()
-    return {"blocks": [_row_dict(row) for row in rows], "count": len(rows)}
+    return {"blocks": [_row_dict(row) for row in rows], "count": len(rows), "legacy": True, "authoritativeBoard": "/api/hospital-ops/board"}
 
 
 @router.post("/blocks")
-def create_block(payload: BlockCreate, session: Session = Depends(get_session)) -> dict[str, Any]:
+def create_legacy_block(payload: BlockCreate, session: Session = Depends(get_session)) -> dict[str, Any]:
     row = _make_row(_payload_dict(payload))
     session.add(row); session.commit(); session.refresh(row)
     after = _row_dict(row)
-    _add_event(session, row.id, "create", "system", None, after); session.commit()
-    return {"block": after}
+    _add_event(session, row.id, "legacy_create", "legacy-system", None, after); session.commit()
+    return {"block": after, "legacy": True}
 
 
 @router.put("/blocks/bulk")
 def replace_blocks(payload: dict[str, list[dict[str, Any]]], session: Session = Depends(get_session)) -> dict[str, Any]:
+    allowed = os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() in {"1", "true", "yes"} or os.getenv("ALLOW_LEGACY_BOARD_BULK_REPLACE", "false").lower() in {"1", "true", "yes"}
+    if not allowed:
+        raise HTTPException(status_code=410, detail="whole-board replacement is retired; use versioned /api/hospital-ops commands")
     for row in session.exec(select(ScheduleStateBlock)).all(): session.delete(row)
     session.commit()
     for block in payload.get("blocks", []): session.add(_make_row(block))
     session.commit()
     rows = session.exec(select(ScheduleStateBlock).order_by(ScheduleStateBlock.time, ScheduleStateBlock.lane)).all()
     after = {"count": len(rows)}
-    _add_event(session, "bulk", "replace_blocks", "system", None, after); session.commit()
-    return {"blocks": [_row_dict(row) for row in rows], "count": len(rows)}
+    _add_event(session, "bulk", "legacy_replace_blocks", "legacy-test", None, after); session.commit()
+    return {"blocks": [_row_dict(row) for row in rows], "count": len(rows), "legacy": True}
 
 
 @router.patch("/blocks/{block_id}")
@@ -164,8 +174,8 @@ def update_block(block_id: str, payload: BlockPatch, session: Session = Depends(
     for key, value in _payload_dict(payload, exclude_unset=True).items(): _set_patch_value(row, key, value)
     row.updated_at = _now(); session.add(row); session.commit(); session.refresh(row)
     after = _row_dict(row)
-    _add_event(session, block_id, "update", "system", before, after); session.commit()
-    return {"block": after}
+    _add_event(session, block_id, "legacy_update", "legacy-system", before, after); session.commit()
+    return {"block": after, "legacy": True}
 
 
 @router.post("/blocks/{block_id}/actions")
@@ -176,12 +186,12 @@ def apply_action(block_id: str, payload: ActionPayload, session: Session = Depen
     _apply_action(row, payload.action)
     session.add(row); session.commit(); session.refresh(row)
     after = _row_dict(row)
-    _add_event(session, block_id, payload.action, payload.actor, before, after, payload.reason); session.commit()
-    return {"block": after}
+    _add_event(session, block_id, f"legacy_{payload.action}", payload.actor, before, after, payload.reason); session.commit()
+    return {"block": after, "legacy": True}
 
 
 @router.get("/audit")
 def list_audit(session: Session = Depends(get_session)) -> dict[str, Any]:
     rows = session.exec(select(ScheduleStateEvent).order_by(ScheduleStateEvent.created_at.desc()).limit(250)).all()
     audit = [{"id": row.id, "time": row.created_at.isoformat(), "blockId": row.block_id, "action": row.action, "actor": row.actor, "reason": row.reason, "before": json.loads(row.before_json or "{}"), "after": json.loads(row.after_json or "{}")} for row in rows]
-    return {"audit": audit, "count": len(audit)}
+    return {"audit": audit, "count": len(audit), "legacy": True}
