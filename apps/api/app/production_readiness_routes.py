@@ -83,6 +83,8 @@ class SyntheticSeed(BaseModel):
 
 
 def translate_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, HTTPException):
+        return exc
     if isinstance(exc, RuntimeError):
         return HTTPException(status_code=409, detail=str(exc))
     return HTTPException(status_code=400, detail=str(exc))
