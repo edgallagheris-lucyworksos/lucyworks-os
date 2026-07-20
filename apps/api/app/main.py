@@ -4,6 +4,7 @@ from app.main_fixed import app
 from app import audit_attribution as _audit_attribution  # noqa: F401
 from app import database_exception_handlers as _database_exception_handlers  # noqa: F401
 from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noqa: F401
+from app import auth as auth_module
 from app.auth import VerifiedIdentityMiddleware
 from app.production_middleware import ProductionProtectionMiddleware
 from app.auth_routes import router as auth_router
@@ -51,6 +52,8 @@ from app.hospital_ops_routes import router as hospital_ops_router
 from app.hospital_ops_extension_routes import router as hospital_ops_extension_router
 from app.production_readiness_routes import router as production_readiness_router
 from app.observability_routes import router as observability_router
+
+auth_module.PUBLIC_PATHS.add("/api/metrics")
 
 # Only the named legacy smoke fixtures may bypass middleware. Production and
 # normal development must never set this variable.
