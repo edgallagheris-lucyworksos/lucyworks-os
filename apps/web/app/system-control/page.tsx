@@ -6,6 +6,7 @@ const surfaces = [
   { href: "/hospital-episodes", title: "Referral episodes", description: "Intake, ownership, governance gates and controlled phase transitions from referral to closure." },
   { href: "/patient-care", title: "Patient care evidence", description: "Consent, estimates, case communication, clinical/admin decisions and evidence timeline." },
   { href: "/control-plane", title: "Control plane", description: "Critical results, handovers, premises controls, service readiness and approvals." },
+  { href: "/production-readiness", title: "Production readiness", description: "Evidence-backed security, deployment, shadow-mode and pilot go/no-go controls." },
   { href: "/hospital-imports", title: "Import and reconciliation", description: "Preview exports, resolve unmatched rows and commit controlled canonical data." },
   { href: "/integrations", title: "Vendor integrations", description: "PIMS, imaging, laboratory and workforce connection health and provenance." },
   { href: "/approvals", title: "Approval queue", description: "Named senior decisions for overrides, red-risk evidence and governed AI." },

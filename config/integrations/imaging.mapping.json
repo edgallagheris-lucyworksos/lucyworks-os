@@ -1,0 +1,44 @@
+{
+  "profileVersion": 1,
+  "integrationType": "imaging",
+  "vendor": "generic-pacs-ris",
+  "direction": "inbound",
+  "messageTypes": ["study.ordered", "study.started", "study.completed", "report.preliminary", "report.final", "service.degraded"],
+  "identity": {
+    "externalStudyId": "study.id",
+    "externalEpisodeId": "episode.id",
+    "externalEventId": "event.id"
+  },
+  "fieldMappings": {
+    "episode.id": "episodeRef",
+    "study.id": "studyRef",
+    "study.modality": "modality",
+    "study.status": "status",
+    "study.scheduledAt": "scheduledAt",
+    "study.startedAt": "startedAt",
+    "study.completedAt": "completedAt",
+    "study.location": "areaRef",
+    "report.status": "reportStatus",
+    "report.author": "reportAuthor",
+    "service.state": "serviceState"
+  },
+  "requiredFields": ["event.id", "study.id", "study.modality"],
+  "serviceStateMap": {
+    "online": "available",
+    "limited": "degraded",
+    "offline": "unavailable",
+    "maintenance": "planned_unavailable"
+  },
+  "reconciliation": {
+    "unmatchedEpisode": "queue",
+    "unknownModality": "reject",
+    "duplicateStudy": "deduplicate"
+  },
+  "sampleMessage": {
+    "event": {"id": "sample-imaging-event", "type": "study.completed"},
+    "episode": {"id": "sample-episode"},
+    "study": {"id": "sample-study", "modality": "MRI", "status": "completed", "location": "mri"},
+    "report": {"status": "preliminary", "author": "sample-radiologist"},
+    "service": {"state": "online"}
+  }
+}

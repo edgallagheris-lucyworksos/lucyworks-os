@@ -1,0 +1,48 @@
+{
+  "profileVersion": 1,
+  "integrationType": "laboratory",
+  "vendor": "generic-lis",
+  "direction": "inbound",
+  "messageTypes": ["order.received", "specimen.received", "result.preliminary", "result.final", "result.corrected", "result.critical"],
+  "identity": {
+    "externalOrderId": "order.id",
+    "externalResultId": "result.id",
+    "externalEpisodeId": "episode.id",
+    "externalEventId": "event.id"
+  },
+  "fieldMappings": {
+    "episode.id": "episodeRef",
+    "order.id": "orderRef",
+    "order.testCode": "testCode",
+    "specimen.id": "specimenRef",
+    "result.id": "resultRef",
+    "result.status": "status",
+    "result.value": "value",
+    "result.unit": "unit",
+    "result.referenceRange": "referenceRange",
+    "result.abnormalFlag": "abnormalFlag",
+    "result.critical": "critical",
+    "result.authorisedBy": "authorisedBy",
+    "result.authorisedAt": "authorisedAt"
+  },
+  "requiredFields": ["event.id", "result.id", "order.testCode", "episode.id"],
+  "criticalResultPolicy": {
+    "createAcknowledgement": true,
+    "defaultOwnerRole": "clinician",
+    "escalateAfterMinutes": 15,
+    "repeatEscalationMinutes": 15
+  },
+  "reconciliation": {
+    "unmatchedEpisode": "queue",
+    "unknownTestCode": "queue",
+    "correctedResult": "append_new_version",
+    "duplicateResult": "deduplicate"
+  },
+  "sampleMessage": {
+    "event": {"id": "sample-lab-event", "type": "result.critical"},
+    "episode": {"id": "sample-episode"},
+    "order": {"id": "sample-order", "testCode": "K"},
+    "specimen": {"id": "sample-specimen"},
+    "result": {"id": "sample-result", "status": "final", "value": "7.2", "unit": "mmol/L", "referenceRange": "3.5-5.8", "abnormalFlag": "H", "critical": true, "authorisedBy": "sample-lab-user"}
+  }
+}

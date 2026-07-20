@@ -1,0 +1,40 @@
+{
+  "configurationVersion": 1,
+  "synthetic": true,
+  "premises": {
+    "premisesRef": "synthetic-referral-hospital",
+    "name": "LucyWorks Synthetic Referral Hospital",
+    "timezone": "Europe/London"
+  },
+  "areas": {
+    "theatres": 11,
+    "imaging": ["mri", "ct", "xray", "ultrasound"],
+    "clinicalSupport": ["prep", "recovery", "icu", "ward-dog", "ward-cat"],
+    "support": ["pharmacy", "laboratory", "reception"],
+    "consultRooms": 4
+  },
+  "staffing": [
+    {"role": "clinical_director", "count": 2, "skills": ["surgery", "governance", "anaesthesia"]},
+    {"role": "clinician", "count": 18, "skills": ["surgery", "consultation", "diagnostic_imaging", "anaesthesia"]},
+    {"role": "nurse", "count": 28, "skills": ["nursing", "anaesthesia", "recovery", "critical_care", "inpatient"]},
+    {"role": "ops_manager", "count": 3, "skills": ["operations", "flow", "escalation"]},
+    {"role": "admin", "count": 7, "skills": ["intake", "insurance", "client_communications"]},
+    {"role": "pca", "count": 10, "skills": ["patient_support", "cleaning", "stock"]},
+    {"role": "radiographer", "count": 4, "skills": ["mri", "ct", "radiography"]}
+  ],
+  "simulation": {
+    "dailyCases": 40,
+    "startHour": 7,
+    "endHour": 21,
+    "deliberateEvents": [
+      "theatre_overrun",
+      "mri_service_degradation",
+      "clinician_absence",
+      "recovery_capacity_pressure",
+      "critical_laboratory_result",
+      "estimate_ceiling_exceeded",
+      "owner_unreachable",
+      "unacknowledged_handover"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "profileVersion": 1,
+  "integrationType": "pims",
+  "vendor": "generic-pims",
+  "direction": "inbound",
+  "messageTypes": ["referral.created", "episode.updated", "patient.updated", "estimate.updated", "consent.updated"],
+  "identity": {
+    "externalPatientId": "patient.id",
+    "externalEpisodeId": "episode.id",
+    "externalEventId": "event.id"
+  },
+  "fieldMappings": {
+    "patient.name": "patientName",
+    "patient.species": "species",
+    "patient.owner.id": "ownerRef",
+    "episode.id": "episodeRef",
+    "episode.status": "status",
+    "episode.service": "serviceLine",
+    "episode.urgency": "urgency",
+    "estimate.status": "gates.estimateStatus",
+    "consent.status": "gates.consentStatus",
+    "insurance.status": "gates.insuranceStatus"
+  },
+  "requiredFields": ["event.id", "episode.id", "patient.name"],
+  "reconciliation": {
+    "unmatchedPatient": "queue",
+    "unmatchedEpisode": "queue",
+    "conflictingOwner": "queue",
+    "unknownStatus": "reject"
+  },
+  "sampleMessage": {
+    "event": {"id": "sample-pims-event", "type": "referral.created"},
+    "patient": {"id": "sample-patient", "name": "Sample Patient", "species": "canine", "owner": {"id": "sample-owner"}},
+    "episode": {"id": "sample-episode", "status": "active", "service": "neurology", "urgency": "routine"},
+    "estimate": {"status": "pending"},
+    "consent": {"status": "pending"},
+    "insurance": {"status": "unknown"}
+  }
+}
