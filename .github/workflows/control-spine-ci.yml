@@ -36,6 +36,10 @@ jobs:
         id: identity
         continue-on-error: true
         run: python auth_identity_smoke_test.py > identity.log 2>&1
+      - name: Run governed integration smoke test
+        id: integrations
+        continue-on-error: true
+        run: python integration_smoke_test.py > integrations.log 2>&1
       - name: Run control spine legacy fixture
         id: control_spine
         continue-on-error: true
@@ -65,16 +69,17 @@ jobs:
           name: verified-api-logs
           path: |
             apps/api/identity.log
+            apps/api/integrations.log
             apps/api/control-spine.log
             apps/api/patient-evidence.log
             apps/api/migration.log
           if-no-files-found: error
       - name: Report API validation failures
-        if: steps.identity.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
+        if: steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
         run: |
-          for file in identity.log control-spine.log patient-evidence.log migration.log; do
+          for file in identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
             echo "--- $file ---"
-            tail -n 120 "$file" || true
+            tail -n 140 "$file" || true
           done
           exit 1
 
@@ -117,12 +122,24 @@ jobs:
           from sqlalchemy import inspect, text
           from app.database import engine
           inspector = inspect(engine)
-          required = {"evidenceevent", "approvaltask", "accountablehandover", "compliancecontrol", "serviceavailability", "aimodelregistration", "criticalresultacknowledgement", "alembic_version"}
+          required = {
+              "evidenceevent",
+              "approvaltask",
+              "accountablehandover",
+              "compliancecontrol",
+              "serviceavailability",
+              "aimodelregistration",
+              "criticalresultacknowledgement",
+              "integrationconnection",
+              "integrationenvelope",
+              "integrationentitylink",
+              "alembic_version",
+          }
           missing = required - set(inspector.get_table_names())
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0002_control_spine_upgrade", version
+          assert version == "0003_external_integrations", version
           print("PostgreSQL migration verified", version)
           PY
 
