@@ -1,18 +1,19 @@
-name: Control Spine CI
+name: LucyWorks Verified Build
 
 on:
   pull_request:
     paths:
       - "apps/api/**"
       - "apps/web/**"
-      - ".github/workflows/control-spine-ci.yml"
+      - ".github/workflows/**"
   push:
     branches:
-      - feature/control-spine-v2
+      - main
+      - "feature/**"
     paths:
       - "apps/api/**"
       - "apps/web/**"
-      - ".github/workflows/control-spine-ci.yml"
+      - ".github/workflows/**"
 
 jobs:
   api-smoke-tests:
@@ -30,32 +31,117 @@ jobs:
       - name: Install API dependencies
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile API modules
-        run: python -m compileall -q app
-      - name: Run control spine smoke test
+        run: python -m compileall -q app migrations
+      - name: Run verified identity smoke test
+        id: identity
+        continue-on-error: true
+        run: python auth_identity_smoke_test.py > identity.log 2>&1
+      - name: Run governed integration smoke test
+        id: integrations
+        continue-on-error: true
+        run: python integration_smoke_test.py > integrations.log 2>&1
+      - name: Run control spine legacy fixture
         id: control_spine
         continue-on-error: true
+        env:
+          LUCYWORKS_LEGACY_TEST_BYPASS: "true"
         run: python control_spine_smoke_test.py > control-spine.log 2>&1
-      - name: Run patient-care evidence smoke test
+      - name: Run patient-care evidence legacy fixture
         id: patient_evidence
         continue-on-error: true
+        env:
+          LUCYWORKS_LEGACY_TEST_BYPASS: "true"
         run: python evidence_patient_care_smoke_test.py > patient-evidence.log 2>&1
+      - name: Run SQLite migration chain
+        id: sqlite_migration
+        continue-on-error: true
+        env:
+          DATABASE_URL: sqlite:////tmp/lucyworks-migration.db
+          AUTO_CREATE_SCHEMA: "false"
+        run: |
+          rm -f /tmp/lucyworks-migration.db
+          alembic upgrade head > migration.log 2>&1
+          alembic current >> migration.log 2>&1
       - name: Upload API validation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: control-spine-api-logs
+          name: verified-api-logs
           path: |
+            apps/api/identity.log
+            apps/api/integrations.log
             apps/api/control-spine.log
             apps/api/patient-evidence.log
+            apps/api/migration.log
           if-no-files-found: error
       - name: Report API validation failures
-        if: steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure'
+        if: steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
         run: |
-          echo "--- control spine ---"
-          tail -n 80 control-spine.log || true
-          echo "--- patient evidence ---"
-          tail -n 80 patient-evidence.log || true
+          for file in identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
+            echo "--- $file ---"
+            tail -n 140 "$file" || true
+          done
           exit 1
+
+  postgres-migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: lucyworks
+          POSTGRES_PASSWORD: lucyworks
+          POSTGRES_DB: lucyworks_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lucyworks -d lucyworks_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql+psycopg://lucyworks:lucyworks@localhost:5432/lucyworks_test
+      AUTO_CREATE_SCHEMA: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Apply PostgreSQL migrations
+        run: alembic upgrade head
+      - name: Verify PostgreSQL schema version
+        run: |
+          python - <<'PY'
+          from sqlalchemy import inspect, text
+          from app.database import engine
+          inspector = inspect(engine)
+          required = {
+              "evidenceevent",
+              "approvaltask",
+              "accountablehandover",
+              "compliancecontrol",
+              "serviceavailability",
+              "aimodelregistration",
+              "criticalresultacknowledgement",
+              "integrationconnection",
+              "integrationenvelope",
+              "integrationentitylink",
+              "alembic_version",
+          }
+          missing = required - set(inspector.get_table_names())
+          assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
+          with engine.connect() as connection:
+              version = connection.execute(text("select version_num from alembic_version")).scalar_one()
+          assert version == "0003_external_integrations", version
+          print("PostgreSQL migration verified", version)
+          PY
 
   web-build:
     runs-on: ubuntu-latest
@@ -77,9 +163,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: control-spine-web-log
+          name: verified-web-log
           path: apps/web/web-build.log
           if-no-files-found: error
       - name: Report web build failure
         if: steps.web_build.outcome == 'failure'
-        run: tail -n 100 web-build.log && exit 1
+        run: tail -n 140 web-build.log && exit 1

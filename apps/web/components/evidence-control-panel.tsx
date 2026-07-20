@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import { apiFetch } from "@/lib/api";
+import { getSession, type SessionUser } from "@/lib/session";
 
 type EvidenceEvent = {
   id?: number;
@@ -37,15 +37,11 @@ type DecisionForm = {
   action: string;
   reason: string;
   justification: string;
-  actorName: string;
-  actorRole: string;
-  professionalRole: string;
   riskLevel: string;
   complianceDomain: string;
   aiSystem: string;
   aiModel: string;
   aiOutputRef: string;
-  humanReviewer: string;
   humanReviewStatus: string;
   overrideReason: string;
 };
@@ -77,15 +73,11 @@ const defaultDecision: DecisionForm = {
   action: "clinical/admin decision recorded",
   reason: "",
   justification: "",
-  actorName: "LucyWorks UI",
-  actorRole: "user",
-  professionalRole: "",
   riskLevel: "amber",
   complianceDomain: "clinical_governance",
   aiSystem: "",
   aiModel: "",
   aiOutputRef: "",
-  humanReviewer: "",
   humanReviewStatus: "not_required",
   overrideReason: "",
 };
@@ -128,11 +120,7 @@ function stamp(prefix: string) {
 }
 
 async function requestJson(path: string, method: "POST" | "PATCH", body: unknown) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const response = await apiFetch(path, { method, body: JSON.stringify(body) });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `${path} failed: ${response.status}`);
   return data;
@@ -141,6 +129,7 @@ async function requestJson(path: string, method: "POST" | "PATCH", body: unknown
 export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episodeRef, patientName, onEvidenceChange }: EvidenceControlPanelProps) {
   const [events, setEvents] = useState<EvidenceEvent[]>([]);
   const [status, setStatus] = useState("idle");
+  const [identity, setIdentity] = useState<SessionUser | null>(null);
   const [decision, setDecision] = useState<DecisionForm>(defaultDecision);
   const [estimate, setEstimate] = useState<EstimateForm>(defaultEstimate);
   const [consent, setConsent] = useState<ConsentForm>(defaultConsent);
@@ -152,7 +141,7 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
     try {
       const query = new URLSearchParams({ patient_case_id: patientCaseId });
       if (referralEpisodeId) query.set("referral_episode_id", referralEpisodeId);
-      const response = await fetch(`${API_BASE}/api/evidence/events?${query.toString()}`, { cache: "no-store" });
+      const response = await apiFetch(`/api/evidence/events?${query.toString()}`, { cache: "no-store" });
       if (!response.ok) throw new Error("events unavailable");
       const data = await response.json();
       setEvents(Array.isArray(data.events) ? data.events : []);
@@ -162,7 +151,10 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
     }
   }
 
-  useEffect(() => { void refresh(); }, [patientCaseId, referralEpisodeId]);
+  useEffect(() => {
+    setIdentity(getSession()?.user || null);
+    void refresh();
+  }, [patientCaseId, referralEpisodeId]);
 
   async function afterChange() {
     await refresh();
@@ -187,17 +179,12 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
         eventType: "decision",
         patientCaseId,
         referralEpisodeId,
-        actorName: decision.actorName,
-        actorRole: decision.actorRole,
-        actorAuthSource: "payload_unverified",
-        professionalRole: decision.professionalRole || undefined,
         action: decision.action,
         reason: decision.reason || undefined,
         justification: decision.justification || undefined,
         aiSystem: decision.aiSystem || undefined,
         aiModel: decision.aiModel || undefined,
         aiOutputRef: decision.aiOutputRef || undefined,
-        humanReviewer: decision.humanReviewer || undefined,
         humanReviewStatus: reviewStatus,
         supervisorRequired: decision.riskLevel === "red" || reviewStatus === "required",
         supervisorApprovalStatus: decision.riskLevel === "red" || reviewStatus === "required" ? "pending" : "not_required",
@@ -232,14 +219,11 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
         clientContactMethod: estimate.contactMethod || undefined,
         emergencyAuthority: estimate.clientDecision === "emergency_authority",
         clinicianJustification: estimate.clinicianJustification || undefined,
-        createdBy: "patient-care-ui",
-        createdByRole: "admin_or_clinician",
       });
       if (referralEpisodeId) {
         await requestJson(`/api/patient-care/episodes/${referralEpisodeId}/state`, "PATCH", {
           estimateStatus: estimate.clientDecision === "accepted" || estimate.status === "approved" ? "approved" : estimate.status,
           nextAction: "estimate recorded",
-          actor: "patient-care-ui",
           note: "transactional estimate evidence recorded",
         });
       }
@@ -266,15 +250,12 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
         clientAuthorisedBy: consent.clientAuthorisedBy || undefined,
         clientContactMethod: consent.contactMethod || undefined,
         communicationNotes: consent.communicationNotes || undefined,
-        recordedBy: "patient-care-ui",
-        recordedByRole: "admin_or_clinician",
         witness: consent.witness || undefined,
       });
       if (referralEpisodeId) {
         await requestJson(`/api/patient-care/episodes/${referralEpisodeId}/state`, "PATCH", {
           consentStatus: consent.status === "authorised" || consent.status === "approved" ? "approved" : consent.status,
           nextAction: "consent recorded",
-          actor: "patient-care-ui",
           note: "transactional consent evidence recorded",
         });
       }
@@ -285,7 +266,7 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
 
   return <section className="evidencePanel">
     <div className="evidenceHead">
-      <div><span>Evidence core</span><h3>Decision, consent and estimate record</h3><p>{patientName} · {episodeRef} · {status}</p></div>
+      <div><span>Evidence core</span><h3>Decision, consent and estimate record</h3><p>{patientName} · {episodeRef} · {status} · {identity ? `${identity.name} / ${identity.role}` : "verified identity required"}</p></div>
       <button type="button" onClick={() => void refresh()}>Refresh evidence</button>
     </div>
 
@@ -293,15 +274,13 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
       <summary>Record decision / AI provenance</summary>
       <div className="formGrid">
         <label>Action<input value={decision.action} onChange={(event) => setDecision({ ...decision, action: event.target.value })} /></label>
-        <label>Actor<input value={decision.actorName} onChange={(event) => setDecision({ ...decision, actorName: event.target.value })} /></label>
-        <label>Professional role<input value={decision.professionalRole} onChange={(event) => setDecision({ ...decision, professionalRole: event.target.value })} placeholder="vet / RVN / admin / manager" /></label>
+        <label>Verified actor<input value={identity ? `${identity.name} · ${identity.role}` : "verified login required"} readOnly /></label>
         <label>Risk<select value={decision.riskLevel} onChange={(event) => setDecision({ ...decision, riskLevel: event.target.value })}><option>green</option><option>amber</option><option>red</option></select></label>
         <label>Reason<textarea value={decision.reason} onChange={(event) => setDecision({ ...decision, reason: event.target.value })} /></label>
         <label>Justification<textarea value={decision.justification} onChange={(event) => setDecision({ ...decision, justification: event.target.value })} /></label>
         <label>AI system<input value={decision.aiSystem} onChange={(event) => setDecision({ ...decision, aiSystem: event.target.value })} placeholder="optional" /></label>
         <label>AI model<input value={decision.aiModel} onChange={(event) => setDecision({ ...decision, aiModel: event.target.value })} placeholder="optional" /></label>
         <label>AI output ref<input value={decision.aiOutputRef} onChange={(event) => setDecision({ ...decision, aiOutputRef: event.target.value })} placeholder="optional" /></label>
-        <label>Human reviewer<input value={decision.humanReviewer} onChange={(event) => setDecision({ ...decision, humanReviewer: event.target.value })} placeholder="named reviewer" /></label>
         <label>Review status<select value={decision.humanReviewStatus} onChange={(event) => setDecision({ ...decision, humanReviewStatus: event.target.value })}><option>not_required</option><option>required</option><option>accepted</option><option>edited</option><option>rejected</option></select></label>
         <label>Override reason<input value={decision.overrideReason} onChange={(event) => setDecision({ ...decision, overrideReason: event.target.value })} placeholder="required for override" /></label>
       </div>

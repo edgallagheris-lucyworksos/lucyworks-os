@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from sqlmodel import Session, select
 
+from app.auth import get_current_auth_context
 from app.evidence_approval_models import ApprovalTask
 from app.evidence_event_models import EvidenceEvent
 
@@ -199,6 +200,18 @@ def create_evidence_event(
         existing = session.exec(select(EvidenceEvent).where(EvidenceEvent.idempotency_key == idempotency_key)).first()
         if existing:
             return existing, False
+
+    auth = get_current_auth_context()
+    if auth.verified:
+        actor_id = auth.actor_id
+        actor_name = auth.actor_name
+        actor_role = auth.role
+        actor_auth_source = auth.auth_source
+        professional_role = professional_role or auth.role
+        if _review_complete(human_review_status) and not human_reviewer:
+            human_reviewer = auth.actor_name
+        if supervisor_approval_status in {"approved", "rejected"} and not supervisor_name:
+            supervisor_name = auth.actor_name
 
     created_at = utc_now()
     event = EvidenceEvent(

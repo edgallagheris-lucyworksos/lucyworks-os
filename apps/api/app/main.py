@@ -1,4 +1,9 @@
+import os
+
 from app.main_fixed import app
+from app import audit_attribution as _audit_attribution  # noqa: F401
+from app.auth import VerifiedIdentityMiddleware
+from app.auth_routes import router as auth_router
 from app.v3_operational_routes import router as v3_operational_router
 from app.ops_engine_routes import router as ops_engine_router
 from app.input_routes import router as input_router
@@ -38,7 +43,14 @@ from app.patient_care_routes import router as patient_care_router
 from app.evidence_event_routes import router as evidence_event_router
 from app.evidence_approval_routes import router as evidence_approval_router
 from app.control_plane_routes import router as control_plane_router
+from app.integration_routes import router as integration_router
 
+# Only the named legacy smoke fixtures may bypass middleware. Production and
+# normal development must never set this variable.
+if os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() not in {"1", "true", "yes"}:
+    app.add_middleware(VerifiedIdentityMiddleware)
+
+app.include_router(auth_router)
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
 app.include_router(input_router)
@@ -78,3 +90,4 @@ app.include_router(patient_care_router)
 app.include_router(evidence_event_router)
 app.include_router(evidence_approval_router)
 app.include_router(control_plane_router)
+app.include_router(integration_router)

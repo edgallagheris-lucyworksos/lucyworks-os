@@ -1,24 +1,44 @@
 export type SessionUser = {
-  id: number;
+  id: string | number;
+  subject?: string;
   name: string;
   role: string;
-  email: string;
+  email?: string;
+  issuer?: string | null;
+  authSource?: string;
+  verified?: boolean;
+  expiresAt?: string | null;
+};
+
+export type LucyWorksSession = {
+  user: SessionUser;
+  token: string;
+  expiresAt: string | null;
 };
 
 const SESSION_KEY = "lucyworks_session";
 
-export function saveSession(user: SessionUser, token: string) {
+export function saveSession(user: SessionUser, token: string, expiresInSeconds?: number | null) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify({ user, token }));
+  const expiresAt = user.expiresAt || (expiresInSeconds ? new Date(Date.now() + expiresInSeconds * 1000).toISOString() : null);
+  const normalisedUser: SessionUser = { ...user, email: user.email || undefined, expiresAt };
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify({ user: normalisedUser, token, expiresAt }));
 }
 
-export function getSession(): { user: SessionUser; token: string } | null {
+export function getSession(): LucyWorksSession | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(SESSION_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const session = JSON.parse(raw) as LucyWorksSession;
+    if (!session?.token || !session?.user) throw new Error("invalid session");
+    if (session.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()) {
+      clearSession();
+      return null;
+    }
+    return session;
   } catch {
+    clearSession();
     return null;
   }
 }

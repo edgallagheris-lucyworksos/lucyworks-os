@@ -3,68 +3,105 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveSession } from "@/lib/session";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import { API_BASE } from "@/lib/api";
+import { saveSession, type SessionUser } from "@/lib/session";
 
 type User = { id: number; name: string; role: string; email: string };
+type AuthConfig = {
+  mode: "local" | "oidc" | string;
+  enforcement: string;
+  devLoginEnabled: boolean;
+  oidc?: { authorizationUrl?: string | null; clientId?: string | null; audience?: string | null; scope?: string | null } | null;
+};
 
-const FALLBACK_USERS: User[] = [
-  { id: 1, name: "Clinical Director", role: "ops_manager", email: "clinical.director@lucyvet.local" },
-  { id: 2, name: "Duty Clinician", role: "clinician", email: "clinician@lucyvet.local" },
-  { id: 3, name: "Ward Nurse", role: "nurse", email: "nurse@lucyvet.local" },
-  { id: 4, name: "Reception / Admin", role: "admin", email: "admin@lucyvet.local" },
+const DEVELOPMENT_USERS: User[] = [
+  { id: 1, name: "Lucy Ops", role: "ops_manager", email: "ops@lucyworks.local" },
+  { id: 2, name: "Nina Nurse", role: "nurse", email: "nurse@lucyworks.local" },
+  { id: 3, name: "Cal Clinician", role: "clinician", email: "clinician@lucyworks.local" },
+  { id: 4, name: "Ari Admin", role: "admin", email: "admin@lucyworks.local" },
 ];
+
+function randomValue(bytes = 32) {
+  const values = new Uint8Array(bytes);
+  crypto.getRandomValues(values);
+  return Array.from(values, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function base64Url(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>(FALLBACK_USERS);
-  const [status, setStatus] = useState("Tap a role to enter. Backend users will load if available.");
-  const [backendOnline, setBackendOnline] = useState(false);
+  const [config, setConfig] = useState<AuthConfig | null>(null);
+  const [status, setStatus] = useState("Loading authentication configuration...");
   const [busyId, setBusyId] = useState<number | null>(null);
 
   useEffect(() => {
-    async function loadUsers() {
+    async function loadConfig() {
       try {
-        const res = await fetch(`${API_BASE}/api/users`, { cache: "no-store" });
-        if (!res.ok) throw new Error(`users ${res.status}`);
-        const data = await res.json();
-        if (Array.isArray(data) && data.length) {
-          setUsers(data);
-          setBackendOnline(true);
-          setStatus("Backend connected. Tap a role to enter.");
-        }
-      } catch {
-        setUsers(FALLBACK_USERS);
-        setBackendOnline(false);
-        setStatus("Backend user list unavailable. Local demo roles are active so login still works.");
+        const response = await fetch(`${API_BASE}/api/auth/config`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`authentication config ${response.status}`);
+        const data = await response.json() as AuthConfig;
+        setConfig(data);
+        if (data.mode === "oidc") setStatus("Hospital identity sign-in is required.");
+        else if (data.devLoginEnabled) setStatus("Controlled development login is enabled. Tokens are signed and verified by the API.");
+        else setStatus("Development login is disabled. Configure the hospital identity provider or explicitly enable development login.");
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Authentication service unavailable");
       }
     }
-    loadUsers();
+    void loadConfig();
   }, []);
 
-  async function enter(user: User) {
+  async function enterDevelopment(user: User) {
     setBusyId(user.id);
-    setStatus(`Opening as ${user.name}...`);
-    if (backendOnline) {
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/login-demo`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: user.id }),
-        });
-        if (!res.ok) throw new Error(`login ${res.status}`);
-        const data = await res.json();
-        saveSession(data.user || user, data.token || "demo-token");
-        router.push("/system-control");
-        return;
-      } catch {
-        setStatus("Backend login failed. Opening with local demo session.");
-      }
+    setStatus(`Verifying ${user.name}...`);
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/dev-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `login failed: ${response.status}`);
+      saveSession(data.user as SessionUser, data.accessToken, data.expiresIn);
+      router.push("/system-control");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Verified login failed");
+      setBusyId(null);
     }
-    saveSession(user, "local-demo-token");
-    router.push("/system-control");
   }
+
+  async function startOidc() {
+    const oidc = config?.oidc;
+    if (!oidc?.authorizationUrl || !oidc.clientId) {
+      setStatus("OIDC authorization URL or client ID is missing.");
+      return;
+    }
+    const verifier = randomValue(48);
+    const challenge = base64Url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+    const state = randomValue(24);
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    sessionStorage.setItem("lucyworks_oidc", JSON.stringify({ verifier, state, redirectUri }));
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: oidc.clientId,
+      redirect_uri: redirectUri,
+      scope: oidc.scope || "openid profile email",
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      state,
+    });
+    if (oidc.audience) params.set("audience", oidc.audience);
+    window.location.assign(`${oidc.authorizationUrl}?${params.toString()}`);
+  }
+
+  const localEnabled = config?.mode === "local" && config.devLoginEnabled;
+  const oidcEnabled = config?.mode === "oidc";
 
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 12, background: "#020617" }}>
@@ -72,30 +109,22 @@ export default function LoginPage() {
         <div className="lw-command-header">
           <div>
             <div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>LucyWorks OS access</div>
-            <h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Tap role. Enter system.</h1>
-            <p style={{ color: "#94a3b8", marginBottom: 0 }}>No typing required for login. This removes the mobile dropdown/input failure.</p>
+            <h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Verified identity required</h1>
+            <p style={{ color: "#94a3b8", marginBottom: 0 }}>The API validates token signature, issuer, audience, expiry and authorised role before protected actions run.</p>
           </div>
-          <span className={`lw-pill ${backendOnline ? "lw-green" : "lw-amber"}`}>{backendOnline ? "backend users" : "local roles"}</span>
+          <span className={`lw-pill ${config ? "lw-green" : "lw-amber"}`}>{config?.mode || "loading"}</span>
         </div>
 
         <div style={{ padding: 12, display: "grid", gap: 10 }}>
-          {users.map((user) => (
-            <button
-              key={`${user.id}-${user.role}`}
-              onClick={() => enter(user)}
-              disabled={busyId === user.id}
-              className="lw-command-panel"
-              style={{ textAlign: "left", padding: 14, minHeight: 64, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}
-            >
+          {oidcEnabled ? <button onClick={() => void startOidc()} className="lw-command-panel" style={{ textAlign: "left", padding: 16, minHeight: 70 }}><strong>Sign in with hospital identity</strong><br /><span style={{ color: "#94a3b8" }}>OIDC authorization code flow with PKCE</span></button> : null}
+          {localEnabled ? DEVELOPMENT_USERS.map((user) => (
+            <button key={`${user.id}-${user.role}`} onClick={() => void enterDevelopment(user)} disabled={busyId === user.id} className="lw-command-panel" style={{ textAlign: "left", padding: 14, minHeight: 64, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
               <span><strong>{user.name}</strong><br /><span style={{ color: "#94a3b8" }}>{user.role} • {user.email}</span></span>
-              <span className="lw-pill lw-btn-primary">{busyId === user.id ? "Opening" : "Enter"}</span>
+              <span className="lw-pill lw-btn-primary">{busyId === user.id ? "Verifying" : "Enter"}</span>
             </button>
-          ))}
-          <p style={{ color: backendOnline ? "#86efac" : "#fbbf24", margin: 0 }}>{status}</p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/system-control" className="lw-pill">System Control</Link>
-            <Link href="/" className="lw-pill">Home</Link>
-          </div>
+          )) : null}
+          <p style={{ color: config ? "#86efac" : "#fbbf24", margin: 0 }}>{status}</p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><Link href="/" className="lw-pill">Home</Link></div>
         </div>
       </section>
     </main>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import { apiFetch } from "@/lib/api";
+import { getSession, type SessionUser } from "@/lib/session";
 
 type ApprovalTask = {
   id: number;
@@ -37,43 +37,45 @@ type ApprovalQueuePanelProps = {
 };
 
 async function patchApproval(id: number, body: unknown) {
-  const response = await fetch(`${API_BASE}/api/evidence/approvals/${id}`, {
+  const response = await apiFetch(`/api/evidence/approvals/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`approval failed: ${response.status}`);
-  return response.json();
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `approval failed: ${response.status}`);
+  return data;
 }
 
 export function ApprovalQueuePanel({ patientCaseId, referralEpisodeId, onDecision }: ApprovalQueuePanelProps) {
   const [approvals, setApprovals] = useState<ApprovalTask[]>([]);
   const [status, setStatus] = useState("idle");
-  const [decidedBy, setDecidedBy] = useState("Clinical Director");
-  const [decidedByRole, setDecidedByRole] = useState("clinical_director");
-  const [note, setNote] = useState("reviewed and approved with responsibility retained by named supervisor");
+  const [approver, setApprover] = useState<SessionUser | null>(null);
+  const [note, setNote] = useState("reviewed and approved with responsibility retained by the verified supervisor");
 
   async function refresh() {
     if (!patientCaseId) return;
     try {
       const query = new URLSearchParams({ patient_case_id: patientCaseId });
       if (referralEpisodeId) query.set("referral_episode_id", referralEpisodeId);
-      const response = await fetch(`${API_BASE}/api/evidence/approvals?${query.toString()}`, { cache: "no-store" });
+      const response = await apiFetch(`/api/evidence/approvals?${query.toString()}`, { cache: "no-store" });
       if (!response.ok) throw new Error("approval queue unavailable");
       const data = await response.json();
       setApprovals(Array.isArray(data.approvals) ? data.approvals : []);
       setStatus("approvals online");
-    } catch {
-      setStatus("approvals offline");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "approvals offline");
     }
   }
 
-  useEffect(() => { void refresh(); }, [patientCaseId, referralEpisodeId]);
+  useEffect(() => {
+    setApprover(getSession()?.user || null);
+    void refresh();
+  }, [patientCaseId, referralEpisodeId]);
 
   async function decide(item: ApprovalTask, decision: "approved" | "rejected") {
     setStatus(`${decision}...`);
     try {
-      await patchApproval(item.id, { decision, decidedBy, decidedByRole, note });
+      await patchApproval(item.id, { decision, note });
       await refresh();
       await onDecision?.();
       setStatus(`approval ${decision}`);
@@ -96,8 +98,7 @@ export function ApprovalQueuePanel({ patientCaseId, referralEpisodeId, onDecisio
     </div>
 
     <div className="approvalControls">
-      <label>Approver<input value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} /></label>
-      <label>Role<select value={decidedByRole} onChange={(event) => setDecidedByRole(event.target.value)}><option value="clinical_director">clinical_director</option><option value="ops_manager">ops_manager</option><option value="senior_clinician">senior_clinician</option><option value="hospital_director">hospital_director</option><option value="supervisor">supervisor</option><option value="governance_lead">governance_lead</option><option value="clinician">clinician - should fail</option></select></label>
+      <label>Verified approver<input value={approver ? `${approver.name} · ${approver.role}` : "verified login required"} readOnly /></label>
       <label>Decision note<textarea value={note} onChange={(event) => setNote(event.target.value)} /></label>
     </div>
 
@@ -117,4 +118,4 @@ export function ApprovalQueuePanel({ patientCaseId, referralEpisodeId, onDecisio
   </section>;
 }
 
-const css = `.approvalPanel{margin-top:12px;background:white;border:1px solid #d8e0ec;border-radius:18px;padding:14px}.approvalHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e5e7eb;padding-bottom:10px}.approvalHead span{display:block;text-transform:uppercase;letter-spacing:.14em;color:#7c3aed;font-size:11px;font-weight:900}.approvalHead h3{font-size:24px;margin:3px 0}.approvalHead p{color:#475569;margin:6px 0 0}.approvalHead button,.approvalActions button{border:1px solid #cbd5e1;background:white;color:#0f172a;border-radius:999px;padding:9px 12px;text-decoration:none;font-weight:800;cursor:pointer}.approvalActions button:first-child{background:#0f172a;color:white;border-color:#0f172a}.approvalControls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:12px 0}.approvalControls label{display:grid;gap:4px;color:#475569;font-size:12px;font-weight:800}.approvalControls input,.approvalControls select,.approvalControls textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:9px;background:white;color:#0f172a;font:inherit}.approvalControls textarea{min-height:64px}.approvalList{display:grid;gap:8px}.approvalList article{display:grid;grid-template-columns:1fr auto;gap:10px;border:1px solid #d8e0ec;border-left:6px solid #f59e0b;border-radius:14px;padding:10px;background:#fff}.approvalList article.approved{border-left-color:#16a34a}.approvalList article.rejected{border-left-color:#dc2626}.approvalList b{display:block}.approvalList p{margin:4px 0;color:#475569}.approvalList small{display:block;color:#475569;margin-top:3px}.approvalActions{display:flex;gap:8px;align-items:start}.empty{color:#64748b}@media(max-width:760px){.approvalHead{display:grid}.approvalHead button,.approvalActions button{width:100%}.approvalList article{grid-template-columns:1fr}.approvalActions{display:grid}}`;
+const css = `.approvalPanel{margin-top:12px;background:white;border:1px solid #d8e0ec;border-radius:18px;padding:14px}.approvalHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #e5e7eb;padding-bottom:10px}.approvalHead span{display:block;text-transform:uppercase;letter-spacing:.14em;color:#7c3aed;font-size:11px;font-weight:900}.approvalHead h3{font-size:24px;margin:3px 0}.approvalHead p{color:#475569;margin:6px 0 0}.approvalHead button,.approvalActions button{border:1px solid #cbd5e1;background:white;color:#0f172a;border-radius:999px;padding:9px 12px;text-decoration:none;font-weight:800;cursor:pointer}.approvalActions button:first-child{background:#0f172a;color:white;border-color:#0f172a}.approvalControls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:12px 0}.approvalControls label{display:grid;gap:4px;color:#475569;font-size:12px;font-weight:800}.approvalControls input,.approvalControls textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:9px;background:white;color:#0f172a;font:inherit}.approvalControls input[readonly]{background:#f1f5f9}.approvalControls textarea{min-height:64px}.approvalList{display:grid;gap:8px}.approvalList article{display:grid;grid-template-columns:1fr auto;gap:10px;border:1px solid #d8e0ec;border-left:6px solid #f59e0b;border-radius:14px;padding:10px;background:#fff}.approvalList article.approved{border-left-color:#16a34a}.approvalList article.rejected{border-left-color:#dc2626}.approvalList b{display:block}.approvalList p{margin:4px 0;color:#475569}.approvalList small{display:block;color:#475569;margin-top:3px}.approvalActions{display:flex;gap:8px;align-items:start}.empty{color:#64748b}@media(max-width:760px){.approvalHead{display:grid}.approvalHead button,.approvalActions button{width:100%}.approvalList article{grid-template-columns:1fr}.approvalActions{display:grid}}`;
