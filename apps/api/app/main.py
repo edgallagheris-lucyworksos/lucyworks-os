@@ -1,6 +1,7 @@
 import os
 
 from app.main_fixed import app
+from app import audit_attribution as _audit_attribution  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
 from app.auth_routes import router as auth_router
 from app.v3_operational_routes import router as v3_operational_router
