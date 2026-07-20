@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from app.auth import AuthContext, require_roles
 from app.database import get_session
 from app.evidence_approval_models import ApprovalTask
 from app.evidence_event_models import EvidenceEvent
@@ -26,8 +27,6 @@ APPROVER_ROLES = {
 
 class ApprovalDecision(BaseModel):
     decision: str
-    decidedBy: str = "frontend"
-    decidedByRole: str = "ops_manager"
     note: str | None = None
 
 
@@ -142,14 +141,17 @@ def list_approvals(
 
 
 @router.patch("/{approval_id}")
-def decide_approval(approval_id: int, payload: ApprovalDecision, session: Session = Depends(get_session)) -> dict[str, Any]:
+def decide_approval(
+    approval_id: int,
+    payload: ApprovalDecision,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*APPROVER_ROLES)),
+) -> dict[str, Any]:
     row = session.get(ApprovalTask, approval_id)
     if not row:
         raise HTTPException(status_code=404, detail="approval task not found")
     if payload.decision not in {"approved", "rejected"}:
         raise HTTPException(status_code=400, detail="decision must be approved or rejected")
-    if payload.decidedByRole not in APPROVER_ROLES:
-        raise HTTPException(status_code=403, detail="approver role not permitted")
     if row.status != "pending":
         raise HTTPException(status_code=409, detail="approval task already decided")
 
@@ -158,8 +160,8 @@ def decide_approval(approval_id: int, payload: ApprovalDecision, session: Sessio
         raise HTTPException(status_code=409, detail="source evidence event is missing")
 
     row.status = payload.decision
-    row.decided_by = payload.decidedBy
-    row.decided_by_role = payload.decidedByRole
+    row.decided_by = auth.actor_name
+    row.decided_by_role = auth.role
     row.decision_note = payload.note
     row.decided_at = _now()
     session.add(row)
@@ -172,10 +174,11 @@ def decide_approval(approval_id: int, payload: ApprovalDecision, session: Sessio
         action=f"approval {payload.decision}",
         patient_case_id=row.patient_case_id,
         referral_episode_id=row.referral_episode_id,
-        actor_name=payload.decidedBy,
-        actor_role=payload.decidedByRole,
-        actor_auth_source="payload_unverified",
-        professional_role=payload.decidedByRole,
+        actor_id=auth.actor_id,
+        actor_name=auth.actor_name,
+        actor_role=auth.role,
+        actor_auth_source=auth.auth_source,
+        professional_role=auth.role,
         previous_state={"approvalStatus": "pending"},
         new_state={"approvalStatus": payload.decision, "approvalTaskId": row.id},
         reason=row.reason,
@@ -184,7 +187,7 @@ def decide_approval(approval_id: int, payload: ApprovalDecision, session: Sessio
             {"type": "evidence_event", "id": row.evidence_event_ref, "hash": source_event.event_hash},
             {"type": "approval_task", "id": row.id},
         ],
-        supervisor_name=payload.decidedBy,
+        supervisor_name=auth.actor_name,
         supervisor_approval_status=payload.decision,
         compliance_domain="governance_approval",
         risk_level="green" if payload.decision == "approved" else "red",
