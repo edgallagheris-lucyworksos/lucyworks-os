@@ -16,13 +16,12 @@ type EvidenceEvent = {
   justification?: string | null;
   aiSystem?: string | null;
   aiModel?: string | null;
-  humanReviewer?: string | null;
   humanReviewStatus?: string | null;
-  supervisorApprovalStatus?: string | null;
+  effectiveApprovalStatus?: string | null;
   overrideReason?: string | null;
   complianceDomain?: string | null;
   riskLevel?: string | null;
-  sourceModule?: string | null;
+  eventHash?: string | null;
   createdAt?: string | null;
 };
 
@@ -59,6 +58,7 @@ type EstimateForm = {
   assumptions: string;
   exclusions: string;
   clinicianJustification: string;
+  contactMethod: string;
 };
 
 type ConsentForm = {
@@ -68,6 +68,8 @@ type ConsentForm = {
   alternativesDiscussed: string;
   costDiscussed: boolean;
   clientAuthorisedBy: string;
+  contactMethod: string;
+  communicationNotes: string;
   witness: string;
 };
 
@@ -96,6 +98,7 @@ const defaultEstimate: EstimateForm = {
   assumptions: "",
   exclusions: "",
   clinicianJustification: "",
+  contactMethod: "telephone",
 };
 
 const defaultConsent: ConsentForm = {
@@ -105,6 +108,8 @@ const defaultConsent: ConsentForm = {
   alternativesDiscussed: "",
   costDiscussed: false,
   clientAuthorisedBy: "",
+  contactMethod: "telephone",
+  communicationNotes: "",
   witness: "",
 };
 
@@ -118,27 +123,19 @@ function money(value: string) {
 }
 
 function stamp(prefix: string) {
-  return `${prefix}-${Date.now().toString(36)}`;
+  const random = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now().toString(36);
+  return `${prefix}-${random}`;
 }
 
-async function postJson(path: string, body: unknown) {
+async function requestJson(path: string, method: "POST" | "PATCH", body: unknown) {
   const response = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`${path} failed: ${response.status}`);
-  return response.json();
-}
-
-async function patchJson(path: string, body: unknown) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) throw new Error(`${path} failed: ${response.status}`);
-  return response.json();
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `${path} failed: ${response.status}`);
+  return data;
 }
 
 export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episodeRef, patientName, onEvidenceChange }: EvidenceControlPanelProps) {
@@ -160,8 +157,8 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
       const data = await response.json();
       setEvents(Array.isArray(data.events) ? data.events : []);
       setStatus("evidence online");
-    } catch {
-      setStatus("evidence offline");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "evidence offline");
     }
   }
 
@@ -172,128 +169,123 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
     await onEvidenceChange?.();
   }
 
+  async function run(label: string, task: () => Promise<void>) {
+    setStatus(label);
+    try {
+      await task();
+      setStatus("recorded");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "recording failed");
+    }
+  }
+
   async function recordDecision() {
-    setStatus("recording decision...");
-    await postJson("/api/evidence/events", {
-      eventType: "decision",
-      patientCaseId,
-      referralEpisodeId,
-      actorName: decision.actorName,
-      actorRole: decision.actorRole,
-      professionalRole: decision.professionalRole || undefined,
-      action: decision.action,
-      reason: decision.reason || undefined,
-      justification: decision.justification || undefined,
-      aiSystem: decision.aiSystem || undefined,
-      aiModel: decision.aiModel || undefined,
-      aiOutputRef: decision.aiOutputRef || undefined,
-      humanReviewer: decision.humanReviewer || undefined,
-      humanReviewStatus: decision.humanReviewStatus,
-      supervisorRequired: decision.riskLevel === "red" || decision.humanReviewStatus === "required",
-      supervisorApprovalStatus: decision.riskLevel === "red" ? "required" : "not_required",
-      overrideReason: decision.overrideReason || undefined,
-      complianceDomain: decision.complianceDomain,
-      riskLevel: decision.riskLevel,
-      sourceModule: "patient-care",
-      evidenceLinks: [{ type: "patient_case", id: patientCaseId }, { type: "referral_episode", id: referralEpisodeId || episodeRef }],
+    await run("recording decision...", async () => {
+      const hasAI = Boolean(decision.aiSystem || decision.aiModel || decision.aiOutputRef);
+      const reviewStatus = hasAI && decision.humanReviewStatus === "not_required" ? "required" : decision.humanReviewStatus;
+      await requestJson("/api/evidence/events", "POST", {
+        eventType: "decision",
+        patientCaseId,
+        referralEpisodeId,
+        actorName: decision.actorName,
+        actorRole: decision.actorRole,
+        actorAuthSource: "payload_unverified",
+        professionalRole: decision.professionalRole || undefined,
+        action: decision.action,
+        reason: decision.reason || undefined,
+        justification: decision.justification || undefined,
+        aiSystem: decision.aiSystem || undefined,
+        aiModel: decision.aiModel || undefined,
+        aiOutputRef: decision.aiOutputRef || undefined,
+        humanReviewer: decision.humanReviewer || undefined,
+        humanReviewStatus: reviewStatus,
+        supervisorRequired: decision.riskLevel === "red" || reviewStatus === "required",
+        supervisorApprovalStatus: decision.riskLevel === "red" || reviewStatus === "required" ? "pending" : "not_required",
+        overrideReason: decision.overrideReason || undefined,
+        complianceDomain: decision.complianceDomain,
+        riskLevel: decision.riskLevel,
+        sourceModule: "patient-care",
+        correlationId: referralEpisodeId || patientCaseId,
+        entityType: "patient_episode",
+        entityId: referralEpisodeId || episodeRef,
+        idempotencyKey: stamp("decision"),
+        evidenceLinks: [{ type: "patient_case", id: patientCaseId }, { type: "referral_episode", id: referralEpisodeId || episodeRef }],
+      });
+      setDecision(defaultDecision);
+      await afterChange();
     });
-    setDecision(defaultDecision);
-    await afterChange();
   }
 
   async function recordEstimate() {
-    setStatus("recording estimate...");
-    const created = await postJson("/api/evidence/estimates", {
-      estimateRef,
-      patientCaseId,
-      referralEpisodeId,
-      status: estimate.status,
-      lowerAmount: money(estimate.lowerAmount),
-      upperAmount: money(estimate.upperAmount),
-      assumptions: splitLines(estimate.assumptions),
-      excludedItems: splitLines(estimate.exclusions),
-      clientDecision: estimate.clientDecision,
-      clinicianJustification: estimate.clinicianJustification || undefined,
-      createdBy: "patient-care-ui",
-    });
-    await postJson("/api/evidence/events", {
-      eventType: "estimate_version",
-      patientCaseId,
-      referralEpisodeId,
-      actorName: "patient-care-ui",
-      actorRole: "admin_or_clinician",
-      action: `estimate ${estimate.status} / ${estimate.clientDecision}`,
-      reason: "versioned estimate recorded",
-      newState: created.estimate,
-      complianceDomain: "client_information",
-      riskLevel: estimate.clientDecision === "accepted" || estimate.status === "approved" ? "green" : "amber",
-      sourceModule: "patient-care",
-      evidenceLinks: [{ type: "estimate", id: estimateRef }],
-    });
-    if (referralEpisodeId) {
-      await patchJson(`/api/patient-care/episodes/${referralEpisodeId}/state`, {
-        estimateStatus: estimate.clientDecision === "accepted" || estimate.status === "approved" ? "approved" : estimate.status,
-        nextAction: "estimate recorded",
-        actor: "patient-care-ui",
-        note: "estimate evidence recorded",
+    await run("recording estimate...", async () => {
+      await requestJson("/api/evidence/estimates", "POST", {
+        estimateRef,
+        patientCaseId,
+        referralEpisodeId,
+        idempotencyKey: stamp("estimate-write"),
+        status: estimate.status,
+        lowerAmount: money(estimate.lowerAmount),
+        upperAmount: money(estimate.upperAmount),
+        assumptions: splitLines(estimate.assumptions),
+        excludedItems: splitLines(estimate.exclusions),
+        clientDecision: estimate.clientDecision,
+        clientContactMethod: estimate.contactMethod || undefined,
+        emergencyAuthority: estimate.clientDecision === "emergency_authority",
+        clinicianJustification: estimate.clinicianJustification || undefined,
+        createdBy: "patient-care-ui",
+        createdByRole: "admin_or_clinician",
       });
-    }
-    setEstimate(defaultEstimate);
-    await afterChange();
+      if (referralEpisodeId) {
+        await requestJson(`/api/patient-care/episodes/${referralEpisodeId}/state`, "PATCH", {
+          estimateStatus: estimate.clientDecision === "accepted" || estimate.status === "approved" ? "approved" : estimate.status,
+          nextAction: "estimate recorded",
+          actor: "patient-care-ui",
+          note: "transactional estimate evidence recorded",
+        });
+      }
+      setEstimate(defaultEstimate);
+      await afterChange();
+    });
   }
 
   async function recordConsent() {
-    setStatus("recording consent...");
-    const consentRef = stamp(`consent-${episodeRef || patientCaseId}`);
-    const created = await postJson("/api/evidence/consents", {
-      consentRef,
-      patientCaseId,
-      referralEpisodeId,
-      consentType: "procedure",
-      status: consent.status,
-      scope: consent.scope,
-      risksDiscussed: splitLines(consent.risksDiscussed),
-      alternativesDiscussed: splitLines(consent.alternativesDiscussed),
-      costDiscussed: consent.costDiscussed,
-      estimateRef,
-      clientAuthorisedBy: consent.clientAuthorisedBy || undefined,
-      recordedBy: "patient-care-ui",
-      witness: consent.witness || undefined,
-    });
-    await postJson("/api/evidence/events", {
-      eventType: "consent_record",
-      patientCaseId,
-      referralEpisodeId,
-      actorName: "patient-care-ui",
-      actorRole: "admin_or_clinician",
-      action: `consent ${consent.status}`,
-      reason: "client consent state recorded",
-      newState: created.consent,
-      clientAuthorisation: { authorisedBy: consent.clientAuthorisedBy, status: consent.status, scope: consent.scope },
-      complianceDomain: "consent",
-      riskLevel: consent.status === "authorised" || consent.status === "clear" || consent.status === "approved" ? "green" : "amber",
-      sourceModule: "patient-care",
-      evidenceLinks: [{ type: "consent", id: consentRef }, { type: "estimate", id: estimateRef }],
-    });
-    if (referralEpisodeId) {
-      await patchJson(`/api/patient-care/episodes/${referralEpisodeId}/state`, {
-        consentStatus: consent.status === "authorised" || consent.status === "approved" ? "approved" : consent.status,
-        nextAction: "consent recorded",
-        actor: "patient-care-ui",
-        note: "consent evidence recorded",
+    await run("recording consent...", async () => {
+      const consentRef = `consent-${episodeRef || patientCaseId}`;
+      await requestJson("/api/evidence/consents", "POST", {
+        consentRef,
+        patientCaseId,
+        referralEpisodeId,
+        idempotencyKey: stamp("consent-write"),
+        consentType: "procedure",
+        status: consent.status,
+        scope: consent.scope,
+        risksDiscussed: splitLines(consent.risksDiscussed),
+        alternativesDiscussed: splitLines(consent.alternativesDiscussed),
+        costDiscussed: consent.costDiscussed,
+        estimateRef,
+        clientAuthorisedBy: consent.clientAuthorisedBy || undefined,
+        clientContactMethod: consent.contactMethod || undefined,
+        communicationNotes: consent.communicationNotes || undefined,
+        recordedBy: "patient-care-ui",
+        recordedByRole: "admin_or_clinician",
+        witness: consent.witness || undefined,
       });
-    }
-    setConsent(defaultConsent);
-    await afterChange();
+      if (referralEpisodeId) {
+        await requestJson(`/api/patient-care/episodes/${referralEpisodeId}/state`, "PATCH", {
+          consentStatus: consent.status === "authorised" || consent.status === "approved" ? "approved" : consent.status,
+          nextAction: "consent recorded",
+          actor: "patient-care-ui",
+          note: "transactional consent evidence recorded",
+        });
+      }
+      setConsent(defaultConsent);
+      await afterChange();
+    });
   }
 
   return <section className="evidencePanel">
     <div className="evidenceHead">
-      <div>
-        <span>Evidence core</span>
-        <h3>Decision, consent and estimate record</h3>
-        <p>{patientName} · {episodeRef} · {status}</p>
-      </div>
+      <div><span>Evidence core</span><h3>Decision, consent and estimate record</h3><p>{patientName} · {episodeRef} · {status}</p></div>
       <button type="button" onClick={() => void refresh()}>Refresh evidence</button>
     </div>
 
@@ -311,7 +303,7 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
         <label>AI output ref<input value={decision.aiOutputRef} onChange={(event) => setDecision({ ...decision, aiOutputRef: event.target.value })} placeholder="optional" /></label>
         <label>Human reviewer<input value={decision.humanReviewer} onChange={(event) => setDecision({ ...decision, humanReviewer: event.target.value })} placeholder="named reviewer" /></label>
         <label>Review status<select value={decision.humanReviewStatus} onChange={(event) => setDecision({ ...decision, humanReviewStatus: event.target.value })}><option>not_required</option><option>required</option><option>accepted</option><option>edited</option><option>rejected</option></select></label>
-        <label>Override reason<input value={decision.overrideReason} onChange={(event) => setDecision({ ...decision, overrideReason: event.target.value })} placeholder="required for unsafe override" /></label>
+        <label>Override reason<input value={decision.overrideReason} onChange={(event) => setDecision({ ...decision, overrideReason: event.target.value })} placeholder="required for override" /></label>
       </div>
       <button type="button" onClick={() => void recordDecision()}>Record evidence event</button>
     </details>
@@ -323,6 +315,7 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
         <label>Upper £<input inputMode="decimal" value={estimate.upperAmount} onChange={(event) => setEstimate({ ...estimate, upperAmount: event.target.value })} /></label>
         <label>Status<select value={estimate.status} onChange={(event) => setEstimate({ ...estimate, status: event.target.value })}><option>draft</option><option>presented</option><option>approved</option><option>changed</option><option>withdrawn</option></select></label>
         <label>Client decision<select value={estimate.clientDecision} onChange={(event) => setEstimate({ ...estimate, clientDecision: event.target.value })}><option>not_recorded</option><option>accepted</option><option>declined</option><option>unable_to_contact</option><option>emergency_authority</option></select></label>
+        <label>Contact method<input value={estimate.contactMethod} onChange={(event) => setEstimate({ ...estimate, contactMethod: event.target.value })} /></label>
         <label>Assumptions<textarea value={estimate.assumptions} onChange={(event) => setEstimate({ ...estimate, assumptions: event.target.value })} placeholder="one per line" /></label>
         <label>Excluded items<textarea value={estimate.exclusions} onChange={(event) => setEstimate({ ...estimate, exclusions: event.target.value })} placeholder="one per line" /></label>
         <label>Clinician justification<textarea value={estimate.clinicianJustification} onChange={(event) => setEstimate({ ...estimate, clinicianJustification: event.target.value })} /></label>
@@ -333,27 +326,31 @@ export function EvidenceControlPanel({ patientCaseId, referralEpisodeId, episode
     <details className="evidenceForm">
       <summary>Record consent</summary>
       <div className="formGrid">
-        <label>Status<select value={consent.status} onChange={(event) => setConsent({ ...consent, status: event.target.value })}><option>pending</option><option>authorised</option><option>approved</option><option>declined</option><option>verbal</option><option>emergency_authority</option></select></label>
+        <label>Status<select value={consent.status} onChange={(event) => setConsent({ ...consent, status: event.target.value })}><option>pending</option><option>authorised</option><option>approved</option><option>declined</option><option>verbal</option><option>emergency_authority</option><option>withdrawn</option></select></label>
         <label>Authorised by<input value={consent.clientAuthorisedBy} onChange={(event) => setConsent({ ...consent, clientAuthorisedBy: event.target.value })} /></label>
+        <label>Contact method<input value={consent.contactMethod} onChange={(event) => setConsent({ ...consent, contactMethod: event.target.value })} /></label>
         <label>Witness<input value={consent.witness} onChange={(event) => setConsent({ ...consent, witness: event.target.value })} /></label>
         <label className="check"><input type="checkbox" checked={consent.costDiscussed} onChange={(event) => setConsent({ ...consent, costDiscussed: event.target.checked })} /> Cost discussed</label>
         <label>Scope<textarea value={consent.scope} onChange={(event) => setConsent({ ...consent, scope: event.target.value })} /></label>
         <label>Risks discussed<textarea value={consent.risksDiscussed} onChange={(event) => setConsent({ ...consent, risksDiscussed: event.target.value })} placeholder="one per line" /></label>
         <label>Alternatives discussed<textarea value={consent.alternativesDiscussed} onChange={(event) => setConsent({ ...consent, alternativesDiscussed: event.target.value })} placeholder="one per line" /></label>
+        <label>Communication notes<textarea value={consent.communicationNotes} onChange={(event) => setConsent({ ...consent, communicationNotes: event.target.value })} /></label>
       </div>
       <button type="button" onClick={() => void recordConsent()}>Save consent record</button>
     </details>
 
     <section className="eventList">
       <h3>Evidence timeline</h3>
-      {events.length ? events.slice(0, 10).map((event) => <article key={event.eventRef || event.id}>
+      {events.length ? events.slice(0, 12).map((event) => <article key={event.eventRef || event.id}>
         <time>{event.createdAt ? new Date(event.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" }) : "recorded"}</time>
         <div>
           <b>{event.action || event.eventType}</b>
           <p>{event.reason || event.justification || "No reason recorded"}</p>
           <small>{event.actorName || "system"} · {event.professionalRole || event.actorRole || "role not set"} · {event.complianceDomain || "domain not set"} · {event.riskLevel || "risk not set"}</small>
           {event.aiSystem || event.aiModel ? <small>AI: {event.aiSystem || "AI"} {event.aiModel || ""} · review {event.humanReviewStatus || "not recorded"}</small> : null}
+          {event.effectiveApprovalStatus && event.effectiveApprovalStatus !== "not_required" ? <small>Approval: {event.effectiveApprovalStatus}</small> : null}
           {event.overrideReason ? <small>Override: {event.overrideReason}</small> : null}
+          {event.eventHash ? <small>Evidence hash: {event.eventHash.slice(0, 12)}…</small> : null}
         </div>
       </article>) : <p className="empty">No evidence events recorded for this episode yet.</p>}
     </section>

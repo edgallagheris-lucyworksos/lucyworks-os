@@ -4,11 +4,13 @@ import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { getSession, type SessionUser } from "@/lib/session";
 
+type AuthGuardChildren = ReactNode | ((user: SessionUser) => ReactNode);
+
 export function AuthGuard({
   children,
   allowedRoles,
 }: {
-  children: (user: SessionUser) => ReactNode;
+  children: AuthGuardChildren;
   allowedRoles?: string[];
 }) {
   const [loading, setLoading] = useState(true);
@@ -44,5 +46,5 @@ export function AuthGuard({
     );
   }
 
-  return <>{children(user)}</>;
+  return <>{typeof children === "function" ? children(user) : children}</>;
 }

@@ -1,0 +1,85 @@
+name: Control Spine CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - ".github/workflows/control-spine-ci.yml"
+  push:
+    branches:
+      - feature/control-spine-v2
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - ".github/workflows/control-spine-ci.yml"
+
+jobs:
+  api-smoke-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile API modules
+        run: python -m compileall -q app
+      - name: Run control spine smoke test
+        id: control_spine
+        continue-on-error: true
+        run: python control_spine_smoke_test.py > control-spine.log 2>&1
+      - name: Run patient-care evidence smoke test
+        id: patient_evidence
+        continue-on-error: true
+        run: python evidence_patient_care_smoke_test.py > patient-evidence.log 2>&1
+      - name: Upload API validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-spine-api-logs
+          path: |
+            apps/api/control-spine.log
+            apps/api/patient-evidence.log
+          if-no-files-found: error
+      - name: Report API validation failures
+        if: steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure'
+        run: |
+          echo "--- control spine ---"
+          tail -n 80 control-spine.log || true
+          echo "--- patient evidence ---"
+          tail -n 80 patient-evidence.log || true
+          exit 1
+
+  web-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build web application
+        id: web_build
+        continue-on-error: true
+        run: npm run build > web-build.log 2>&1
+      - name: Upload web build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-spine-web-log
+          path: apps/web/web-build.log
+          if-no-files-found: error
+      - name: Report web build failure
+        if: steps.web_build.outcome == 'failure'
+        run: tail -n 100 web-build.log && exit 1

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -11,6 +10,7 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.evidence_approval_models import ApprovalTask
 from app.evidence_event_models import EvidenceEvent
+from app.evidence_service import approval_reason_for, create_evidence_event, required_approval_role
 
 router = APIRouter(prefix="/api/evidence/approvals", tags=["evidence-approvals"])
 
@@ -33,20 +33,6 @@ class ApprovalDecision(BaseModel):
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _needs_approval(event: EvidenceEvent) -> str | None:
-    if event.supervisor_required:
-        return "supervisor approval explicitly required"
-    if event.supervisor_approval_status in {"required", "pending"}:
-        return "supervisor approval status requires review"
-    if event.risk_level == "red":
-        return "red-risk evidence event"
-    if event.override_reason:
-        return "override requires named approval"
-    if event.ai_system and event.human_review_status in {"not_required", "required", "pending", ""}:
-        return "AI-linked evidence lacks completed human review"
-    return None
 
 
 def _approval_dict(row: ApprovalTask) -> dict[str, Any]:
@@ -77,6 +63,7 @@ def _event_dict(row: EvidenceEvent) -> dict[str, Any]:
         "referralEpisodeId": row.referral_episode_id,
         "actorName": row.actor_name,
         "actorRole": row.actor_role,
+        "actorAuthSource": row.actor_auth_source,
         "professionalRole": row.professional_role,
         "action": row.action,
         "reason": row.reason,
@@ -90,30 +77,34 @@ def _event_dict(row: EvidenceEvent) -> dict[str, Any]:
         "complianceDomain": row.compliance_domain,
         "riskLevel": row.risk_level,
         "sourceModule": row.source_module,
+        "eventHash": row.event_hash,
         "createdAt": row.created_at.isoformat() if row.created_at else None,
     }
 
 
-def _ensure_approval_tasks(session: Session) -> None:
+def _backfill_legacy_approval_tasks(session: Session) -> None:
+    """Create tasks for legacy events written before automatic task creation."""
+
     existing_refs = {row.evidence_event_ref for row in session.exec(select(ApprovalTask)).all()}
     events = session.exec(select(EvidenceEvent).order_by(EvidenceEvent.created_at.desc())).all()
     created = False
     for event in events:
-        reason = _needs_approval(event)
+        reason = approval_reason_for(event)
         if not reason or event.event_ref in existing_refs:
             continue
-        task = ApprovalTask(
-            evidence_event_ref=event.event_ref,
-            patient_case_id=event.patient_case_id,
-            referral_episode_id=event.referral_episode_id,
-            status="pending",
-            required_role="clinical_director_or_ops_manager",
-            reason=reason,
-            risk_level=event.risk_level,
-            source_module=event.source_module,
-            requested_by=event.actor_name,
+        session.add(
+            ApprovalTask(
+                evidence_event_ref=event.event_ref,
+                patient_case_id=event.patient_case_id,
+                referral_episode_id=event.referral_episode_id,
+                status="pending",
+                required_role=required_approval_role(event),
+                reason=reason,
+                risk_level=event.risk_level,
+                source_module=event.source_module,
+                requested_by=event.actor_name,
+            )
         )
-        session.add(task)
         created = True
     if created:
         session.commit()
@@ -126,19 +117,26 @@ def list_approvals(
     referral_episode_id: str | None = None,
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
-    _ensure_approval_tasks(session)
-    rows = session.exec(select(ApprovalTask).order_by(ApprovalTask.requested_at.desc())).all()
+    _backfill_legacy_approval_tasks(session)
+    query = select(ApprovalTask).order_by(ApprovalTask.requested_at.desc())
     if status:
-        rows = [row for row in rows if row.status == status]
+        query = query.where(ApprovalTask.status == status)
     if patient_case_id:
-        rows = [row for row in rows if row.patient_case_id == patient_case_id]
+        query = query.where(ApprovalTask.patient_case_id == patient_case_id)
     if referral_episode_id:
-        rows = [row for row in rows if row.referral_episode_id == referral_episode_id]
-    event_refs = {row.evidence_event_ref for row in rows}
-    events = session.exec(select(EvidenceEvent)).all()
-    event_by_ref = {event.event_ref: event for event in events if event.event_ref in event_refs}
+        query = query.where(ApprovalTask.referral_episode_id == referral_episode_id)
+    rows = session.exec(query).all()
+    event_refs = [row.evidence_event_ref for row in rows]
+    events = session.exec(select(EvidenceEvent).where(EvidenceEvent.event_ref.in_(event_refs))).all() if event_refs else []
+    event_by_ref = {event.event_ref: event for event in events}
     return {
-        "approvals": [{**_approval_dict(row), "event": _event_dict(event_by_ref[row.evidence_event_ref]) if row.evidence_event_ref in event_by_ref else None} for row in rows],
+        "approvals": [
+            {
+                **_approval_dict(row),
+                "event": _event_dict(event_by_ref[row.evidence_event_ref]) if row.evidence_event_ref in event_by_ref else None,
+            }
+            for row in rows
+        ],
         "count": len(rows),
     }
 
@@ -155,6 +153,10 @@ def decide_approval(approval_id: int, payload: ApprovalDecision, session: Sessio
     if row.status != "pending":
         raise HTTPException(status_code=409, detail="approval task already decided")
 
+    source_event = session.exec(select(EvidenceEvent).where(EvidenceEvent.event_ref == row.evidence_event_ref)).first()
+    if not source_event:
+        raise HTTPException(status_code=409, detail="source evidence event is missing")
+
     row.status = payload.decision
     row.decided_by = payload.decidedBy
     row.decided_by_role = payload.decidedByRole
@@ -162,30 +164,39 @@ def decide_approval(approval_id: int, payload: ApprovalDecision, session: Sessio
     row.decided_at = _now()
     session.add(row)
 
-    event = session.exec(select(EvidenceEvent).where(EvidenceEvent.event_ref == row.evidence_event_ref)).first()
-    if event:
-        event.supervisor_name = payload.decidedBy
-        event.supervisor_approval_status = payload.decision
-        session.add(event)
-        decision_event = EvidenceEvent(
-            event_ref=f"approval-{int(_now().timestamp() * 1000)}",
-            event_type="approval_decision",
-            patient_case_id=row.patient_case_id,
-            referral_episode_id=row.referral_episode_id,
-            actor_name=payload.decidedBy,
-            actor_role=payload.decidedByRole,
-            professional_role=payload.decidedByRole,
-            action=f"approval {payload.decision}",
-            reason=row.reason,
-            justification=payload.note,
-            evidence_links_json=json.dumps([{"type": "evidence_event", "id": row.evidence_event_ref}, {"type": "approval_task", "id": row.id}]),
-            supervisor_name=payload.decidedBy,
-            supervisor_approval_status=payload.decision,
-            compliance_domain="governance_approval",
-            risk_level=row.risk_level,
-            source_module="evidence-approval",
-        )
-        session.add(decision_event)
+    # The source event is immutable. Approval is a new linked event, never a
+    # mutation of the original evidence/hash.
+    decision_event, _ = create_evidence_event(
+        session,
+        event_type="approval_decision",
+        action=f"approval {payload.decision}",
+        patient_case_id=row.patient_case_id,
+        referral_episode_id=row.referral_episode_id,
+        actor_name=payload.decidedBy,
+        actor_role=payload.decidedByRole,
+        actor_auth_source="payload_unverified",
+        professional_role=payload.decidedByRole,
+        previous_state={"approvalStatus": "pending"},
+        new_state={"approvalStatus": payload.decision, "approvalTaskId": row.id},
+        reason=row.reason,
+        justification=payload.note,
+        evidence_links=[
+            {"type": "evidence_event", "id": row.evidence_event_ref, "hash": source_event.event_hash},
+            {"type": "approval_task", "id": row.id},
+        ],
+        supervisor_name=payload.decidedBy,
+        supervisor_approval_status=payload.decision,
+        compliance_domain="governance_approval",
+        risk_level="green" if payload.decision == "approved" else "red",
+        source_module="evidence-approval",
+        source_record_ref=str(row.id),
+        causation_event_ref=row.evidence_event_ref,
+        correlation_id=source_event.correlation_id,
+        entity_type="approval_task",
+        entity_id=str(row.id),
+        idempotency_key=f"approval:{row.id}:{payload.decision}",
+    )
     session.commit()
     session.refresh(row)
-    return {"approval": _approval_dict(row)}
+    session.refresh(decision_event)
+    return {"approval": _approval_dict(row), "decisionEvent": _event_dict(decision_event)}
