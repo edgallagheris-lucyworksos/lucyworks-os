@@ -39,6 +39,16 @@ def new_event_ref(prefix: str = "evidence") -> str:
     return f"{prefix}-{uuid4().hex}"
 
 
+def _datetime_text(value: datetime | None) -> str | None:
+    """Canonical UTC timestamp stable across SQLite/PostgreSQL round-trips."""
+
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return f"{value.isoformat(timespec='microseconds')}Z"
+
+
 def _normalise_risk(value: str | None) -> str:
     risk = str(value or "amber").lower().strip()
     return risk if risk in {"green", "amber", "red"} else "amber"
@@ -105,7 +115,7 @@ def event_hash_payload(event: EvidenceEvent) -> dict[str, Any]:
         "aiConfidence": event.ai_confidence,
         "humanReviewer": event.human_reviewer,
         "humanReviewStatus": event.human_review_status,
-        "humanReviewCompletedAt": event.human_review_completed_at.isoformat() if event.human_review_completed_at else None,
+        "humanReviewCompletedAt": _datetime_text(event.human_review_completed_at),
         "supervisorRequired": event.supervisor_required,
         "supervisorName": event.supervisor_name,
         "supervisorApprovalStatus": event.supervisor_approval_status,
@@ -116,8 +126,8 @@ def event_hash_payload(event: EvidenceEvent) -> dict[str, Any]:
         "sourceSystem": event.source_system,
         "sourceRecordRef": event.source_record_ref,
         "payloadSchemaVersion": event.payload_schema_version,
-        "occurredAt": event.occurred_at.isoformat() if event.occurred_at else None,
-        "createdAt": event.created_at.isoformat() if event.created_at else None,
+        "occurredAt": _datetime_text(event.occurred_at),
+        "createdAt": _datetime_text(event.created_at),
     }
 
 
