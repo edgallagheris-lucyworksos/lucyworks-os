@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import { apiFetch } from "@/lib/api";
 
 type Summary = {
   pendingHandovers: number;
@@ -69,8 +68,8 @@ export function ControlPlaneDashboard() {
     setStatus("refreshing");
     try {
       const [dashboardResponse, integrityResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/control-plane/dashboard`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/evidence/integrity`, { cache: "no-store" }),
+        apiFetch("/api/control-plane/dashboard", { cache: "no-store" }),
+        apiFetch("/api/evidence/integrity", { cache: "no-store" }),
       ]);
       if (!dashboardResponse.ok || !integrityResponse.ok) throw new Error("control-plane API unavailable");
       setData(await dashboardResponse.json());
