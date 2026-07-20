@@ -1,0 +1,46 @@
+{
+  "profileVersion": 1,
+  "integrationType": "hr",
+  "vendor": "generic-workforce-system",
+  "direction": "inbound",
+  "messageTypes": ["staff.updated", "skill.updated", "shift.created", "shift.updated", "absence.created", "fatigue.risk"],
+  "identity": {
+    "externalStaffId": "staff.id",
+    "externalShiftId": "shift.id",
+    "externalEventId": "event.id"
+  },
+  "fieldMappings": {
+    "staff.id": "staffRef",
+    "staff.displayName": "staffName",
+    "staff.role": "role",
+    "staff.active": "active",
+    "staff.skills": "skills",
+    "shift.id": "shiftRef",
+    "shift.startsAt": "startsAt",
+    "shift.endsAt": "endsAt",
+    "shift.department": "department",
+    "shift.status": "status",
+    "absence.type": "absenceType",
+    "absence.startsAt": "absenceStartsAt",
+    "absence.endsAt": "absenceEndsAt",
+    "fatigue.score": "fatigueScore",
+    "fatigue.reason": "fatigueReason"
+  },
+  "requiredFields": ["event.id", "staff.id"],
+  "privacy": {
+    "allowedFields": ["staff.id", "staff.displayName", "staff.role", "staff.active", "staff.skills", "shift", "absence.type", "absence.startsAt", "absence.endsAt", "fatigue.score", "fatigue.reason"],
+    "prohibitedFields": ["salary", "bankDetails", "medicalDiagnosis", "homeAddress", "disciplinaryNarrative"]
+  },
+  "reconciliation": {
+    "unmatchedStaff": "queue",
+    "unknownRole": "queue",
+    "overlappingShift": "flag",
+    "duplicateShift": "deduplicate"
+  },
+  "sampleMessage": {
+    "event": {"id": "sample-hr-event", "type": "shift.updated"},
+    "staff": {"id": "sample-staff", "displayName": "Sample Nurse", "role": "nurse", "active": true, "skills": ["anaesthesia", "recovery"]},
+    "shift": {"id": "sample-shift", "startsAt": "2026-07-21T07:00:00Z", "endsAt": "2026-07-21T17:00:00Z", "department": "Surgery", "status": "planned"},
+    "fatigue": {"score": 20, "reason": "within planned hours"}
+  }
+}
