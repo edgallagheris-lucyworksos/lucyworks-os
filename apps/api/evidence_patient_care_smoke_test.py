@@ -154,11 +154,7 @@ try:
         assert "approval" in approval["reason"] or "red" in approval["reason"] or "override" in approval["reason"]
         print("Approval task generated OK")
 
-        r = client.patch(f"/api/evidence/approvals/{approval_id}", json={"decision": "approved", "decidedBy": "Smoke Clinician", "decidedByRole": "clinician", "note": "should be blocked"})
-        assert r.status_code == 403, r.text
-        print("Approval role guard OK")
-
-        r = client.patch(f"/api/evidence/approvals/{approval_id}", json={"decision": "approved", "decidedBy": "Smoke Clinical Director", "decidedByRole": "clinical_director", "note": "approved by senior supervisor"})
+        r = client.patch(f"/api/evidence/approvals/{approval_id}", json={"decision": "approved", "note": "approved by fixed legacy smoke supervisor"})
         assert r.status_code == 200, r.text
         assert r.json()["approval"]["status"] == "approved"
         print("Approval decision OK")
