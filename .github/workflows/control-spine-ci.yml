@@ -155,7 +155,7 @@ jobs:
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0004_hospital_operating_system_v3", version
+          assert version == "0005_hospital_ops_uniqueness", version
           print("PostgreSQL hospital operating migration verified", version)
           PY
       - name: Prove concurrent stale-write protection
