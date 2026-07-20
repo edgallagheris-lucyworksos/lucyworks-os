@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { ApprovalQueuePanel } from "@/components/approval-queue-panel";
 import { EvidenceControlPanel } from "@/components/evidence-control-panel";
+import { apiFetch } from "@/lib/api";
 import { useDayControlStore } from "@/lib/day-control-store";
 import type { ScheduledWorkBlock } from "@/lib/day-control-work";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 const stages = [
   { key: "intake", label: "Intake / triage", words: ["arrival", "triage", "check-in", "intake"] },
@@ -58,8 +57,8 @@ function apiCasesToCareCases(apiCases: ApiCase[], blocks: ScheduledWorkBlock[]):
 }
 
 function tone(block: ScheduledWorkBlock) { if (safe(block.blocker).toLowerCase() !== "none" || block.status === "red") return "blocked"; if (block.status === "green") return "clear"; return "open"; }
-async function fetchPatientCases(): Promise<ApiCase[]> { const response = await fetch(`${API_BASE}/api/patient-care/cases`, { cache: "no-store" }); if (!response.ok) throw new Error("patient care request failed"); const data = await response.json(); return Array.isArray(data.cases) ? data.cases : []; }
-async function patchEpisode(episodeId: string, patch: Record<string, unknown>) { const response = await fetch(`${API_BASE}/api/patient-care/episodes/${episodeId}/state`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...patch, actor: "frontend" }) }); if (!response.ok) throw new Error("episode patch failed"); return response.json(); }
+async function fetchPatientCases(): Promise<ApiCase[]> { const response = await apiFetch("/api/patient-care/cases", { cache: "no-store" }); if (!response.ok) throw new Error("patient care request failed"); const data = await response.json(); return Array.isArray(data.cases) ? data.cases : []; }
+async function patchEpisode(episodeId: string, patch: Record<string, unknown>) { const response = await apiFetch(`/api/patient-care/episodes/${episodeId}/state`, { method: "PATCH", body: JSON.stringify(patch) }); if (!response.ok) throw new Error("episode patch failed"); return response.json(); }
 
 export function PatientCareWorkflow() {
   const { blocks, applyAction, syncStatus } = useDayControlStore();
