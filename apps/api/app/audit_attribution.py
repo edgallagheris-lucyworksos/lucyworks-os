@@ -12,6 +12,7 @@ from app.control_plane_models import (
 )
 from app.evidence_approval_models import ApprovalTask
 from app.evidence_event_models import ConsentRecord, EstimateVersion
+from app.integration_models import IntegrationConnection
 
 
 @event.listens_for(SASession, "before_flush")
@@ -37,6 +38,8 @@ def enforce_verified_attribution(session: SASession, _flush_context: object, _in
             row.from_role = auth.role
         elif isinstance(row, ServiceAvailability):
             row.updated_by = auth.actor_name
+        elif isinstance(row, IntegrationConnection):
+            row.created_by = auth.actor_name
 
     for row in session.dirty:
         if isinstance(row, AccountableHandover) and row.accepted_at is not None:
