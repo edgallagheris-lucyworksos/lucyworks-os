@@ -43,6 +43,8 @@ ALL_AUTHENTICATED_ROLES = ALLOWED_ROLES
 PUBLIC_PATHS = {
     "/",
     "/api/health",
+    "/api/health/live",
+    "/api/health/ready",
     "/api/auth/config",
     "/api/auth/dev-login",
     "/api/auth/oidc/exchange",
@@ -256,6 +258,8 @@ def required_roles_for(method: str, path: str) -> set[str] | None:
         return ALL_AUTHENTICATED_ROLES
     if path.startswith("/api/patient-care") and write:
         return ALL_AUTHENTICATED_ROLES
+    if path.startswith("/api/production-readiness"):
+        return SENIOR_ROLES
     return None
 
 
