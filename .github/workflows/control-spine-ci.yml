@@ -158,6 +158,8 @@ jobs:
           assert version == "0004_hospital_operating_system_v3", version
           print("PostgreSQL hospital operating migration verified", version)
           PY
+      - name: Prove concurrent stale-write protection
+        run: python hospital_ops_postgres_concurrency_test.py | tee -a postgres-migration.log
       - name: Upload PostgreSQL migration log
         if: always()
         uses: actions/upload-artifact@v4
