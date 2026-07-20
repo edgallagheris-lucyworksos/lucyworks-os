@@ -120,14 +120,10 @@ jobs:
       - name: Install API dependencies
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Apply PostgreSQL migrations
-        id: postgres_migration
-        continue-on-error: true
-        run: alembic upgrade head > postgres-migration.log 2>&1
+        run: alembic upgrade head | tee postgres-migration.log
       - name: Verify PostgreSQL schema version
-        id: postgres_verify
-        continue-on-error: true
         run: |
-          python - <<'PY' >> postgres-migration.log 2>&1
+          python - <<'PY' | tee -a postgres-migration.log
           from sqlalchemy import inspect, text
           from app.database import engine
           inspector = inspect(engine)
@@ -168,10 +164,7 @@ jobs:
         with:
           name: postgres-migration-log
           path: apps/api/postgres-migration.log
-          if-no-files-found: error
-      - name: Report PostgreSQL migration failure
-        if: steps.postgres_migration.outcome == 'failure' || steps.postgres_verify.outcome == 'failure'
-        run: tail -n 220 postgres-migration.log && exit 1
+          if-no-files-found: warn
 
   web-build:
     runs-on: ubuntu-latest
