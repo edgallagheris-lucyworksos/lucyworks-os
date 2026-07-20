@@ -9,6 +9,10 @@ on:
 jobs:
   day-control-smoke:
     runs-on: ubuntu-latest
+    env:
+      # This job intentionally exercises the retired whole-board replacement
+      # fixture. No production or normal development process may set this.
+      LUCYWORKS_LEGACY_TEST_BYPASS: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

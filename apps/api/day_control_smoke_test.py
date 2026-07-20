@@ -55,14 +55,16 @@ try:
         r = client.put("/api/day-control/blocks/bulk", json=seed)
         assert r.status_code == 200, r.text
         assert r.json()["count"] == 2
-        print("Day-control bulk seed OK")
+        assert r.json()["legacy"] is True
+        print("Day-control legacy bulk seed OK")
 
         r = client.get("/api/day-control/blocks")
         assert r.status_code == 200, r.text
         blocks = r.json()["blocks"]
         assert blocks[0]["id"] in {"smoke-block-1", "smoke-block-2"}
         assert blocks[0]["assignedStaffName"] == "Smoke Clinician"
-        print("Day-control list OK")
+        assert r.json()["authoritativeBoard"] == "/api/hospital-ops/board"
+        print("Day-control legacy list OK")
 
         r = client.get("/api/day-control/conflicts")
         assert r.status_code == 200, r.text
@@ -97,9 +99,10 @@ try:
         assert r.status_code == 200, r.text
         audit = r.json()["audit"]
         assert len(audit) >= 4
-        assert any(event["action"] == "resolve" for event in audit)
-        assert any(event["action"] == "update" for event in audit)
-        print("Day-control audit OK")
+        assert any(event["action"] in {"resolve", "legacy_resolve"} for event in audit)
+        assert any(event["action"] in {"update", "legacy_update"} for event in audit)
+        assert r.json()["legacy"] is True
+        print("Day-control legacy audit OK")
 
     print("\n--- DAY CONTROL SMOKE TEST PASSED ---\n")
 finally:

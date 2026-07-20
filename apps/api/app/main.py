@@ -2,6 +2,8 @@ import os
 
 from app.main_fixed import app
 from app import audit_attribution as _audit_attribution  # noqa: F401
+from app import database_exception_handlers as _database_exception_handlers  # noqa: F401
+from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
 from app.auth_routes import router as auth_router
 from app.v3_operational_routes import router as v3_operational_router
@@ -44,6 +46,8 @@ from app.evidence_event_routes import router as evidence_event_router
 from app.evidence_approval_routes import router as evidence_approval_router
 from app.control_plane_routes import router as control_plane_router
 from app.integration_routes import router as integration_router
+from app.hospital_ops_routes import router as hospital_ops_router
+from app.hospital_ops_extension_routes import router as hospital_ops_extension_router
 
 # Only the named legacy smoke fixtures may bypass middleware. Production and
 # normal development must never set this variable.
@@ -91,3 +95,5 @@ app.include_router(evidence_event_router)
 app.include_router(evidence_approval_router)
 app.include_router(control_plane_router)
 app.include_router(integration_router)
+app.include_router(hospital_ops_router)
+app.include_router(hospital_ops_extension_router)
