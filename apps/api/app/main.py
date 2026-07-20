@@ -44,6 +44,7 @@ from app.evidence_event_routes import router as evidence_event_router
 from app.evidence_approval_routes import router as evidence_approval_router
 from app.control_plane_routes import router as control_plane_router
 from app.integration_routes import router as integration_router
+from app.hospital_ops_routes import router as hospital_ops_router
 
 # Only the named legacy smoke fixtures may bypass middleware. Production and
 # normal development must never set this variable.
@@ -91,3 +92,4 @@ app.include_router(evidence_event_router)
 app.include_router(evidence_approval_router)
 app.include_router(control_plane_router)
 app.include_router(integration_router)
+app.include_router(hospital_ops_router)
