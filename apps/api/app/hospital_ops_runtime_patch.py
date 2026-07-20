@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlmodel import Session, select
 
@@ -18,6 +20,7 @@ _original_patch_block = service.patch_block
 _original_transition_episode = service.transition_episode
 _original_apply_propagated_delay = service.apply_propagated_delay
 _original_commit_import = service.commit_import
+_original_preview_import = service.preview_import
 _original_patch_episode_gates = extensions.patch_episode_gates
 _original_resolve_reconciliation_item = extensions.resolve_reconciliation_item
 
@@ -99,6 +102,21 @@ def propagated_delay_with_ordered_locks(session: Session, block_ref: str, payloa
     return _original_apply_propagated_delay(session, block_ref, payload, auth)
 
 
+def preview_import_idempotently(session: Session, payload, auth):
+    content = str(payload.get("content") or "")
+    premises_ref = str(payload.get("premisesRef") or "default-premises")
+    source_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    existing = session.exec(
+        select(ImportBatch).where(
+            ImportBatch.premises_ref == premises_ref,
+            ImportBatch.source_hash == source_hash,
+        )
+    ).first()
+    if existing:
+        return existing
+    return _original_preview_import(session, payload, auth)
+
+
 def commit_import_with_batch_lock(session: Session, batch_ref: str, auth):
     session.exec(
         select(ImportBatch)
@@ -129,6 +147,7 @@ service.detect_constraints = detect_constraints_with_normalised_datetimes
 service.patch_block = patch_block_with_row_lock
 service.transition_episode = transition_episode_with_row_lock
 service.apply_propagated_delay = propagated_delay_with_ordered_locks
+service.preview_import = preview_import_idempotently
 service.commit_import = commit_import_with_batch_lock
 extensions.patch_episode_gates = patch_episode_gates_with_row_lock
 extensions.resolve_reconciliation_item = resolve_reconciliation_with_locks
