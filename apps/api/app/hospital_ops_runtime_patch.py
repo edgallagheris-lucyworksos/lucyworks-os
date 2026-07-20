@@ -4,7 +4,13 @@ from sqlalchemy.orm.attributes import set_committed_value
 from sqlmodel import Session, select
 
 from app import hospital_ops_service as service
-from app.hospital_ops_models import CanonicalEpisodeState, ImportBatch, OperationalBlock
+from app import hospital_ops_extensions as extensions
+from app.hospital_ops_models import (
+    CanonicalEpisodeState,
+    ImportBatch,
+    ImportReconciliationItem,
+    OperationalBlock,
+)
 
 
 _original_detect_constraints = service.detect_constraints
@@ -12,6 +18,8 @@ _original_patch_block = service.patch_block
 _original_transition_episode = service.transition_episode
 _original_apply_propagated_delay = service.apply_propagated_delay
 _original_commit_import = service.commit_import
+_original_patch_episode_gates = extensions.patch_episode_gates
+_original_resolve_reconciliation_item = extensions.resolve_reconciliation_item
 
 
 def detect_constraints_with_normalised_datetimes(
@@ -60,6 +68,15 @@ def transition_episode_with_row_lock(session: Session, episode_ref: str, payload
     return _original_transition_episode(session, episode_ref, payload, auth)
 
 
+def patch_episode_gates_with_row_lock(session: Session, episode_ref: str, payload, auth):
+    session.exec(
+        select(CanonicalEpisodeState)
+        .where(CanonicalEpisodeState.episode_ref == episode_ref)
+        .with_for_update()
+    ).first()
+    return _original_patch_episode_gates(session, episode_ref, payload, auth)
+
+
 def propagated_delay_with_ordered_locks(session: Session, block_ref: str, payload, auth):
     source = session.exec(
         select(OperationalBlock)
@@ -91,8 +108,27 @@ def commit_import_with_batch_lock(session: Session, batch_ref: str, auth):
     return _original_commit_import(session, batch_ref, auth)
 
 
+def resolve_reconciliation_with_locks(session: Session, batch_ref: str, item_ref: str, corrected_record, auth):
+    session.exec(
+        select(ImportBatch)
+        .where(ImportBatch.batch_ref == batch_ref)
+        .with_for_update()
+    ).first()
+    session.exec(
+        select(ImportReconciliationItem)
+        .where(
+            ImportReconciliationItem.batch_ref == batch_ref,
+            ImportReconciliationItem.item_ref == item_ref,
+        )
+        .with_for_update()
+    ).first()
+    return _original_resolve_reconciliation_item(session, batch_ref, item_ref, corrected_record, auth)
+
+
 service.detect_constraints = detect_constraints_with_normalised_datetimes
 service.patch_block = patch_block_with_row_lock
 service.transition_episode = transition_episode_with_row_lock
 service.apply_propagated_delay = propagated_delay_with_ordered_locks
 service.commit_import = commit_import_with_batch_lock
+extensions.patch_episode_gates = patch_episode_gates_with_row_lock
+extensions.resolve_reconciliation_item = resolve_reconciliation_with_locks
