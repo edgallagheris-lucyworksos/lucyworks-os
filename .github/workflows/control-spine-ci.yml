@@ -224,7 +224,7 @@ jobs:
       - name: Build web production image
         id: web_image
         continue-on-error: true
-        run: docker build --progress=plain --build-arg API_INTERNAL_BASE=http://api:8000 -t lucyworks-web-ci apps/web > web-image.log 2>&1
+        run: docker build --progress=plain --build-arg API_INTERNAL_BASE=http://api:8000 -f apps/web/Dockerfile -t lucyworks-web-ci . > web-image.log 2>&1
       - name: Upload production image logs
         if: always()
         uses: actions/upload-artifact@v4
