@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from fastapi import HTTPException
 from sqlalchemy import event
 from sqlalchemy.orm import Session as SASession
 
@@ -20,14 +21,20 @@ from app.schedule_state_models import ScheduleStateEvent
 
 @event.listens_for(SASession, "before_flush")
 def enforce_verified_attribution(session: SASession, _flush_context: object, _instances: object) -> None:
-    """Replace payload-supplied audit actors with the verified request identity.
-
-    Domain ownership fields such as accountable_owner and responsible_actor are
-    intentionally left untouched. Fields claiming who performed a write or
-    decision are never trusted from a browser payload.
-    """
+    """Enforce verified audit attribution and non-destructive import policy."""
 
     auth = get_current_auth_context()
+
+    # This invariant is independent of authentication mode: invalid rows cannot
+    # be silently committed by a direct service call or an older route.
+    for row in session.dirty:
+        if isinstance(row, ImportBatch) and row.status == "committed" and row.rejected_count > 0:
+            raise HTTPException(status_code=409, detail={
+                "code": "reconciliation_required",
+                "message": "all rejected import rows must be resolved before commit",
+                "unresolvedCount": row.rejected_count,
+            })
+
     if not auth.verified:
         return
 
