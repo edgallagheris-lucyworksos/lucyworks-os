@@ -4,6 +4,7 @@ const apiInternalBase = (process.env.API_INTERNAL_BASE || "http://127.0.0.1:8000
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   experimental: { externalDir: true },
   async rewrites() {
     return [
