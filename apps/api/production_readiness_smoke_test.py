@@ -69,6 +69,11 @@ try:
         assert dashboard.json()["gate"]["liveEligible"] is False
         print("Persistent readiness gate OK")
 
+        blocked_shadow = client.post("/api/production-readiness/pilots", headers=senior, json={"phase": "shadow", "serviceLine": "neurology", "accountableOwner": "Lucy Ops", "startNow": True})
+        assert blocked_shadow.status_code == 409, blocked_shadow.text
+        assert "shadow mode is blocked" in blocked_shadow.text
+        print("Server blocks premature shadow mode OK")
+
         security = client.post("/api/production-readiness/security/self-test", headers=senior, json={})
         assert security.status_code == 200, security.text
         assert security.json()["failedCount"] > 0
@@ -85,7 +90,7 @@ try:
         assert mappings.json()["count"] >= 4
         print("Vendor mapping catalogue OK")
 
-        pilot = client.post("/api/production-readiness/pilots", headers=senior, json={"phase": "shadow", "serviceLine": "neurology", "accountableOwner": "Lucy Ops", "startNow": True})
+        pilot = client.post("/api/production-readiness/pilots", headers=senior, json={"phase": "synthetic", "serviceLine": "neurology", "accountableOwner": "Lucy Ops", "startNow": True})
         assert pilot.status_code == 200, pilot.text
         pilot_ref = pilot.json()["pilot"]["runRef"]
 
@@ -96,6 +101,9 @@ try:
         blocked = client.get("/api/production-readiness/dashboard", headers=senior).json()
         assert blocked["gate"]["openRedObservations"] == 1
         assert next(item for item in blocked["pilots"] if item["runRef"] == pilot_ref)["status"] == "blocked"
+
+        cannot_pass = client.patch(f"/api/production-readiness/pilots/{pilot_ref}", headers=senior, json={"status": "passed", "approvalNote": "premature"})
+        assert cannot_pass.status_code == 409, cannot_pass.text
 
         resolved = client.patch(f"/api/production-readiness/observations/{observation_ref}/resolve", headers=senior, json={"resolution": "Verified stale-write rejection in PostgreSQL contention test"})
         assert resolved.status_code == 200, resolved.text
