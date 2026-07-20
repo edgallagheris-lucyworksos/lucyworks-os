@@ -46,13 +46,13 @@ function localCases(blocks: ScheduledWorkBlock[]): CareCase[] {
 }
 
 function apiCasesToCareCases(apiCases: ApiCase[], blocks: ScheduledWorkBlock[]): CareCase[] {
-  return apiCases.flatMap((item) => {
+  return apiCases.flatMap<CareCase>((item): CareCase[] => {
     const episodes = item.episodes?.length ? item.episodes : [];
-    if (!episodes.length) return [{ id: item.id, patient: item.patientName, source: "api" as const, episodeId: item.id, episodeRef: item.id, blocks: [], events: [], stage: "intake" as StageKey, owner: "unassigned", location: "not set", next: item.referralReason || "confirm referral plan", blocker: "none", status: item.status || "active", risk: item.riskLevel || "amber", gates: {}, blockers: [] }];
-    return episodes.map((episode) => {
+    if (!episodes.length) return [{ id: item.id, patient: item.patientName, source: "api", episodeId: item.id, episodeRef: item.id, blocks: [], events: [], stage: "intake", owner: "unassigned", location: "not set", next: item.referralReason || "confirm referral plan", blocker: "none", status: item.status || "active", risk: item.riskLevel || "amber", gates: {}, blockers: [] }];
+    return episodes.map((episode): CareCase => {
       const matchingBlocks = blocks.filter((block) => caseKey(block) === episode.episodeRef || caseKey(block) === item.patientName || safe(block.subject) === item.patientName).sort(blockTimeSort);
       const blocker = safe(episode.blocker) || "none";
-      return { id: item.id, patient: item.patientName, source: "api" as const, episodeId: episode.id, episodeRef: episode.episodeRef, blocks: matchingBlocks, events: episode.events || [], stage: isStage(episode.stage) ? episode.stage : stageFor(matchingBlocks), owner: safe(episode.ownerName) || safe(episode.ownerRole) || "unassigned", location: safe(episode.currentLocation) || "not set", next: safe(episode.nextAction) || nextFor(matchingBlocks), blocker, status: episode.status || item.status || "active", risk: item.riskLevel || (blocker !== "none" ? "red" : "amber"), gates: { consent: episode.consentStatus, estimate: episode.estimateStatus, insurance: episode.insuranceStatus, pharmacy: episode.pharmacyReady, owner: episode.ownerUpdated, report: episode.referringVetReportSent, discharge: episode.dischargeClear }, blockers: matchingBlocks.filter((block) => safe(block.blocker).toLowerCase() !== "none") };
+      return { id: item.id, patient: item.patientName, source: "api", episodeId: episode.id, episodeRef: episode.episodeRef, blocks: matchingBlocks, events: episode.events || [], stage: isStage(episode.stage) ? episode.stage : stageFor(matchingBlocks), owner: safe(episode.ownerName) || safe(episode.ownerRole) || "unassigned", location: safe(episode.currentLocation) || "not set", next: safe(episode.nextAction) || nextFor(matchingBlocks), blocker, status: episode.status || item.status || "active", risk: item.riskLevel || (blocker !== "none" ? "red" : "amber"), gates: { consent: episode.consentStatus, estimate: episode.estimateStatus, insurance: episode.insuranceStatus, pharmacy: episode.pharmacyReady, owner: episode.ownerUpdated, report: episode.referringVetReportSent, discharge: episode.dischargeClear }, blockers: matchingBlocks.filter((block) => safe(block.blocker).toLowerCase() !== "none") };
     });
   });
 }
