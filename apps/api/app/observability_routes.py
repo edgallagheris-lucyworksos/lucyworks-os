@@ -56,8 +56,12 @@ def require_metrics_key(supplied: str | None) -> None:
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
-def metrics(x_lucyworks_metrics_key: str | None = Header(default=None)) -> str:
-    require_metrics_key(x_lucyworks_metrics_key)
+def metrics(
+    authorization: str | None = Header(default=None),
+    x_lucyworks_metrics_key: str | None = Header(default=None),
+) -> str:
+    bearer = authorization.split(" ", 1)[1].strip() if authorization and authorization.lower().startswith("bearer ") else None
+    require_metrics_key(x_lucyworks_metrics_key or bearer)
     lines = [
         "# HELP lucyworks_process_uptime_seconds Seconds since API process start.",
         "# TYPE lucyworks_process_uptime_seconds gauge",
