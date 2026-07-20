@@ -141,6 +141,7 @@ try:
         })
         assert r.status_code == 200, r.text
         red_event_ref = r.json()["event"]["eventRef"]
+        red_event_hash = r.json()["event"]["eventHash"]
         print("Red evidence event OK")
 
         r = client.get(f"/api/evidence/approvals?status=pending&patient_case_id={patient_case_id}")
@@ -220,8 +221,11 @@ try:
         assert r.status_code == 200, r.text
         assert r.json()["count"] >= 3
         assert any(event["eventType"] == "approval_decision" for event in r.json()["events"])
-        assert any(event["eventRef"] == red_event_ref and event["supervisorApprovalStatus"] == "approved" for event in r.json()["events"])
-        print("Evidence event list and approval audit OK")
+        source_event = next(event for event in r.json()["events"] if event["eventRef"] == red_event_ref)
+        assert source_event["eventHash"] == red_event_hash
+        assert source_event["supervisorApprovalStatus"] in {"required", "pending"}
+        assert source_event["effectiveApprovalStatus"] == "approved"
+        print("Evidence event list and append-only approval audit OK")
 
     print("\n--- EVIDENCE PATIENT CARE SMOKE TEST PASSED ---\n")
 finally:
