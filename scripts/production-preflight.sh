@@ -17,7 +17,7 @@ if grep -Eq '(^|=)REQUIRED_' "$ENV_FILE"; then
   fail "production environment still contains REQUIRED placeholders"
 fi
 
-required=(PUBLIC_DOMAIN POSTGRES_PASSWORD AUTH_MODE AUTH_ENFORCEMENT AUTH_DEV_LOGIN_ENABLED OIDC_ISSUER OIDC_JWKS_URL OIDC_AUTHORIZATION_URL OIDC_TOKEN_URL OIDC_CLIENT_ID OIDC_CLIENT_SECRET AUTH_ROLE_MAP)
+required=(PUBLIC_DOMAIN POSTGRES_PASSWORD AUTH_MODE AUTH_ENFORCEMENT AUTH_DEV_LOGIN_ENABLED OIDC_ISSUER OIDC_JWKS_URL OIDC_AUTHORIZATION_URL OIDC_TOKEN_URL OIDC_CLIENT_ID OIDC_CLIENT_SECRET AUTH_ROLE_MAP METRICS_API_KEY)
 for key in "${required[@]}"; do
   value="$(grep -E "^${key}=" "$ENV_FILE" | tail -n 1 | cut -d= -f2- || true)"
   [[ -n "$value" ]] || fail "$key is empty or missing"
@@ -29,7 +29,7 @@ done
 [[ "$(grep '^AUTO_CREATE_SCHEMA=' "$ENV_FILE" | cut -d= -f2-)" == "false" ]] || fail "AUTO_CREATE_SCHEMA must be false"
 [[ "$(grep '^LUCYWORKS_LEGACY_TEST_BYPASS=' "$ENV_FILE" | cut -d= -f2-)" == "false" ]] || fail "legacy test bypass must be false"
 
-for key in POSTGRES_PASSWORD OIDC_CLIENT_SECRET PIMS_WEBHOOK_SECRET IMAGING_WEBHOOK_SECRET LAB_WEBHOOK_SECRET HR_WEBHOOK_SECRET; do
+for key in POSTGRES_PASSWORD OIDC_CLIENT_SECRET PIMS_WEBHOOK_SECRET IMAGING_WEBHOOK_SECRET LAB_WEBHOOK_SECRET HR_WEBHOOK_SECRET METRICS_API_KEY; do
   value="$(grep -E "^${key}=" "$ENV_FILE" | tail -n 1 | cut -d= -f2- || true)"
   [[ ${#value} -ge 20 ]] || fail "$key must be at least 20 characters"
 done
