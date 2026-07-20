@@ -1,4 +1,6 @@
 from app.main_fixed import app
+from app.auth import VerifiedIdentityMiddleware
+from app.auth_routes import router as auth_router
 from app.v3_operational_routes import router as v3_operational_router
 from app.ops_engine_routes import router as ops_engine_router
 from app.input_routes import router as input_router
@@ -39,6 +41,9 @@ from app.evidence_event_routes import router as evidence_event_router
 from app.evidence_approval_routes import router as evidence_approval_router
 from app.control_plane_routes import router as control_plane_router
 
+app.add_middleware(VerifiedIdentityMiddleware)
+
+app.include_router(auth_router)
 app.include_router(v3_operational_router)
 app.include_router(ops_engine_router)
 app.include_router(input_router)
