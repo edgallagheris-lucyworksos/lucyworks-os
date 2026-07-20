@@ -3,7 +3,8 @@ import { AuthGuard } from "@/components/auth-guard";
 
 const surfaces = [
   { href: "/hospital-board", title: "Hospital master grid", description: "Canonical 15-minute operating plan with physical areas, conflicts and versioned commands." },
-  { href: "/patient-care", title: "Patient care", description: "Referral episodes, consent, estimates, care continuity and evidence." },
+  { href: "/hospital-episodes", title: "Referral episodes", description: "Intake, ownership, governance gates and controlled phase transitions from referral to closure." },
+  { href: "/patient-care", title: "Patient care evidence", description: "Consent, estimates, case communication, clinical/admin decisions and evidence timeline." },
   { href: "/control-plane", title: "Control plane", description: "Critical results, handovers, premises controls, service readiness and approvals." },
   { href: "/hospital-imports", title: "Import and reconciliation", description: "Preview exports, resolve unmatched rows and commit controlled canonical data." },
   { href: "/integrations", title: "Vendor integrations", description: "PIMS, imaging, laboratory and workforce connection health and provenance." },
