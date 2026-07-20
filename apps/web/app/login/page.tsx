@@ -15,10 +15,10 @@ type AuthConfig = {
 };
 
 const DEVELOPMENT_USERS: User[] = [
-  { id: 1, name: "Clinical Director", role: "ops_manager", email: "clinical.director@lucyvet.local" },
-  { id: 2, name: "Duty Clinician", role: "clinician", email: "clinician@lucyvet.local" },
-  { id: 3, name: "Ward Nurse", role: "nurse", email: "nurse@lucyvet.local" },
-  { id: 4, name: "Reception / Admin", role: "admin", email: "admin@lucyvet.local" },
+  { id: 1, name: "Lucy Ops", role: "ops_manager", email: "ops@lucyworks.local" },
+  { id: 2, name: "Nina Nurse", role: "nurse", email: "nurse@lucyworks.local" },
+  { id: 3, name: "Cal Clinician", role: "clinician", email: "clinician@lucyworks.local" },
+  { id: 4, name: "Ari Admin", role: "admin", email: "admin@lucyworks.local" },
 ];
 
 function randomValue(bytes = 32) {
@@ -110,7 +110,7 @@ export default function LoginPage() {
           <div>
             <div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>LucyWorks OS access</div>
             <h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Verified identity required</h1>
-            <p style={{ color: "#94a3b8", marginBottom: 0 }}>The API now validates token signature, issuer, audience, expiry and authorised role before protected actions run.</p>
+            <p style={{ color: "#94a3b8", marginBottom: 0 }}>The API validates token signature, issuer, audience, expiry and authorised role before protected actions run.</p>
           </div>
           <span className={`lw-pill ${config ? "lw-green" : "lw-amber"}`}>{config?.mode || "loading"}</span>
         </div>
