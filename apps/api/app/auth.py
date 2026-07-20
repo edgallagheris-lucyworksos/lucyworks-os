@@ -51,6 +51,10 @@ PUBLIC_PATHS = {
     "/openapi.json",
     "/redoc",
 }
+PUBLIC_PREFIXES = (
+    "/docs",
+    "/api/integrations/webhooks/",
+)
 
 
 @dataclass(frozen=True)
@@ -244,6 +248,10 @@ def required_roles_for(method: str, path: str) -> set[str] | None:
         return SENIOR_ROLES
     if path.startswith("/api/control-plane"):
         return ALL_AUTHENTICATED_ROLES
+    if path.startswith("/api/integrations/connections") and write:
+        return SENIOR_ROLES
+    if path.startswith("/api/integrations"):
+        return ALL_AUTHENTICATED_ROLES
     if path.startswith("/api/evidence"):
         return ALL_AUTHENTICATED_ROLES
     if path.startswith("/api/patient-care") and write:
@@ -257,6 +265,8 @@ class VerifiedIdentityMiddleware:
     AUTH_ENFORCEMENT=required protects every API route except the explicit
     public set. In audit mode, legacy routes remain reachable, while the
     evidence/control-plane/patient-care write surfaces are still protected.
+    Integration webhooks are exempt from bearer authentication only because
+    they perform their own timestamped HMAC verification.
     """
 
     def __init__(self, app: Any):
@@ -269,7 +279,7 @@ class VerifiedIdentityMiddleware:
 
         path = str(scope.get("path") or "")
         method = str(scope.get("method") or "GET").upper()
-        if path in PUBLIC_PATHS or path.startswith("/docs"):
+        if path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PREFIXES):
             token = current_auth_context.set(_ANONYMOUS)
             try:
                 scope.setdefault("state", {})["auth"] = _ANONYMOUS
