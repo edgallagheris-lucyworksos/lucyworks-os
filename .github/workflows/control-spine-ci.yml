@@ -5,6 +5,10 @@ on:
     paths:
       - "apps/api/**"
       - "apps/web/**"
+      - "config/**"
+      - "deploy/**"
+      - "scripts/**"
+      - "docs/**"
       - ".github/workflows/**"
   push:
     branches:
@@ -13,6 +17,10 @@ on:
     paths:
       - "apps/api/**"
       - "apps/web/**"
+      - "config/**"
+      - "deploy/**"
+      - "scripts/**"
+      - "docs/**"
       - ".github/workflows/**"
 
 jobs:
@@ -32,6 +40,10 @@ jobs:
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile API modules
         run: python -m compileall -q app migrations
+      - name: Run production readiness v4 test
+        id: production_readiness
+        continue-on-error: true
+        run: python production_readiness_smoke_test.py > production-readiness.log 2>&1
       - name: Run hospital operating system v3 test
         id: hospital_ops_v3
         continue-on-error: true
@@ -72,6 +84,7 @@ jobs:
         with:
           name: verified-api-logs
           path: |
+            apps/api/production-readiness.log
             apps/api/hospital-ops-v3.log
             apps/api/identity.log
             apps/api/integrations.log
@@ -80,11 +93,11 @@ jobs:
             apps/api/migration.log
           if-no-files-found: error
       - name: Report API validation failures
-        if: steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
+        if: steps.production_readiness.outcome == 'failure' || steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
         run: |
-          for file in hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
+          for file in production-readiness.log hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
             echo "--- $file ---"
-            tail -n 180 "$file" || true
+            tail -n 220 "$file" || true
           done
           exit 1
 
@@ -128,35 +141,21 @@ jobs:
           from app.database import engine
           inspector = inspect(engine)
           required = {
-              "evidenceevent",
-              "approvaltask",
-              "accountablehandover",
-              "compliancecontrol",
-              "serviceavailability",
-              "aimodelregistration",
-              "criticalresultacknowledgement",
-              "integrationconnection",
-              "integrationenvelope",
-              "integrationentitylink",
-              "hospitalpremises",
-              "operationalarea",
-              "canonicalepisodestate",
-              "operationalblock",
-              "operationaldependency",
-              "operationalcommand",
-              "operationalconflict",
-              "boardchangeevent",
-              "scenariorun",
-              "importbatch",
-              "importreconciliationitem",
-              "alembic_version",
+              "evidenceevent", "approvaltask", "accountablehandover", "compliancecontrol",
+              "serviceavailability", "aimodelregistration", "criticalresultacknowledgement",
+              "integrationconnection", "integrationenvelope", "integrationentitylink",
+              "hospitalpremises", "operationalarea", "canonicalepisodestate", "operationalblock",
+              "operationaldependency", "operationalcommand", "operationalconflict", "boardchangeevent",
+              "scenariorun", "importbatch", "importreconciliationitem",
+              "readinesscontrol", "readinessevidence", "securityassessmentrun", "pilotrun",
+              "pilotobservation", "alembic_version",
           }
           missing = required - set(inspector.get_table_names())
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0005_hospital_ops_uniqueness", version
-          print("PostgreSQL hospital operating migration verified", version)
+          assert version == "0006_production_readiness", version
+          print("PostgreSQL production-readiness migration verified", version)
           PY
       - name: Prove concurrent stale-write protection
         run: python hospital_ops_postgres_concurrency_test.py | tee -a postgres-migration.log
@@ -193,4 +192,54 @@ jobs:
           if-no-files-found: error
       - name: Report web build failure
         if: steps.web_build.outcome == 'failure'
-        run: tail -n 180 web-build.log && exit 1
+        run: tail -n 220 web-build.log && exit 1
+
+  production-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate mapping profiles and scripts
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files = list(Path("config/integrations").glob("*.mapping.json"))
+          assert len(files) >= 4, files
+          for path in files:
+              payload = json.loads(path.read_text())
+              assert payload["profileVersion"] == 1
+              assert payload["requiredFields"]
+              assert payload["fieldMappings"]
+          print("validated mapping profiles", len(files))
+          PY
+          bash -n scripts/production-preflight.sh scripts/production-backup.sh scripts/restore-rehearsal.sh
+          python -m py_compile scripts/security-probe.py
+      - name: Build production containers
+        run: |
+          docker build -t lucyworks-api-ci apps/api
+          docker build --build-arg API_INTERNAL_BASE=http://api:8000 -t lucyworks-web-ci apps/web
+      - name: Validate production Compose stack
+        run: |
+          cat > deploy/.env.production <<'EOF'
+          DEPLOYMENT_ENVIRONMENT=production
+          AUTH_MODE=oidc
+          AUTH_ENFORCEMENT=required
+          AUTH_DEV_LOGIN_ENABLED=false
+          AUTH_AUDIENCE=lucyworks-api
+          OIDC_ISSUER=https://identity.invalid/
+          OIDC_JWKS_URL=https://identity.invalid/keys
+          OIDC_AUTHORIZATION_URL=https://identity.invalid/authorize
+          OIDC_TOKEN_URL=https://identity.invalid/token
+          OIDC_CLIENT_ID=ci-client
+          OIDC_CLIENT_SECRET=ci-secret-not-used-at-runtime
+          AUTH_ROLE_MAP={"ci":"admin"}
+          AUTO_CREATE_SCHEMA=false
+          SECURITY_HEADERS_ENABLED=true
+          RATE_LIMIT_ENABLED=true
+          LUCYWORKS_LEGACY_TEST_BYPASS=false
+          METRICS_API_KEY=ci-metrics-key-not-used-at-runtime
+          EOF
+          PUBLIC_DOMAIN=ci.example.invalid POSTGRES_PASSWORD=ci-database-password docker compose --env-file deploy/.env.production -f deploy/docker-compose.production.yml config >/tmp/lucyworks-compose.yml
