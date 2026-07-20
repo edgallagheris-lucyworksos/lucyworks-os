@@ -10,7 +10,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     API_INTERNAL_BASE=${API_INTERNAL_BASE}
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN mkdir -p public && npm run build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
