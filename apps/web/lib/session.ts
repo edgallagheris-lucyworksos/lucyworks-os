@@ -3,7 +3,7 @@ export type SessionUser = {
   subject?: string;
   name: string;
   role: string;
-  email?: string | null;
+  email?: string;
   issuer?: string | null;
   authSource?: string;
   verified?: boolean;
@@ -21,7 +21,8 @@ const SESSION_KEY = "lucyworks_session";
 export function saveSession(user: SessionUser, token: string, expiresInSeconds?: number | null) {
   if (typeof window === "undefined") return;
   const expiresAt = user.expiresAt || (expiresInSeconds ? new Date(Date.now() + expiresInSeconds * 1000).toISOString() : null);
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify({ user: { ...user, expiresAt }, token, expiresAt }));
+  const normalisedUser: SessionUser = { ...user, email: user.email || undefined, expiresAt };
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify({ user: normalisedUser, token, expiresAt }));
 }
 
 export function getSession(): LucyWorksSession | null {
