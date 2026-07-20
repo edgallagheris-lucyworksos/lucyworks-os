@@ -28,3 +28,9 @@ apps/web/.next/
 apps/web/node_modules/
 frontend/.next/
 frontend/node_modules/
+
+# Production deployment secrets and generated recovery material
+deploy/.env.production
+deploy/backups/
+deploy/secrets/*
+!deploy/secrets/README.md
