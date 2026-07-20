@@ -5,6 +5,7 @@ from app import audit_attribution as _audit_attribution  # noqa: F401
 from app import database_exception_handlers as _database_exception_handlers  # noqa: F401
 from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
+from app.production_middleware import ProductionProtectionMiddleware
 from app.auth_routes import router as auth_router
 from app.v3_operational_routes import router as v3_operational_router
 from app.ops_engine_routes import router as ops_engine_router
@@ -48,11 +49,14 @@ from app.control_plane_routes import router as control_plane_router
 from app.integration_routes import router as integration_router
 from app.hospital_ops_routes import router as hospital_ops_router
 from app.hospital_ops_extension_routes import router as hospital_ops_extension_router
+from app.production_readiness_routes import router as production_readiness_router
+from app.observability_routes import router as observability_router
 
 # Only the named legacy smoke fixtures may bypass middleware. Production and
 # normal development must never set this variable.
 if os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() not in {"1", "true", "yes"}:
     app.add_middleware(VerifiedIdentityMiddleware)
+app.add_middleware(ProductionProtectionMiddleware)
 
 app.include_router(auth_router)
 app.include_router(v3_operational_router)
@@ -97,3 +101,5 @@ app.include_router(control_plane_router)
 app.include_router(integration_router)
 app.include_router(hospital_ops_router)
 app.include_router(hospital_ops_extension_router)
+app.include_router(production_readiness_router)
+app.include_router(observability_router)
