@@ -48,7 +48,7 @@ function localCases(blocks: ScheduledWorkBlock[]): CareCase[] {
 function apiCasesToCareCases(apiCases: ApiCase[], blocks: ScheduledWorkBlock[]): CareCase[] {
   return apiCases.flatMap((item) => {
     const episodes = item.episodes?.length ? item.episodes : [];
-    if (!episodes.length) return [{ id: item.id, patient: item.patientName, source: "api" as const, episodeRef: item.id, blocks: [], events: [], stage: "intake" as StageKey, owner: "unassigned", location: "not set", next: item.referralReason || "confirm referral plan", blocker: "none", status: item.status || "active", risk: item.riskLevel || "amber", gates: {}, blockers: [] }];
+    if (!episodes.length) return [{ id: item.id, patient: item.patientName, source: "api" as const, episodeId: item.id, episodeRef: item.id, blocks: [], events: [], stage: "intake" as StageKey, owner: "unassigned", location: "not set", next: item.referralReason || "confirm referral plan", blocker: "none", status: item.status || "active", risk: item.riskLevel || "amber", gates: {}, blockers: [] }];
     return episodes.map((episode) => {
       const matchingBlocks = blocks.filter((block) => caseKey(block) === episode.episodeRef || caseKey(block) === item.patientName || safe(block.subject) === item.patientName).sort(blockTimeSort);
       const blocker = safe(episode.blocker) || "none";
