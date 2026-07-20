@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import hmac
 import os
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import inspect, text
 from sqlmodel import Session
 
-from app.auth import AuthContext, require_roles
 from app.database import get_session
 from app.production_middleware import METRICS
 
@@ -47,8 +47,17 @@ def ready(session: Session = Depends(get_session)) -> dict[str, Any]:
     return {"status": "ready", "checks": checks}
 
 
+def require_metrics_key(supplied: str | None) -> None:
+    expected = os.getenv("METRICS_API_KEY", "")
+    if not expected:
+        raise HTTPException(status_code=503, detail="metrics scraping key is not configured")
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=401, detail="valid metrics scraping key required")
+
+
 @router.get("/metrics", response_class=PlainTextResponse)
-def metrics(_: AuthContext = Depends(require_roles("admin", "governance_lead", "hospital_director", "ops_manager"))) -> str:
+def metrics(x_lucyworks_metrics_key: str | None = Header(default=None)) -> str:
+    require_metrics_key(x_lucyworks_metrics_key)
     lines = [
         "# HELP lucyworks_process_uptime_seconds Seconds since API process start.",
         "# TYPE lucyworks_process_uptime_seconds gauge",
