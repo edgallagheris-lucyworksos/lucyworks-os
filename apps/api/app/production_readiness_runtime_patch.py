@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from app.auth import AuthContext
@@ -9,10 +10,42 @@ from app.evidence_service import create_evidence_event
 from app.production_readiness_models import PilotObservation, PilotRun, ReadinessControl
 from app import production_readiness_service as service
 
+_original_update_control = service.update_control
 _original_create_pilot = service.create_pilot
 _original_add_observation = service.add_observation
 _original_update_pilot = service.update_pilot
 _original_resolve_observation = service.resolve_observation
+
+GOVERNANCE_ONLY = {"governance_lead", "hospital_director"}
+TECHNICAL_APPROVERS = {"admin", "governance_lead", "hospital_director"}
+OPERATIONAL_APPROVERS = {"ops_manager", "clinical_director", "governance_lead", "hospital_director"}
+CONTROL_APPROVERS: dict[str, set[str]] = {
+    "identity.oidc": TECHNICAL_APPROVERS,
+    "database.postgres": TECHNICAL_APPROVERS,
+    "database.migrations": TECHNICAL_APPROVERS,
+    "backup.automatic": TECHNICAL_APPROVERS | {"ops_manager"},
+    "backup.restore": TECHNICAL_APPROVERS | {"ops_manager"},
+    "monitoring.application": TECHNICAL_APPROVERS | {"ops_manager"},
+    "incident.response": GOVERNANCE_ONLY,
+    "integrations.mapping": TECHNICAL_APPROVERS | {"ops_manager"},
+    "data.retention": GOVERNANCE_ONLY,
+    "privacy.dpia": GOVERNANCE_ONLY,
+    "security.pen_test": GOVERNANCE_ONLY,
+    "security.self_test": TECHNICAL_APPROVERS,
+    "users.training": OPERATIONAL_APPROVERS,
+    "uat.acceptance": OPERATIONAL_APPROVERS,
+    "shadow.mode": OPERATIONAL_APPROVERS,
+    "pilot.bounded": OPERATIONAL_APPROVERS,
+}
+
+
+def update_control_authorized(session: Session, control_ref: str, payload: dict[str, Any], auth: AuthContext) -> ReadinessControl:
+    status = str(payload.get("status") or "")
+    if status in {"passed", "failed", "waived"}:
+        allowed = CONTROL_APPROVERS.get(control_ref, GOVERNANCE_ONLY)
+        if auth.role not in allowed:
+            raise HTTPException(status_code=403, detail=f"role {auth.role} cannot make the final decision for {control_ref}; permitted roles: {', '.join(sorted(allowed))}")
+    return _original_update_control(session, control_ref, payload, auth)
 
 
 def _pilot_evidence(
@@ -107,6 +140,8 @@ def update_pilot_evidenced(session: Session, run_ref: str, payload: dict[str, An
     before = service.pilot_dict(existing)
     requested_status = payload.get("status")
     if requested_status == "passed":
+        if auth.role not in OPERATIONAL_APPROVERS:
+            raise HTTPException(status_code=403, detail="only an accountable operational, clinical or hospital governance role may pass a validation run")
         if not str(payload.get("approvalNote") or "").strip():
             raise ValueError("approvalNote is required to pass a validation run")
         open_red = session.exec(select(PilotObservation).where(PilotObservation.run_ref == run_ref, PilotObservation.severity == "red", PilotObservation.status != "resolved")).all()
@@ -168,6 +203,7 @@ def resolve_observation_evidenced(session: Session, observation_ref: str, payloa
     return row
 
 
+service.update_control = update_control_authorized
 service.create_pilot = create_pilot_guarded
 service.add_observation = add_observation_evidenced
 service.update_pilot = update_pilot_evidenced
