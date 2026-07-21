@@ -1,0 +1,1043 @@
+{
+  "catalogueVersion": 1,
+  "researchedAt": "2026-07-21",
+  "scope": "Publicly described roles, departments, facilities and operating patterns from major UK multidisciplinary veterinary referral hospitals.",
+  "governance": {
+    "publicEvidenceOnly": true,
+    "containsPersonalStaffRecords": false,
+    "permissionRule": "Role templates describe work and accountability but never grant LucyWorks permissions automatically.",
+    "verificationRule": "A hospital must verify its own organisation chart, registrations, competencies, employment status and delegated authority before configuration is activated.",
+    "freshnessRule": "Recheck source pages before hospital adoption because staff, services and facilities change."
+  },
+  "sources": [
+    {
+      "sourceRef": "bvs-team",
+      "hospitalRef": "bvs",
+      "title": "Bristol Vet Specialists - Meet the Team",
+      "url": "https://www.bristolvetspecialists.co.uk/about-us/meet-the-team/",
+      "evidenceType": "official_team_directory"
+    },
+    {
+      "sourceRef": "bvs-services",
+      "hospitalRef": "bvs",
+      "title": "Bristol Vet Specialists - Services",
+      "url": "https://www.bristolvetspecialists.co.uk/services/",
+      "evidenceType": "official_service_directory"
+    },
+    {
+      "sourceRef": "bvs-facilities",
+      "hospitalRef": "bvs",
+      "title": "Bristol Vet Specialists - Facilities",
+      "url": "https://www.bristolvetspecialists.co.uk/about-us/facilities/",
+      "evidenceType": "official_facility_description"
+    },
+    {
+      "sourceRef": "bvs-pet-journey",
+      "hospitalRef": "bvs",
+      "title": "Bristol Vet Specialists - Pet Owners and Referral Journey",
+      "url": "https://www.bristolvetspecialists.co.uk/pet-owners/",
+      "evidenceType": "official_patient_journey"
+    },
+    {
+      "sourceRef": "bvs-referral",
+      "hospitalRef": "bvs",
+      "title": "Bristol Vet Specialists - Vet Professionals",
+      "url": "https://www.bristolvetspecialists.co.uk/vet-professionals/",
+      "evidenceType": "official_referral_process"
+    },
+    {
+      "sourceRef": "bvs-faq",
+      "hospitalRef": "bvs",
+      "title": "Bristol Vet Specialists - FAQs",
+      "url": "https://www.bristolvetspecialists.co.uk/pet-owners/faqs/",
+      "evidenceType": "official_payment_insurance_process"
+    },
+    {
+      "sourceRef": "dwr-team-structure",
+      "hospitalRef": "dwr",
+      "title": "DWR Veterinary Specialists - Veterinary Surgeons and Team Structure",
+      "url": "https://www.dickwhitereferrals.com/about-us/meet-the-team/veterinary-surgeons/",
+      "evidenceType": "official_team_directory"
+    },
+    {
+      "sourceRef": "dwr-nursing",
+      "hospitalRef": "dwr",
+      "title": "DWR - Veterinary Nurses, PCAs and Technicians",
+      "url": "https://www.dickwhitereferrals.com/work-with-us/veterinary-nurses-pcas-technicians/",
+      "evidenceType": "official_role_description"
+    },
+    {
+      "sourceRef": "dwr-case-management",
+      "hospitalRef": "dwr",
+      "title": "DWR - Client Care and Case Management Team",
+      "url": "https://www.dickwhitereferrals.com/vet-professionals/our-services-to-you/client-care-team/",
+      "evidenceType": "official_workflow_description"
+    },
+    {
+      "sourceRef": "dwr-laboratory",
+      "hospitalRef": "dwr",
+      "title": "DWR Diagnostics Laboratory - About Us",
+      "url": "https://www.dickwhitereferrals.com/dwr-diagnostics-laboratory/about-us/",
+      "evidenceType": "official_laboratory_team_description"
+    },
+    {
+      "sourceRef": "dwr-terms",
+      "hospitalRef": "dwr",
+      "title": "DWR - Terms of Service and Complaints Process",
+      "url": "https://www.dickwhitereferrals.com/terms-of-service/",
+      "evidenceType": "official_governance_process"
+    },
+    {
+      "sourceRef": "willows-careers",
+      "hospitalRef": "willows",
+      "title": "Willows - Careers and Referral Nursing",
+      "url": "https://www.willows.uk.net/careers/",
+      "evidenceType": "official_role_description"
+    },
+    {
+      "sourceRef": "willows-inpatient",
+      "hospitalRef": "willows",
+      "title": "Willows - 24 Hour Inpatient Care",
+      "url": "https://www.willows.uk.net/in-patient-care/",
+      "evidenceType": "official_inpatient_facility_description"
+    },
+    {
+      "sourceRef": "willows-imaging",
+      "hospitalRef": "willows",
+      "title": "Willows - Diagnostic Imaging",
+      "url": "https://www.willows.uk.net/specialisms/diagnostic-imaging/",
+      "evidenceType": "official_service_facility_description"
+    },
+    {
+      "sourceRef": "willows-rehabilitation",
+      "hospitalRef": "willows",
+      "title": "Willows - Physiotherapy and Rehabilitation",
+      "url": "https://www.willows.uk.net/specialisms/veterinary-physiotherapy/",
+      "evidenceType": "official_service_role_description"
+    },
+    {
+      "sourceRef": "willows-nutrition",
+      "hospitalRef": "willows",
+      "title": "Willows - Clinical Nutrition",
+      "url": "https://www.willows.uk.net/specialisms/clinical-nutrition/",
+      "evidenceType": "official_service_role_description"
+    },
+    {
+      "sourceRef": "southfields-facilities",
+      "hospitalRef": "southfields",
+      "title": "Southfields - New Hospital Facilities",
+      "url": "https://southfields.co.uk/veterinary-professionals/were-building-a-new-state-of-the-art-veterinary-centre",
+      "evidenceType": "official_facility_description"
+    },
+    {
+      "sourceRef": "southfields-nursing",
+      "hospitalRef": "southfields",
+      "title": "Southfields - Nursing",
+      "url": "https://southfields.co.uk/services/nursing",
+      "evidenceType": "official_role_description"
+    },
+    {
+      "sourceRef": "southfields-internships",
+      "hospitalRef": "southfields",
+      "title": "Southfields - Internships",
+      "url": "https://southfields.co.uk/join-our-team/internships",
+      "evidenceType": "official_training_description"
+    },
+    {
+      "sourceRef": "southfields-residency",
+      "hospitalRef": "southfields",
+      "title": "Southfields - Residency",
+      "url": "https://southfields.co.uk/join-our-team/residency",
+      "evidenceType": "official_training_description"
+    },
+    {
+      "sourceRef": "southfields-client-care",
+      "hospitalRef": "southfields",
+      "title": "Southfields - Services and Client Care",
+      "url": "https://southfields.co.uk/our-services",
+      "evidenceType": "official_service_directory"
+    },
+    {
+      "sourceRef": "rvc-qmha",
+      "hospitalRef": "rvc-qmha",
+      "title": "RVC - Queen Mother Hospital for Animals",
+      "url": "https://www.rvc.ac.uk/small-animal-vet/teaching-and-research/teaching-hospitals/QMHA",
+      "evidenceType": "official_teaching_hospital_description"
+    },
+    {
+      "sourceRef": "rvc-services",
+      "hospitalRef": "rvc-qmha",
+      "title": "RVC - Small Animal Referral Services",
+      "url": "https://www.rvc.ac.uk/study/undergraduate/clinical-experience/small-animal-referrals",
+      "evidenceType": "official_service_directory"
+    },
+    {
+      "sourceRef": "rvc-coordination",
+      "hospitalRef": "rvc-qmha",
+      "title": "RVC - Coordinating a Large Teaching Hospital",
+      "url": "https://www.rvc.ac.uk/clinical-connections/co-ordinating-a-large-teaching-hospital",
+      "evidenceType": "official_role_interview"
+    },
+    {
+      "sourceRef": "rvc-ecc",
+      "hospitalRef": "rvc-qmha",
+      "title": "RVC - Emergency and Critical Care Residency",
+      "url": "https://www.rvc.ac.uk/study/postgraduate/residencies/small-animal/ECC",
+      "evidenceType": "official_service_staffing_description"
+    },
+    {
+      "sourceRef": "rvc-facilities",
+      "hospitalRef": "rvc-qmha",
+      "title": "RVC - QMHA Facilities",
+      "url": "https://www.rvc.ac.uk/small-animal-vet/specialist-referrals/facilities",
+      "evidenceType": "official_facility_description"
+    }
+  ],
+  "hospitals": [
+    {
+      "hospitalRef": "bvs",
+      "name": "Bristol Vet Specialists",
+      "hospitalType": "private multidisciplinary small-animal referral hospital",
+      "publicOperatingModel": [
+        "More than 100 professionals",
+        "Specialists supported by residents, interns, registered veterinary nurses, patient care assistants and support teams",
+        "24/7 hospital with out-of-hours urgent contact",
+        "Urgent referrals by telephone and non-urgent referrals by structured form with clinical history and test or image uploads",
+        "Separate feline and canine pathways"
+      ],
+      "observedRoleTitles": [
+        "Clinical Director",
+        "Hospital Manager",
+        "Facilities Manager",
+        "Head of Department",
+        "Head Surgical Services Nurse",
+        "Head Medical Services Nurse",
+        "Head Support Services Nurse",
+        "Consultant",
+        "Cardiologist",
+        "Resident",
+        "Rotating Intern",
+        "Specialist Intern",
+        "Registered Veterinary Nurse",
+        "Senior Nurse",
+        "Specialty Nurse",
+        "ICU Nurse",
+        "Patient Care Assistant",
+        "Radiographer",
+        "Therapeutic Radiographer",
+        "Theatre Technician",
+        "Referral Coordinator",
+        "Insurance Administrator",
+        "Receptionist",
+        "Administrator",
+        "Laboratory PCA"
+      ],
+      "departments": [
+        "Anaesthesia and Analgesia",
+        "Cardiology",
+        "Dentistry and Maxillofacial Surgery",
+        "Dermatology",
+        "Diagnostic Imaging",
+        "Emergency and Critical Care",
+        "Internal Medicine",
+        "Interventional Radiology",
+        "Neurology and Neurosurgery",
+        "Oncology and Radiotherapy",
+        "Ophthalmology",
+        "Orthopaedics",
+        "Soft Tissue Surgery",
+        "Support Services"
+      ],
+      "facilities": [
+        "Five operating theatres",
+        "Dedicated interventional suite with fluoroscopy",
+        "64-slice CT scanner",
+        "1.5T MRI scanner",
+        "Linear accelerator for image-guided radiotherapy",
+        "Ultrasound and specialist imaging reading capability",
+        "Comprehensive endoscopy suite",
+        "On-site urgent laboratory testing",
+        "Separate dog and cat waiting, consulting and inpatient areas",
+        "Isolation units",
+        "Customer experience zone"
+      ],
+      "sourceRefs": ["bvs-team", "bvs-services", "bvs-facilities", "bvs-pet-journey", "bvs-referral", "bvs-faq"]
+    },
+    {
+      "hospitalRef": "dwr",
+      "name": "DWR Veterinary Specialists",
+      "hospitalType": "private multidisciplinary referral hospital and diagnostics laboratory",
+      "publicOperatingModel": [
+        "Approximately 400 colleagues",
+        "Formal leadership, non-clinical management, nursing leadership, case management and clinical training structures",
+        "Dedicated case management and client care from referral contact through discharge",
+        "Service-based wards and dedicated night nursing model",
+        "RCVS Practice Standards Scheme participation"
+      ],
+      "observedRoleTitles": [
+        "Clinical Director",
+        "Deputy Clinical Director",
+        "Head of Service",
+        "Consultant",
+        "Clinical Fellow",
+        "Resident",
+        "Intern",
+        "Nursing Leader",
+        "Night Nurse Manager",
+        "Deputy Night Nurse Manager",
+        "Registered Veterinary Nurse",
+        "Student Veterinary Nurse",
+        "Patient Care Assistant",
+        "Technician",
+        "Physiotherapist",
+        "Case Manager",
+        "Client Care Associate",
+        "Clinical Pathologist",
+        "Anatomic Pathologist",
+        "Biomedical Scientist",
+        "Laboratory Technician",
+        "Laboratory Receptionist",
+        "Complaints Manager"
+      ],
+      "departments": [
+        "Anaesthesia and Analgesia",
+        "Dentistry",
+        "Dermatology",
+        "Diagnostic Imaging",
+        "Emergency and Critical Care",
+        "Internal Medicine",
+        "Interventional Radiology",
+        "Neurology and Neurosurgery",
+        "Oncology",
+        "Soft Tissue Surgery",
+        "Physiotherapy",
+        "Case Management and Client Care",
+        "Clinical and Anatomic Pathology",
+        "Laboratory Operations"
+      ],
+      "facilities": [
+        "Service-specific medical, surgical, neurology, ophthalmology, feline and ICU wards",
+        "Integrated imaging with MRI and CT",
+        "Diagnostic laboratory",
+        "Emergency triage and ICU",
+        "Operating theatres",
+        "Physiotherapy and water treadmill",
+        "Lecture and training facilities"
+      ],
+      "sourceRefs": ["dwr-team-structure", "dwr-nursing", "dwr-case-management", "dwr-laboratory", "dwr-terms"]
+    },
+    {
+      "hospitalRef": "willows",
+      "name": "Willows Veterinary Specialists",
+      "hospitalType": "private multidisciplinary small-animal referral hospital",
+      "publicOperatingModel": [
+        "Specialist-led services with heads of service",
+        "24/7 emergency and inpatient care",
+        "Referral nursing shadowing and continuing professional development",
+        "Dedicated physiotherapy and rehabilitation",
+        "Clinical nutrition integrated into multidisciplinary care"
+      ],
+      "observedRoleTitles": [
+        "Head of Service",
+        "Specialist Consultant",
+        "Registered Veterinary Nurse",
+        "Head of Nursing Services",
+        "Diagnostic Radiographer",
+        "Veterinary Physiotherapist",
+        "Clinical Nutritionist",
+        "Emergency and Critical Care Specialist"
+      ],
+      "departments": [
+        "Anaesthesia and Analgesia",
+        "Cardiology",
+        "Clinical Nutrition",
+        "Dentistry and Maxillofacial Surgery",
+        "Diagnostic Imaging",
+        "Emergency and Critical Care",
+        "Exotics",
+        "Neurology",
+        "Oncology",
+        "Ophthalmology",
+        "Physiotherapy and Rehabilitation",
+        "Soft Tissue Surgery"
+      ],
+      "facilities": [
+        "ICU and isolation ward",
+        "Large-breed walk-in kennels",
+        "Two digital X-ray rooms",
+        "Fluoroscopy",
+        "Integrated PACS",
+        "Laboratory adjacent to ICU",
+        "Oxygen delivery, incubators and multi-parameter monitoring",
+        "Hydrotherapy and rehabilitation"
+      ],
+      "sourceRefs": ["willows-careers", "willows-inpatient", "willows-imaging", "willows-rehabilitation", "willows-nutrition"]
+    },
+    {
+      "hospitalRef": "southfields",
+      "name": "Southfields Veterinary Specialists",
+      "hospitalType": "private multidisciplinary small-animal referral hospital",
+      "publicOperatingModel": [
+        "Purpose-built 42,000 square foot hospital",
+        "Specialists, clinicians, residents, interns, nurses, patient care assistants, theatre technicians and support teams",
+        "24/7 emergency, inpatient and night nursing",
+        "Training placements, internships and residencies",
+        "Dedicated client care service"
+      ],
+      "observedRoleTitles": [
+        "Hospital Director",
+        "Clinical Director",
+        "Head of Service",
+        "Specialist",
+        "Clinician",
+        "Resident",
+        "Rotating Intern",
+        "Service Intern",
+        "Registered Veterinary Nurse",
+        "Patient Care Nurse",
+        "Night Nurse",
+        "Specialty Nurse",
+        "Student Nurse",
+        "Post-registration Programme Nurse",
+        "Patient Care Assistant",
+        "Night Patient Care Assistant",
+        "Theatre Technician",
+        "Therapeutic Radiographer",
+        "Radiotherapy Technician",
+        "Client Care",
+        "Finance and Administration"
+      ],
+      "departments": [
+        "Anaesthesia and Analgesia",
+        "Cardiology and Interventional Cardiology",
+        "Client Care",
+        "Dermatology",
+        "Diagnostic Imaging",
+        "Emergency and Critical Care",
+        "Exotics",
+        "Internal Medicine",
+        "Neurology and Neurosurgery",
+        "Nursing",
+        "Oncology",
+        "Ophthalmology",
+        "Orthopaedics",
+        "Radiotherapy",
+        "Soft Tissue Surgery"
+      ],
+      "facilities": [
+        "Seven operating theatres",
+        "Recovery suites and ICU",
+        "Four central preparation bays",
+        "Fourteen consultation rooms",
+        "Approximately 195 kennels with separate feline provision",
+        "Dedicated emergency entrance and treatment centre",
+        "MRI, CT, two X-ray rooms, fluoroscopy and two ultrasound rooms",
+        "Endoscopy and cardiology rooms",
+        "Linear accelerator and dedicated oncology suite",
+        "Two chemotherapy rooms and oncology ward",
+        "Isolation department"
+      ],
+      "sourceRefs": ["southfields-facilities", "southfields-nursing", "southfields-internships", "southfields-residency", "southfields-client-care"]
+    },
+    {
+      "hospitalRef": "rvc-qmha",
+      "name": "RVC Queen Mother Hospital for Animals",
+      "hospitalType": "university teaching and multidisciplinary referral hospital",
+      "publicOperatingModel": [
+        "24/7/365 referral and emergency operation",
+        "Specialists, residents, interns, registered nurses, veterinary students and nursing students",
+        "Formal hospital coordination for patient throughput, procedures, anaesthesia and kennel occupancy",
+        "Teaching, clinical research and specialist training integrated with patient care",
+        "Level 1 veterinary trauma centre and blood donor programme"
+      ],
+      "observedRoleTitles": [
+        "Specialist Veterinary Surgeon",
+        "Resident",
+        "Intern",
+        "Registered Veterinary Nurse",
+        "Hospital Coordination Team Leader",
+        "Hospital Coordinator",
+        "Veterinary Student",
+        "Veterinary Nursing Student",
+        "Clinical Teacher and Researcher"
+      ],
+      "departments": [
+        "Anaesthesia and Analgesia",
+        "Behaviour",
+        "Cardiology",
+        "Critical Care",
+        "Dermatology",
+        "Diagnostic Imaging",
+        "Emergency Referral",
+        "Exotics",
+        "First Opinion Emergency",
+        "Internal Medicine",
+        "Neurology and Neurosurgery",
+        "Nutrition",
+        "Oncology",
+        "Ophthalmology",
+        "Orthopaedic Surgery",
+        "Physiotherapy and Rehabilitation",
+        "Soft Tissue Surgery",
+        "Transfusion Medicine",
+        "Teaching and Research"
+      ],
+      "facilities": [
+        "ICU emergency room",
+        "Anaesthetic induction and preparation rooms",
+        "Operating theatres",
+        "Separate-species wards",
+        "Hydrotherapy pool",
+        "Blood donor programme and blood bank",
+        "Twenty-two-patient ICU described by the ECC training programme",
+        "Oxygen kennels, mechanical ventilators and in-house diagnostic analysers"
+      ],
+      "sourceRefs": ["rvc-qmha", "rvc-services", "rvc-coordination", "rvc-ecc", "rvc-facilities"]
+    }
+  ],
+  "roleTemplates": [
+    {
+      "roleRef": "clinical_director",
+      "title": "Clinical Director",
+      "family": "clinical_leadership",
+      "explanation": "The senior clinician accountable for clinical standards, cross-specialty governance, clinical escalation and the safe design of services.",
+      "typicalResponsibilities": ["clinical governance", "serious clinical escalation", "service approval", "clinical policy", "department leadership oversight"],
+      "lucyWorksCapabilities": ["review red clinical risks", "approve governed clinical overrides", "view hospital-wide clinical performance", "approve service readiness"],
+      "decisionAuthority": "Hospital-defined senior clinical authority; never inferred from title alone.",
+      "sourceRefs": ["bvs-team", "dwr-team-structure", "southfields-facilities"]
+    },
+    {
+      "roleRef": "deputy_clinical_director",
+      "title": "Deputy Clinical Director",
+      "family": "clinical_leadership",
+      "explanation": "A delegated senior clinical leader who supports the Clinical Director and can hold defined organisation-wide clinical responsibilities.",
+      "typicalResponsibilities": ["delegated governance", "cross-service escalation", "leadership cover", "clinical improvement"],
+      "lucyWorksCapabilities": ["review delegated clinical escalations", "chair cross-service reviews", "approve within recorded delegation"],
+      "decisionAuthority": "Limited to explicit delegation recorded by the hospital.",
+      "sourceRefs": ["dwr-team-structure"]
+    },
+    {
+      "roleRef": "hospital_director",
+      "title": "Hospital Director",
+      "family": "executive_operations",
+      "explanation": "The senior executive accountable for the hospital as an operating organisation, including strategy, resources, performance and major risk.",
+      "typicalResponsibilities": ["hospital strategy", "financial and operational oversight", "major risk ownership", "executive accountability"],
+      "lucyWorksCapabilities": ["view whole-hospital readiness", "approve organisational go-live controls", "review major operational risk"],
+      "decisionAuthority": "Executive authority must be configured and separated from clinical decision authority.",
+      "sourceRefs": ["southfields-facilities"]
+    },
+    {
+      "roleRef": "hospital_manager",
+      "title": "Hospital Manager",
+      "family": "operations_leadership",
+      "explanation": "The operational leader responsible for day-to-day hospital delivery, workforce coordination, service support and resolving non-clinical constraints.",
+      "typicalResponsibilities": ["daily operations", "capacity and staffing coordination", "administrative services", "operational escalation", "cross-team delivery"],
+      "lucyWorksCapabilities": ["manage operational state", "assign operational owners", "review capacity constraints", "coordinate non-clinical escalation"],
+      "decisionAuthority": "Operational authority only unless a separate clinical delegation exists.",
+      "sourceRefs": ["bvs-team"]
+    },
+    {
+      "roleRef": "facilities_manager",
+      "title": "Facilities Manager",
+      "family": "estates_and_safety",
+      "explanation": "The role accountable for buildings, utilities, maintenance, access, equipment environments and facilities-related safety or downtime.",
+      "typicalResponsibilities": ["planned maintenance", "fault response", "utilities and access", "contractor control", "facilities compliance"],
+      "lucyWorksCapabilities": ["set area or equipment availability", "record maintenance evidence", "raise premises blockers", "coordinate service restoration"],
+      "decisionAuthority": "May remove a facility from use; cannot independently declare clinical suitability.",
+      "sourceRefs": ["bvs-team", "bvs-facilities"]
+    },
+    {
+      "roleRef": "head_of_service",
+      "title": "Head of Service or Department",
+      "family": "service_leadership",
+      "explanation": "The accountable leader for a clinical discipline, responsible for service standards, staffing, competence, capacity and specialty escalation.",
+      "typicalResponsibilities": ["discipline governance", "specialty rota and capacity", "competency oversight", "service protocols", "specialty escalation"],
+      "lucyWorksCapabilities": ["manage service readiness", "approve specialty constraints", "review departmental cases and workload", "manage competency requirements"],
+      "decisionAuthority": "Authority is bounded to the configured service and professional scope.",
+      "sourceRefs": ["bvs-team", "dwr-team-structure", "willows-imaging", "southfields-residency"]
+    },
+    {
+      "roleRef": "head_of_nursing_services",
+      "title": "Head of Nursing Services",
+      "family": "nursing_leadership",
+      "explanation": "The senior nursing leader accountable for nursing standards, workforce, professional development and patient-care delivery across the hospital.",
+      "typicalResponsibilities": ["nursing governance", "nurse workforce planning", "professional development", "patient-care standards", "nursing escalation"],
+      "lucyWorksCapabilities": ["review nursing capacity", "manage nursing competency rules", "approve nursing service readiness", "review nursing safety signals"],
+      "decisionAuthority": "Nursing professional authority within the hospital's governance model.",
+      "sourceRefs": ["bvs-team", "willows-careers", "dwr-nursing"]
+    },
+    {
+      "roleRef": "head_medical_services_nurse",
+      "title": "Head Medical Services Nurse",
+      "family": "nursing_leadership",
+      "explanation": "A senior nurse leading inpatient, medicine and critical-care nursing services and coordinating standards across medical pathways.",
+      "typicalResponsibilities": ["medical nursing standards", "ICU and ward capacity", "medical nurse allocation", "handover quality", "escalation"],
+      "lucyWorksCapabilities": ["manage medical nursing readiness", "coordinate ICU and ward staffing", "review handover and overdue-care risks"],
+      "decisionAuthority": "Nursing authority for configured medical services.",
+      "sourceRefs": ["bvs-team"]
+    },
+    {
+      "roleRef": "head_surgical_services_nurse",
+      "title": "Head Surgical Services Nurse",
+      "family": "nursing_leadership",
+      "explanation": "A senior nurse leading theatre, peri-operative and surgical nursing operations, including readiness, staffing and standards.",
+      "typicalResponsibilities": ["theatre nursing standards", "peri-operative staffing", "instrument and room readiness", "recovery coordination", "surgical nursing escalation"],
+      "lucyWorksCapabilities": ["control theatre nursing readiness", "coordinate theatre teams", "review recovery capacity", "raise equipment or staffing blockers"],
+      "decisionAuthority": "Nursing and operational authority for configured surgical services.",
+      "sourceRefs": ["bvs-team"]
+    },
+    {
+      "roleRef": "head_support_services_nurse",
+      "title": "Head Support Services Nurse",
+      "family": "nursing_leadership",
+      "explanation": "A senior nursing role coordinating support functions that enable clinical teams, such as patient care assistants, stock, infection-control support or cross-service nursing resources.",
+      "typicalResponsibilities": ["support workforce", "cross-service deployment", "support standards", "training", "operational escalation"],
+      "lucyWorksCapabilities": ["allocate support resources", "review support-service readiness", "coordinate cross-department assistance"],
+      "decisionAuthority": "Bounded to defined support services.",
+      "sourceRefs": ["bvs-team"]
+    },
+    {
+      "roleRef": "hospital_flow_coordinator",
+      "title": "Hospital Flow Coordinator",
+      "family": "operations_coordination",
+      "explanation": "A real-time coordination role that follows patients through admission, imaging, procedures, anaesthesia, wards and discharge while balancing room and kennel capacity.",
+      "typicalResponsibilities": ["patient throughput", "procedure scheduling", "room allocation", "anaesthesia coordination", "ward occupancy awareness"],
+      "lucyWorksCapabilities": ["operate the master grid", "propose assignments", "surface conflicts", "coordinate handovers", "escalate capacity blockers"],
+      "decisionAuthority": "Coordinates the plan but cannot replace clinical approval or professional judgement.",
+      "sourceRefs": ["rvc-coordination"]
+    },
+    {
+      "roleRef": "referral_coordinator",
+      "title": "Referral Coordinator",
+      "family": "referral_operations",
+      "explanation": "The role that receives and checks referral information, coordinates with referring practices and services, and moves a referral toward acceptance and booking.",
+      "typicalResponsibilities": ["referral intake", "history and attachment completeness", "service routing", "appointment coordination", "referrer communication"],
+      "lucyWorksCapabilities": ["manage referral queue", "request missing information", "route to specialty review", "book accepted referrals"],
+      "decisionAuthority": "May coordinate acceptance but clinical acceptance remains with an authorised clinician where required.",
+      "sourceRefs": ["bvs-team", "bvs-referral"]
+    },
+    {
+      "roleRef": "case_manager",
+      "title": "Case Manager",
+      "family": "client_and_referrer_coordination",
+      "explanation": "A continuity role ensuring the owner, referring practice and hospital teams receive coordinated information from first contact through safe discharge.",
+      "typicalResponsibilities": ["journey continuity", "communication tracking", "cross-team follow-up", "discharge coordination", "referrer updates"],
+      "lucyWorksCapabilities": ["track communication obligations", "coordinate unresolved administrative blockers", "monitor journey milestones", "support discharge handback"],
+      "decisionAuthority": "Coordinates information and process; does not make clinical decisions.",
+      "sourceRefs": ["dwr-case-management"]
+    },
+    {
+      "roleRef": "specialist_consultant",
+      "title": "Veterinary Specialist or Consultant",
+      "family": "clinical",
+      "explanation": "A veterinary surgeon with advanced accredited training in a discipline who assesses complex referrals, determines diagnostic and treatment options, and remains accountable for specialist clinical decisions.",
+      "typicalResponsibilities": ["specialist consultation", "diagnostic planning", "treatment options", "owner discussion", "referring-vet communication", "clinical supervision"],
+      "lucyWorksCapabilities": ["own specialist episodes", "order governed diagnostics", "record options and rationale", "approve clinical plans within scope", "supervise trainees"],
+      "decisionAuthority": "Clinical authority only within verified registration, specialty, competence and hospital privileges.",
+      "sourceRefs": ["bvs-team", "dwr-team-structure", "rvc-qmha"]
+    },
+    {
+      "roleRef": "clinical_fellow",
+      "title": "Clinical Fellow",
+      "family": "clinical_training",
+      "explanation": "An experienced clinician in a structured advanced clinical or academic post, usually working with senior specialist oversight and defined responsibilities.",
+      "typicalResponsibilities": ["advanced case work", "service delivery", "teaching or research", "supervised specialty development"],
+      "lucyWorksCapabilities": ["manage cases within granted scope", "participate in service rota", "record supervision and escalation"],
+      "decisionAuthority": "Determined by individual privileges and supervision arrangements.",
+      "sourceRefs": ["dwr-team-structure"]
+    },
+    {
+      "roleRef": "resident",
+      "title": "Resident",
+      "family": "clinical_training",
+      "explanation": "A veterinary surgeon undertaking several years of discipline-specific specialist training under formal supervision, with increasing but bounded case responsibility.",
+      "typicalResponsibilities": ["supervised specialty cases", "out-of-hours duties", "case presentations", "research", "teaching", "specialist examination preparation"],
+      "lucyWorksCapabilities": ["own supervised tasks", "draft clinical plans", "request specialist review", "record supervisor", "participate in rota within scope"],
+      "decisionAuthority": "Requires explicit supervision and privilege rules; residency status is not independent specialist authority.",
+      "sourceRefs": ["bvs-team", "southfields-residency", "rvc-qmha", "rvc-ecc"]
+    },
+    {
+      "roleRef": "rotating_intern",
+      "title": "Rotating Intern",
+      "family": "clinical_training",
+      "explanation": "A qualified veterinary surgeon completing a supervised rotation across several referral disciplines and often supporting out-of-hours inpatient or emergency care.",
+      "typicalResponsibilities": ["rotational service support", "inpatient care", "emergency duty", "case preparation", "supervised procedures", "handover"],
+      "lucyWorksCapabilities": ["receive supervised assignments", "document observations", "complete defined tasks", "escalate to supervising clinician"],
+      "decisionAuthority": "Supervised and explicitly limited by the hospital.",
+      "sourceRefs": ["bvs-team", "southfields-internships", "rvc-qmha", "dwr-nursing"]
+    },
+    {
+      "roleRef": "service_intern",
+      "title": "Service or Specialist Intern",
+      "family": "clinical_training",
+      "explanation": "A qualified vet in a supervised internship focused on one discipline, positioned between broad rotating experience and residency-level training.",
+      "typicalResponsibilities": ["discipline-specific support", "supervised case work", "procedural assistance", "training objectives", "service rota"],
+      "lucyWorksCapabilities": ["receive service-specific supervised tasks", "record training evidence", "request senior sign-off"],
+      "decisionAuthority": "Limited by named supervisor and competency record.",
+      "sourceRefs": ["bvs-team", "southfields-internships"]
+    },
+    {
+      "roleRef": "registered_veterinary_nurse",
+      "title": "Registered Veterinary Nurse",
+      "family": "nursing",
+      "explanation": "A regulated nursing professional responsible for comprehensive patient care, nursing interventions, monitoring, anaesthesia support, diagnostics and surgical support within professional scope.",
+      "typicalResponsibilities": ["inpatient care", "vital-sign monitoring", "medication and treatment delivery", "wound care", "anaesthesia monitoring", "diagnostic and surgical support"],
+      "lucyWorksCapabilities": ["own nursing care plans", "record observations and treatments", "acknowledge handovers", "escalate deterioration", "confirm nursing readiness"],
+      "decisionAuthority": "Professional nursing judgement within verified registration, competence and delegation.",
+      "sourceRefs": ["dwr-nursing", "southfields-nursing", "rvc-qmha"]
+    },
+    {
+      "roleRef": "senior_or_lead_nurse",
+      "title": "Senior or Lead Nurse",
+      "family": "nursing_leadership",
+      "explanation": "An experienced nurse leading a ward, shift or specialty team, coordinating workload and acting as the first nursing escalation point.",
+      "typicalResponsibilities": ["shift leadership", "nurse allocation", "care oversight", "handover quality", "first-line escalation", "coaching"],
+      "lucyWorksCapabilities": ["allocate nursing work", "review overdue care", "accept nursing escalations", "coordinate ward readiness"],
+      "decisionAuthority": "Configured shift or service leadership, not automatic hospital-wide authority.",
+      "sourceRefs": ["bvs-team", "southfields-nursing"]
+    },
+    {
+      "roleRef": "specialty_nurse",
+      "title": "Specialty Nurse",
+      "family": "nursing",
+      "explanation": "An RVN with advanced experience in a particular service such as medicine, neurology, oncology, dermatology, cardiology or surgery.",
+      "typicalResponsibilities": ["specialty patient care", "specialty procedures", "client education", "equipment readiness", "service-specific monitoring"],
+      "lucyWorksCapabilities": ["receive specialty assignments", "complete specialty checklists", "record advanced nursing interventions", "support pathway coordination"],
+      "decisionAuthority": "Defined by registration, competency and local delegation.",
+      "sourceRefs": ["bvs-team", "dwr-nursing", "southfields-nursing"]
+    },
+    {
+      "roleRef": "icu_ecc_nurse",
+      "title": "ICU or Emergency and Critical Care Nurse",
+      "family": "critical_care_nursing",
+      "explanation": "A nurse focused on unstable or critically ill patients requiring intensive monitoring, rapid intervention, advanced lines, ventilation support and one-to-one care.",
+      "typicalResponsibilities": ["continuous monitoring", "critical interventions", "ventilator and oxygen support", "blood sampling", "line and drain management", "rapid escalation"],
+      "lucyWorksCapabilities": ["manage ICU care schedule", "record high-frequency observations", "raise immediate deterioration alerts", "confirm critical-care handover"],
+      "decisionAuthority": "Critical nursing authority within protocol and escalation rules.",
+      "sourceRefs": ["bvs-team", "dwr-nursing", "willows-inpatient", "rvc-ecc"]
+    },
+    {
+      "roleRef": "night_nurse",
+      "title": "Night Nurse",
+      "family": "inpatient_nursing",
+      "explanation": "A nurse dedicated to overnight inpatient continuity, often assigned by ward and responsible for detecting change, completing care plans and escalating to the out-of-hours veterinary team.",
+      "typicalResponsibilities": ["overnight ward care", "handover acceptance", "scheduled observations and treatments", "post-operative monitoring", "out-of-hours escalation"],
+      "lucyWorksCapabilities": ["accept night handover", "own ward care queue", "record overnight events", "escalate missed or deteriorating care"],
+      "decisionAuthority": "Within nursing scope and night escalation policy.",
+      "sourceRefs": ["dwr-nursing", "southfields-nursing"]
+    },
+    {
+      "roleRef": "student_veterinary_nurse",
+      "title": "Student Veterinary Nurse",
+      "family": "nursing_training",
+      "explanation": "A learner enrolled in formal veterinary nursing training who performs defined tasks under supervision while gathering competency evidence.",
+      "typicalResponsibilities": ["supervised nursing tasks", "learning objectives", "skills evidence", "patient care support"],
+      "lucyWorksCapabilities": ["receive supervised tasks", "record competency evidence", "require supervisor sign-off"],
+      "decisionAuthority": "No unsupervised authority beyond explicitly permitted training scope.",
+      "sourceRefs": ["dwr-nursing", "southfields-nursing", "rvc-qmha"]
+    },
+    {
+      "roleRef": "patient_care_assistant",
+      "title": "Patient Care Assistant",
+      "family": "patient_support",
+      "explanation": "A clinical support colleague providing daily patient needs, comfort, enrichment, hygiene, procedure assistance and environmental infection-control support under direction.",
+      "typicalResponsibilities": ["feeding and comfort", "exercise and enrichment", "cleaning and infection-control tasks", "stock and equipment support", "assisting nurses and vets"],
+      "lucyWorksCapabilities": ["receive delegated support tasks", "record completion", "flag welfare concerns", "support room turnover"],
+      "decisionAuthority": "No independent clinical decision authority.",
+      "sourceRefs": ["bvs-team", "dwr-nursing", "southfields-nursing"]
+    },
+    {
+      "roleRef": "theatre_technician",
+      "title": "Theatre Technician",
+      "family": "technical_support",
+      "explanation": "A technical role supporting operating-theatre preparation, equipment, consumables, cleaning, turnaround and procedural logistics.",
+      "typicalResponsibilities": ["theatre setup", "equipment and consumables", "room turnaround", "infection-control support", "procedure assistance"],
+      "lucyWorksCapabilities": ["complete theatre readiness checks", "record equipment faults", "manage turnaround tasks", "flag unavailable resources"],
+      "decisionAuthority": "Technical readiness authority; no independent clinical authority.",
+      "sourceRefs": ["bvs-team", "southfields-nursing"]
+    },
+    {
+      "roleRef": "diagnostic_radiographer",
+      "title": "Diagnostic Radiographer",
+      "family": "diagnostic_imaging",
+      "explanation": "An imaging professional operating modalities such as CT and MRI and working with veterinary radiologists to acquire diagnostic-quality studies safely and efficiently.",
+      "typicalResponsibilities": ["CT and MRI acquisition", "imaging safety", "protocol preparation", "equipment quality", "PACS workflow", "liaison with radiologists and anaesthesia"],
+      "lucyWorksCapabilities": ["confirm modality readiness", "manage imaging acquisition queue", "record protocol and completion", "raise equipment or image-quality blockers"],
+      "decisionAuthority": "Imaging technical authority within professional competence; diagnostic interpretation remains with authorised clinicians.",
+      "sourceRefs": ["bvs-team", "bvs-facilities", "willows-imaging"]
+    },
+    {
+      "roleRef": "therapeutic_radiographer",
+      "title": "Therapeutic Radiographer",
+      "family": "radiotherapy",
+      "explanation": "A radiotherapy professional supporting treatment planning, patient setup and safe delivery of radiation treatments using a linear accelerator.",
+      "typicalResponsibilities": ["radiotherapy setup", "treatment delivery", "quality and safety checks", "treatment scheduling", "coordination with radiation oncologists and anaesthesia"],
+      "lucyWorksCapabilities": ["manage radiotherapy sessions", "complete safety checklists", "record delivered fractions", "flag equipment or plan deviations"],
+      "decisionAuthority": "Technical treatment-delivery authority under an approved clinical treatment plan.",
+      "sourceRefs": ["bvs-team", "bvs-facilities", "southfields-facilities"]
+    },
+    {
+      "roleRef": "clinical_pathologist",
+      "title": "Clinical Pathologist",
+      "family": "diagnostic_laboratory",
+      "explanation": "A veterinary specialist who interprets laboratory findings from blood, urine, cytology and related diagnostic material and advises clinical teams.",
+      "typicalResponsibilities": ["laboratory interpretation", "clinical consultation", "quality oversight", "complex result review", "training"],
+      "lucyWorksCapabilities": ["review and release specialist results", "record interpretive advice", "flag critical findings", "support test selection"],
+      "decisionAuthority": "Diagnostic interpretation within verified pathology specialty scope.",
+      "sourceRefs": ["dwr-laboratory"]
+    },
+    {
+      "roleRef": "anatomic_pathologist",
+      "title": "Anatomic Pathologist",
+      "family": "diagnostic_laboratory",
+      "explanation": "A veterinary specialist interpreting tissue and post-mortem samples to diagnose disease and provide pathology reports.",
+      "typicalResponsibilities": ["histopathology", "cytology where applicable", "post-mortem examination", "reporting", "clinical consultation", "quality oversight"],
+      "lucyWorksCapabilities": ["review pathology cases", "release reports", "flag urgent findings", "link samples to episodes"],
+      "decisionAuthority": "Diagnostic interpretation within verified pathology specialty scope.",
+      "sourceRefs": ["dwr-laboratory"]
+    },
+    {
+      "roleRef": "biomedical_scientist",
+      "title": "Biomedical Scientist",
+      "family": "diagnostic_laboratory",
+      "explanation": "A laboratory professional performing and validating diagnostic testing under laboratory quality systems.",
+      "typicalResponsibilities": ["sample processing", "instrument operation", "quality control", "test validation", "result workflow"],
+      "lucyWorksCapabilities": ["receive samples", "record chain of custody", "run and validate tests", "raise quality failures"],
+      "decisionAuthority": "Laboratory technical authority according to the laboratory quality system.",
+      "sourceRefs": ["dwr-laboratory"]
+    },
+    {
+      "roleRef": "laboratory_technician",
+      "title": "Laboratory Technician or Laboratory PCA",
+      "family": "diagnostic_laboratory_support",
+      "explanation": "A support role handling sample reception, preparation, equipment, consumables and routine laboratory processes under supervision.",
+      "typicalResponsibilities": ["sample reception", "sample preparation", "equipment and stock", "dispatch to external laboratories", "laboratory housekeeping"],
+      "lucyWorksCapabilities": ["log samples", "record dispatch and receipt", "manage lab support tasks", "flag missing identifiers or unsuitable samples"],
+      "decisionAuthority": "No independent specialist interpretation authority.",
+      "sourceRefs": ["bvs-team", "dwr-laboratory"]
+    },
+    {
+      "roleRef": "veterinary_physiotherapist",
+      "title": "Veterinary Physiotherapist or Rehabilitation Lead",
+      "family": "rehabilitation",
+      "explanation": "A rehabilitation professional assessing mobility and delivering physiotherapy, hydrotherapy and recovery plans alongside surgical, neurological and pain teams.",
+      "typicalResponsibilities": ["functional assessment", "rehabilitation plans", "inpatient mobilisation", "hydrotherapy", "owner exercises", "progress review"],
+      "lucyWorksCapabilities": ["create rehabilitation plans", "schedule sessions", "record functional outcomes", "coordinate discharge exercises"],
+      "decisionAuthority": "Within verified rehabilitation qualification and referral plan.",
+      "sourceRefs": ["willows-rehabilitation", "dwr-team-structure", "rvc-services"]
+    },
+    {
+      "roleRef": "clinical_nutritionist",
+      "title": "Clinical Nutritionist",
+      "family": "clinical",
+      "explanation": "A veterinary specialist providing nutritional assessment and treatment, including complex enteral or parenteral support integrated with other services.",
+      "typicalResponsibilities": ["nutritional assessment", "feeding plans", "tube-feeding strategy", "parenteral nutrition advice", "monitoring", "owner and team guidance"],
+      "lucyWorksCapabilities": ["create nutrition plans", "set monitoring requirements", "coordinate feeding dependencies", "review nutrition outcomes"],
+      "decisionAuthority": "Clinical authority within verified nutrition specialty scope.",
+      "sourceRefs": ["willows-nutrition", "rvc-services"]
+    },
+    {
+      "roleRef": "client_care_associate",
+      "title": "Client Care Associate or Receptionist",
+      "family": "client_services",
+      "explanation": "The front-of-house and telephone role supporting owners and referring practices, handling arrival, enquiries, appointments and communication routing.",
+      "typicalResponsibilities": ["reception", "telephone and email", "arrival and registration", "appointment administration", "message routing", "owner support"],
+      "lucyWorksCapabilities": ["manage arrival state", "record contact attempts", "route messages", "support appointment workflow"],
+      "decisionAuthority": "Administrative authority only.",
+      "sourceRefs": ["bvs-team", "dwr-case-management", "southfields-client-care"]
+    },
+    {
+      "roleRef": "insurance_administrator",
+      "title": "Insurance Administrator",
+      "family": "finance_and_insurance",
+      "explanation": "A specialist administrator handling direct and indirect claims, policy evidence, claim forms, pre-authorisation and communication about insurer decisions or shortfalls.",
+      "typicalResponsibilities": ["policy and claim documentation", "direct claims", "pre-authorisation", "insurer communication", "claim status", "shortfall escalation"],
+      "lucyWorksCapabilities": ["track insurance state", "request documents", "record pre-authorisation", "flag financial blockers", "support discharge readiness"],
+      "decisionAuthority": "Administrative and financial-process authority; cannot promise insurer cover or alter clinical necessity.",
+      "sourceRefs": ["bvs-team", "bvs-pet-journey", "bvs-faq"]
+    },
+    {
+      "roleRef": "administrator_finance",
+      "title": "Administrator or Finance Administrator",
+      "family": "administration",
+      "explanation": "A hospital support role maintaining records, correspondence, finance processes, documents and organisational coordination.",
+      "typicalResponsibilities": ["administration", "document control", "invoicing support", "data quality", "correspondence", "meeting and service support"],
+      "lucyWorksCapabilities": ["maintain administrative records", "complete non-clinical tasks", "track documentation", "support billing workflow"],
+      "decisionAuthority": "Administrative authority only.",
+      "sourceRefs": ["bvs-team", "southfields-client-care"]
+    },
+    {
+      "roleRef": "complaints_manager",
+      "title": "Complaints Manager",
+      "family": "governance_and_client_experience",
+      "explanation": "The accountable role receiving formal complaints, acknowledging them, coordinating investigation, keeping the complainant updated and recording learning actions.",
+      "typicalResponsibilities": ["complaint acknowledgement", "investigation coordination", "stakeholder response", "timescale management", "learning and improvement"],
+      "lucyWorksCapabilities": ["open protected complaint case", "assign investigators", "track response deadlines", "record findings and actions"],
+      "decisionAuthority": "Governance authority for the complaint process, not automatic clinical adjudication.",
+      "sourceRefs": ["dwr-terms"]
+    },
+    {
+      "roleRef": "education_training_lead",
+      "title": "Education or Training Programme Lead",
+      "family": "education_and_research",
+      "explanation": "A role coordinating internships, residencies, placements, supervision, teaching objectives and assessment evidence.",
+      "typicalResponsibilities": ["programme design", "rotation planning", "supervisor allocation", "competency assessment", "teaching quality", "learner welfare"],
+      "lucyWorksCapabilities": ["manage training rotations", "assign supervisors", "track competencies", "record assessments and progression"],
+      "decisionAuthority": "Education authority; clinical privileges remain separately governed.",
+      "sourceRefs": ["bvs-team", "southfields-internships", "southfields-residency", "rvc-qmha"]
+    },
+    {
+      "roleRef": "veterinary_student",
+      "title": "Final-Year Veterinary Student or Clinical Placement Student",
+      "family": "education_and_research",
+      "explanation": "A veterinary student gaining supervised clinical experience and participating in defined patient-care activities without independent authority.",
+      "typicalResponsibilities": ["case observation", "supervised history and examination", "learning tasks", "case discussion", "competency evidence"],
+      "lucyWorksCapabilities": ["view assigned teaching cases", "record supervised learning", "require supervisor sign-off"],
+      "decisionAuthority": "No independent clinical authority.",
+      "sourceRefs": ["rvc-qmha", "rvc-services", "southfields-residency"]
+    },
+    {
+      "roleRef": "veterinary_nursing_student",
+      "title": "Veterinary Nursing Student or Placement Learner",
+      "family": "nursing_training",
+      "explanation": "A nursing learner undertaking supervised clinical placements and competency development in patient care and client support.",
+      "typicalResponsibilities": ["supervised nursing care", "skills practice", "client-care learning", "competency evidence"],
+      "lucyWorksCapabilities": ["receive supervised learning tasks", "record evidence", "require assessor approval"],
+      "decisionAuthority": "No independent authority outside explicitly permitted supervised activity.",
+      "sourceRefs": ["rvc-qmha", "rvc-services", "southfields-nursing"]
+    }
+  ],
+  "departmentTemplates": [
+    {"departmentRef": "anaesthesia_analgesia", "name": "Anaesthesia and Analgesia", "purpose": "Peri-operative assessment, anaesthetic planning, pain management, procedural sedation and support for critically ill patients.", "sourceRefs": ["bvs-services", "rvc-services"]},
+    {"departmentRef": "cardiology", "name": "Cardiology and Interventional Cardiology", "purpose": "Diagnosis and medical or interventional treatment of cardiac disease, including echocardiography and catheter-based procedures.", "sourceRefs": ["bvs-services", "southfields-client-care"]},
+    {"departmentRef": "dentistry", "name": "Dentistry, Oral and Maxillofacial Surgery", "purpose": "Complex dental, oral, jaw and facial diagnosis and surgery.", "sourceRefs": ["bvs-services", "dwr-team-structure"]},
+    {"departmentRef": "dermatology", "name": "Dermatology", "purpose": "Diagnosis and management of skin, ear, claw, allergic, infectious and immune-mediated disease.", "sourceRefs": ["bvs-services"]},
+    {"departmentRef": "diagnostic_imaging", "name": "Diagnostic Imaging", "purpose": "Acquisition and interpretation of radiography, ultrasound, CT, MRI and fluoroscopy studies.", "sourceRefs": ["bvs-facilities", "willows-imaging"]},
+    {"departmentRef": "ecc_icu", "name": "Emergency and Critical Care / ICU", "purpose": "Emergency triage, stabilisation, intensive monitoring, ventilation and multidisciplinary management of critically ill patients.", "sourceRefs": ["bvs-services", "rvc-ecc", "willows-inpatient"]},
+    {"departmentRef": "internal_medicine", "name": "Internal Medicine", "purpose": "Complex medical diagnosis and non-surgical treatment across gastroenterology, endocrinology, respiratory, renal, haematology, immune and infectious disease.", "sourceRefs": ["bvs-services"]},
+    {"departmentRef": "interventional_radiology", "name": "Interventional Radiology", "purpose": "Image-guided minimally invasive procedures such as stents, vascular occlusion and urinary bypass interventions.", "sourceRefs": ["bvs-services"]},
+    {"departmentRef": "neurology", "name": "Neurology and Neurosurgery", "purpose": "Diagnosis and medical or surgical management of brain, spinal cord, nerve and neuromuscular disease.", "sourceRefs": ["bvs-services"]},
+    {"departmentRef": "oncology", "name": "Medical Oncology and Radiotherapy", "purpose": "Cancer diagnosis and treatment through chemotherapy, surgery, radiotherapy, immunotherapy and palliative care.", "sourceRefs": ["bvs-facilities", "southfields-facilities"]},
+    {"departmentRef": "ophthalmology", "name": "Ophthalmology", "purpose": "Medical and surgical treatment of eye and vision disorders.", "sourceRefs": ["bvs-services", "rvc-services"]},
+    {"departmentRef": "orthopaedics", "name": "Orthopaedics", "purpose": "Diagnosis and surgical treatment of bones, joints, fractures, deformities and mobility disorders.", "sourceRefs": ["bvs-services"]},
+    {"departmentRef": "soft_tissue_surgery", "name": "Soft Tissue Surgery", "purpose": "Complex surgery involving thoracic, abdominal, oncological, reconstructive and minimally invasive procedures.", "sourceRefs": ["bvs-services"]},
+    {"departmentRef": "exotics", "name": "Exotics", "purpose": "Specialist care for birds, reptiles, small mammals and other non-traditional companion species.", "sourceRefs": ["southfields-client-care", "rvc-services"]},
+    {"departmentRef": "rehabilitation", "name": "Physiotherapy and Rehabilitation", "purpose": "Mobility assessment, post-operative rehabilitation, neurological rehabilitation, chronic pain support and hydrotherapy.", "sourceRefs": ["willows-rehabilitation", "rvc-services"]},
+    {"departmentRef": "clinical_nutrition", "name": "Clinical Nutrition", "purpose": "Specialist nutritional assessment and enteral or parenteral support integrated with medical and surgical care.", "sourceRefs": ["willows-nutrition", "rvc-services"]},
+    {"departmentRef": "pathology_laboratory", "name": "Pathology and Diagnostic Laboratory", "purpose": "Sample reception, testing, quality control, clinical pathology, anatomic pathology and specialist interpretation.", "sourceRefs": ["dwr-laboratory", "bvs-facilities"]},
+    {"departmentRef": "transfusion_medicine", "name": "Transfusion Medicine and Blood Bank", "purpose": "Blood donor management, product preparation, compatibility and transfusion support.", "sourceRefs": ["rvc-services", "rvc-facilities"]},
+    {"departmentRef": "behaviour", "name": "Behaviour", "purpose": "Assessment and management of behavioural problems and support for low-stress hospital design and handling.", "sourceRefs": ["rvc-services", "southfields-facilities"]},
+    {"departmentRef": "hospital_coordination", "name": "Hospital Coordination and Flow", "purpose": "Real-time control of patient throughput, procedures, anaesthesia, rooms and inpatient capacity.", "sourceRefs": ["rvc-coordination"]},
+    {"departmentRef": "referral_case_management", "name": "Referral and Case Management", "purpose": "Referral intake, information completeness, communication, booking and continuity from first contact to discharge.", "sourceRefs": ["bvs-referral", "dwr-case-management"]},
+    {"departmentRef": "client_care", "name": "Client Care and Reception", "purpose": "Arrival, enquiries, owner support, contact routing and front-of-house coordination.", "sourceRefs": ["bvs-team", "southfields-client-care"]},
+    {"departmentRef": "insurance_finance", "name": "Insurance and Finance", "purpose": "Estimates, payment status, direct and indirect claims, pre-authorisation and financial communication.", "sourceRefs": ["bvs-pet-journey", "bvs-faq"]},
+    {"departmentRef": "education_research", "name": "Education, Training and Research", "purpose": "Internships, residencies, student placements, supervision, competency assessment, teaching and clinical research.", "sourceRefs": ["rvc-qmha", "southfields-internships", "southfields-residency"]},
+    {"departmentRef": "facilities_estates", "name": "Facilities and Estates", "purpose": "Building, utilities, access, maintenance, equipment environments, contractor control and facilities compliance.", "sourceRefs": ["bvs-team", "bvs-facilities"]}
+  ],
+  "workflowPatterns": [
+    {
+      "workflowRef": "urgent_vs_routine_referral",
+      "name": "Urgent and routine referral split",
+      "explanation": "Urgent referrals use immediate telephone contact, while routine referrals use a structured submission with history, results and images.",
+      "lucyWorksImplication": "Separate urgent intake from routine intake, require attachments, timestamp acceptance and preserve the referral source.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["bvs-referral"]
+    },
+    {
+      "workflowRef": "referral_completeness",
+      "name": "Referral completeness checking",
+      "explanation": "Clinical history and relevant blood, urine, faecal, radiographic and ultrasound information are expected before booking or specialist review.",
+      "lucyWorksImplication": "Use mandatory referral fields, attachment checks and a missing-information queue rather than free-text intake alone.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["bvs-referral"]
+    },
+    {
+      "workflowRef": "consult_options_estimate_consent",
+      "name": "Consultation, options, estimate and owner decision",
+      "explanation": "A specialist examines the patient, discusses possible causes and treatment options, provides an estimate and supports the owner to choose a plan.",
+      "lucyWorksImplication": "Version options, estimate, consent and owner communication as linked evidence rather than a single mutable status.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["bvs-pet-journey", "bvs-faq"]
+    },
+    {
+      "workflowRef": "insurance_pre_authorisation",
+      "name": "Insurance claim and pre-authorisation workflow",
+      "explanation": "Hospitals may manage direct or indirect claims, collect policy documents, request pre-authorisation and track insurer decisions or client shortfalls.",
+      "lucyWorksImplication": "Insurance needs its own state machine and responsible administrator; insurer approval must never be represented as clinical approval.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["bvs-pet-journey", "bvs-faq"]
+    },
+    {
+      "workflowRef": "hospital_flow_control",
+      "name": "Hospital flow coordination",
+      "explanation": "A coordination team can track patients from admission to theatre and schedule diagnostic rooms, endoscopy, theatres, anaesthesia and ward capacity.",
+      "lucyWorksImplication": "The master grid must include patient, procedure, room, anaesthesia and inpatient-capacity dependencies in one operational plan.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["rvc-coordination"]
+    },
+    {
+      "workflowRef": "multidisciplinary_case_management",
+      "name": "Multidisciplinary case management",
+      "explanation": "Complex patients are managed across specialties rather than transferred into isolated departmental silos.",
+      "lucyWorksImplication": "Maintain one episode and one evidence trail with multiple consulting services, named primary accountability and explicit shared decisions.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["bvs-services", "rvc-qmha"]
+    },
+    {
+      "workflowRef": "emergency_stabilise_transfer",
+      "name": "Emergency triage, stabilisation and transfer",
+      "explanation": "Emergency teams assess and stabilise first, then transfer the patient to ICU or the relevant specialty for ongoing management.",
+      "lucyWorksImplication": "Support rapid emergency acceptance, stabilisation tasks, time-critical observations and controlled transfer of accountability.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["rvc-ecc", "bvs-services"]
+    },
+    {
+      "workflowRef": "day_night_handover",
+      "name": "Day and night inpatient continuity",
+      "explanation": "Dedicated night nurses, PCAs and interns continue ward and ICU care after daytime services hand over.",
+      "lucyWorksImplication": "Require named handover acceptance, ward assignment, overdue-care alerts and out-of-hours escalation routes.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["dwr-nursing", "southfields-nursing"]
+    },
+    {
+      "workflowRef": "service_specific_wards",
+      "name": "Service-specific and species-specific warding",
+      "explanation": "Hospitals separate patients by service, clinical risk and species, including feline areas and isolation facilities.",
+      "lucyWorksImplication": "Capacity must be modelled by ward capability, species, infection risk and staffing rather than generic kennel count.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["bvs-facilities", "dwr-nursing", "southfields-facilities"]
+    },
+    {
+      "workflowRef": "case_management_continuity",
+      "name": "Case-management continuity",
+      "explanation": "A dedicated team can oversee the owner and referring-vet journey from first contact to safe discharge.",
+      "lucyWorksImplication": "Track communication duties, unresolved questions, discharge documents and referrer updates as owned work.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["dwr-case-management"]
+    },
+    {
+      "workflowRef": "training_supervision",
+      "name": "Supervised training pathway",
+      "explanation": "Interns, residents and students work through defined rotations or specialty programmes with supervision and progressive responsibility.",
+      "lucyWorksImplication": "Assignments must include supervisor, privilege level, training objective and required sign-off.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["southfields-internships", "southfields-residency", "rvc-qmha"]
+    },
+    {
+      "workflowRef": "complaints_governance",
+      "name": "Formal complaints governance",
+      "explanation": "A complaint is acknowledged, investigated by appropriate people, updated against a deadline and converted into learning actions.",
+      "lucyWorksImplication": "Provide protected complaint cases, deadlines, investigation ownership, response evidence and improvement tracking.",
+      "evidenceLevel": "direct",
+      "sourceRefs": ["dwr-terms"]
+    },
+    {
+      "workflowRef": "fixed_price_package",
+      "name": "Defined procedure package",
+      "explanation": "Some hospitals publish packages combining consultation, imaging, anaesthesia, procedure, hospitalisation and specified exclusions.",
+      "lucyWorksImplication": "Procedure catalogue entries should support included resources, limits, exclusions and versioned prices rather than one flat fee field.",
+      "evidenceLevel": "cross_hospital_pattern",
+      "sourceRefs": ["dwr-team-structure", "southfields-facilities"]
+    }
+  ]
+}
