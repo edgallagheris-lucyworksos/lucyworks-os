@@ -53,6 +53,7 @@ from app.hospital_ops_routes import router as hospital_ops_router
 from app.hospital_ops_extension_routes import router as hospital_ops_extension_router
 from app.production_readiness_routes import router as production_readiness_router
 from app.observability_routes import router as observability_router
+from app.hospital_intelligence_routes import router as hospital_intelligence_router
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
 
@@ -107,3 +108,4 @@ app.include_router(hospital_ops_router)
 app.include_router(hospital_ops_extension_router)
 app.include_router(production_readiness_router)
 app.include_router(observability_router)
+app.include_router(hospital_intelligence_router)
