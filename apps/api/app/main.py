@@ -5,6 +5,7 @@ from app import audit_attribution as _audit_attribution  # noqa: F401
 from app import database_exception_handlers as _database_exception_handlers  # noqa: F401
 from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noqa: F401
 from app import production_readiness_runtime_patch as _production_readiness_runtime_patch  # noqa: F401
+from app import bvs_v6_runtime_patch as _bvs_v6_runtime_patch  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
 from app.production_middleware import ProductionProtectionMiddleware
 from app.auth_routes import router as auth_router
