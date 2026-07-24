@@ -9,6 +9,7 @@ const surfaces = [
   { href: "/production-readiness", title: "Production readiness", description: "Evidence-backed security, deployment, shadow-mode and pilot go/no-go controls." },
   { href: "/hospital-intelligence", title: "Hospital intelligence", description: "Public-source referral-hospital roles, departments, facilities, workflows and provenance." },
   { href: "/hospital-configuration", title: "BVS hospital configuration", description: "Verification queue, premises model, workforce competencies, referral intake and historical replay." },
+  { href: "/hospital-configuration/validation-tools", title: "BVS validation tools", description: "Authoritative configuration approval, claim decisions, competency evidence and replay import." },
   { href: "/workforce-rota", title: "Workforce rota", description: "Shifts, absence, competency-aware safe coverage, overlap controls and fatigue signals." },
   { href: "/hospital-imports", title: "Import and reconciliation", description: "Preview exports, resolve unmatched rows and commit controlled canonical data." },
   { href: "/integrations", title: "Vendor integrations", description: "PIMS, imaging, laboratory and workforce connection health and provenance." },
