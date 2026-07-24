@@ -1,6 +1,9 @@
 import { clearSession, getSession } from "@/lib/session";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+// Use the same-origin Next.js /api rewrite by default. An explicit public API
+// base may be supplied for deployments that intentionally expose the API on a
+// separate origin.
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
 
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const session = getSession();
