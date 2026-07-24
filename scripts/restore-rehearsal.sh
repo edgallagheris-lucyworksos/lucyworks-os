@@ -38,13 +38,13 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0006_production_readiness" ]] || { echo "restored migration version is $version, expected 0006_production_readiness" >&2; exit 1; }
+[[ "$version" == "0007_bvs_config_workforce" ]] || { echo "restored migration version is $version, expected 0007_bvs_config_workforce" >&2; exit 1; }
 
-for table in evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun; do
+for table in evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun hospitalconfigurationrecord configurationverificationtask workforceprofile workforcecompetency workforceshiftv6 workforceavailabilityexceptionv6 referralintake historicalreplayrun; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
 
-counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select json_build_object('"'"'evidence'"'"', count(*)) from evidenceevent')"
+counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select json_build_object('"'"'evidence'"'"', (select count(*) from evidenceevent), '"'"'configuration'"'"', (select count(*) from hospitalconfigurationrecord), '"'"'workforce'"'"', (select count(*) from workforceprofile), '"'"'shifts'"'"', (select count(*) from workforceshiftv6), '"'"'referrals'"'"', (select count(*) from referralintake))')"
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"

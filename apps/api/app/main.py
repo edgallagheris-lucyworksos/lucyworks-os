@@ -5,7 +5,7 @@ from app import audit_attribution as _audit_attribution  # noqa: F401
 from app import database_exception_handlers as _database_exception_handlers  # noqa: F401
 from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noqa: F401
 from app import production_readiness_runtime_patch as _production_readiness_runtime_patch  # noqa: F401
-from app import auth as auth_module
+from app import bvs_v6_runtime_patch as _bvs_v6_runtime_patch  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
 from app.production_middleware import ProductionProtectionMiddleware
 from app.auth_routes import router as auth_router
@@ -54,6 +54,9 @@ from app.hospital_ops_extension_routes import router as hospital_ops_extension_r
 from app.production_readiness_routes import router as production_readiness_router
 from app.observability_routes import router as observability_router
 from app.hospital_intelligence_routes import router as hospital_intelligence_router
+from app.bvs_v6_routes import router as bvs_v6_router
+from app.bvs_v6_rota_routes import router as bvs_v6_rota_router
+from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
 
@@ -109,3 +112,5 @@ app.include_router(hospital_ops_extension_router)
 app.include_router(production_readiness_router)
 app.include_router(observability_router)
 app.include_router(hospital_intelligence_router)
+app.include_router(bvs_v6_router)
+app.include_router(bvs_v6_rota_router)
