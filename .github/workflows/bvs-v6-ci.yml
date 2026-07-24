@@ -73,7 +73,7 @@ jobs:
           assert not missing, sorted(missing)
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0007_bvs_configuration_workforce_referrals", version
+          assert version == "0007_bvs_config_workforce", version
           print("BVS v6 SQLite migration verified", version)
           PY
 
