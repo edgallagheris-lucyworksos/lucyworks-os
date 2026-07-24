@@ -1,4 +1,4 @@
-"""Add BVS configuration, workforce, referral and historical replay tables.
+"""Add BVS configuration, workforce, rota, referral and historical replay tables.
 
 Revision ID: 0007_bvs_configuration_workforce_referrals
 Revises: 0006_production_readiness
@@ -21,6 +21,7 @@ from app.bvs_v6_models import (
     WorkforceCompetency,
     WorkforceProfile,
 )
+from app.bvs_v6_rota_models import WorkforceAvailabilityExceptionV6, WorkforceShiftV6
 
 revision: str = "0007_bvs_configuration_workforce_referrals"
 down_revision: Union[str, None] = "0006_production_readiness"
@@ -37,6 +38,8 @@ def upgrade() -> None:
         WorkforceProfile.__table__,
         WorkforceCompetency.__table__,
         CoverageRequirement.__table__,
+        WorkforceShiftV6.__table__,
+        WorkforceAvailabilityExceptionV6.__table__,
         ReferralIntake.__table__,
         ReferralIntakeEvent.__table__,
         HistoricalReplayRun.__table__,
@@ -46,6 +49,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # These tables contain governance, referral and validation evidence. Removal
-    # requires an approved retention/migration decision rather than an automatic downgrade.
+    # These tables contain governance, workforce, referral and validation evidence.
+    # Removal requires an approved retention/migration decision.
     pass
