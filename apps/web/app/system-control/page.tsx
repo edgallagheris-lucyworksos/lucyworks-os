@@ -8,6 +8,7 @@ const surfaces = [
   { href: "/control-plane", title: "Control plane", description: "Critical results, handovers, premises controls, service readiness and approvals." },
   { href: "/production-readiness", title: "Production readiness", description: "Evidence-backed security, deployment, shadow-mode and pilot go/no-go controls." },
   { href: "/hospital-intelligence", title: "Hospital intelligence", description: "Public-source referral-hospital roles, departments, facilities, workflows and provenance." },
+  { href: "/hospital-configuration", title: "BVS hospital configuration", description: "Verification queue, premises model, workforce competencies, referral intake and historical replay." },
   { href: "/hospital-imports", title: "Import and reconciliation", description: "Preview exports, resolve unmatched rows and commit controlled canonical data." },
   { href: "/integrations", title: "Vendor integrations", description: "PIMS, imaging, laboratory and workforce connection health and provenance." },
   { href: "/approvals", title: "Approval queue", description: "Named senior decisions for overrides, red-risk evidence and governed AI." },
@@ -20,7 +21,7 @@ export default function SystemControlPage() {
       <header style={{ background: "#071019", color: "white", borderRadius: 18, padding: 18 }}>
         <span style={{ color: "#2dd4bf", fontSize: 11, fontWeight: 900, letterSpacing: ".13em", textTransform: "uppercase" }}>LucyWorks OS</span>
         <h1 style={{ fontSize: "clamp(38px, 8vw, 72px)", lineHeight: .93, margin: "7px 0" }}>System control</h1>
-        <p style={{ color: "#94a3b8", maxWidth: 850 }}>Open the real operational surfaces. The hospital board is the canonical source of planned work; governance and integration views support it rather than maintaining competing schedules.</p>
+        <p style={{ color: "#94a3b8", maxWidth: 850 }}>Open the real operational surfaces. The hospital board is the canonical source of planned work; governance, configuration and integration views support it rather than maintaining competing schedules.</p>
       </header>
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 10, marginTop: 10 }}>
         {surfaces.map((surface) => <Link key={surface.href} href={surface.href} style={{ display: "grid", gap: 7, minHeight: 145, padding: 16, background: "white", border: "1px solid #cbd5e1", borderRadius: 15, color: "#0f172a", textDecoration: "none", boxShadow: "0 6px 18px rgba(15,23,42,.05)" }}>
