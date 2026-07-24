@@ -44,6 +44,10 @@ jobs:
         id: bvs_v6
         continue-on-error: true
         run: python bvs_v6_smoke_test.py > bvs-v6.log 2>&1
+      - name: Run BVS rota safe staffing v6 test
+        id: bvs_rota_v6
+        continue-on-error: true
+        run: python bvs_v6_rota_smoke_test.py > bvs-rota-v6.log 2>&1
       - name: Run production readiness v4 test
         id: production_readiness
         continue-on-error: true
@@ -89,6 +93,7 @@ jobs:
           name: verified-api-logs
           path: |
             apps/api/bvs-v6.log
+            apps/api/bvs-rota-v6.log
             apps/api/production-readiness.log
             apps/api/hospital-ops-v3.log
             apps/api/identity.log
@@ -98,9 +103,9 @@ jobs:
             apps/api/migration.log
           if-no-files-found: error
       - name: Report API validation failures
-        if: steps.bvs_v6.outcome == 'failure' || steps.production_readiness.outcome == 'failure' || steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
+        if: steps.bvs_v6.outcome == 'failure' || steps.bvs_rota_v6.outcome == 'failure' || steps.production_readiness.outcome == 'failure' || steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
         run: |
-          for file in bvs-v6.log production-readiness.log hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
+          for file in bvs-v6.log bvs-rota-v6.log production-readiness.log hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
             echo "--- $file ---"
             tail -n 240 "$file" || true
           done
@@ -155,14 +160,15 @@ jobs:
               "readinesscontrol", "readinessevidence", "securityassessmentrun", "pilotrun",
               "pilotobservation", "hospitalconfigurationrecord", "configurationclaim",
               "configurationverificationtask", "workforceprofile", "workforcecompetency",
-              "coveragerequirement", "referralintake", "referralintakeevent",
-              "historicalreplayrun", "historicalreplayevent", "alembic_version",
+              "coveragerequirement", "workforceshiftv6", "workforceavailabilityexceptionv6",
+              "referralintake", "referralintakeevent", "historicalreplayrun",
+              "historicalreplayevent", "alembic_version",
           }
           missing = required - set(inspector.get_table_names())
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0007_bvs_configuration_workforce_referrals", version
+          assert version == "0007_bvs_config_workforce", version
           print("PostgreSQL BVS v6 migration verified", version)
           PY
       - name: Prove concurrent stale-write protection
