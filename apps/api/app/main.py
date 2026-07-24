@@ -54,6 +54,7 @@ from app.production_readiness_routes import router as production_readiness_route
 from app.observability_routes import router as observability_router
 from app.hospital_intelligence_routes import router as hospital_intelligence_router
 from app.bvs_v6_routes import router as bvs_v6_router
+from app.bvs_v6_rota_routes import router as bvs_v6_rota_router
 from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
@@ -111,3 +112,4 @@ app.include_router(production_readiness_router)
 app.include_router(observability_router)
 app.include_router(hospital_intelligence_router)
 app.include_router(bvs_v6_router)
+app.include_router(bvs_v6_rota_router)
