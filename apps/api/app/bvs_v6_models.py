@@ -47,6 +47,7 @@ class ConfigurationClaim(SQLModel, table=True):
     confidence: str = "unknown"
     status: str = "proposed"
     notes: Optional[str] = None
+    review_evidence_refs: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     version: int = 1
     created_by_actor_id: str
     created_by_actor_name: str
