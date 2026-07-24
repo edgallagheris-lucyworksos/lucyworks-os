@@ -1,6 +1,6 @@
 """Add BVS configuration, workforce, rota, referral and historical replay tables.
 
-Revision ID: 0007_bvs_configuration_workforce_referrals
+Revision ID: 0007_bvs_config_workforce
 Revises: 0006_production_readiness
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ from app.bvs_v6_models import (
 )
 from app.bvs_v6_rota_models import WorkforceAvailabilityExceptionV6, WorkforceShiftV6
 
-revision: str = "0007_bvs_configuration_workforce_referrals"
+revision: str = "0007_bvs_config_workforce"
 down_revision: Union[str, None] = "0006_production_readiness"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
