@@ -10,6 +10,7 @@ type User = { id: number; name: string; role: string; email: string };
 type AuthConfig = {
   mode: "local" | "oidc" | string;
   enforcement: string;
+  sessionMode?: string;
   devLoginEnabled: boolean;
   oidc?: { authorizationUrl?: string | null; clientId?: string | null; audience?: string | null; scope?: string | null } | null;
 };
@@ -43,12 +44,12 @@ export default function LoginPage() {
   useEffect(() => {
     async function loadConfig() {
       try {
-        const response = await fetch(`${API_BASE}/api/auth/config`, { cache: "no-store" });
+        const response = await fetch(`${API_BASE}/api/auth/config`, { cache: "no-store", credentials: "include" });
         if (!response.ok) throw new Error(`authentication config ${response.status}`);
         const data = await response.json() as AuthConfig;
         setConfig(data);
-        if (data.mode === "oidc") setStatus("Hospital identity sign-in is required.");
-        else if (data.devLoginEnabled) setStatus("Controlled development login is enabled. Tokens are signed and verified by the API.");
+        if (data.mode === "oidc") setStatus("Hospital identity sign-in is required. The browser receives an HttpOnly server session, not a stored bearer token.");
+        else if (data.devLoginEnabled) setStatus("Controlled development login is enabled with a signed identity and secure server session.");
         else setStatus("Development login is disabled. Configure the hospital identity provider or explicitly enable development login.");
       } catch (error) {
         setStatus(error instanceof Error ? error.message : "Authentication service unavailable");
@@ -64,11 +65,12 @@ export default function LoginPage() {
       const response = await fetch(`${API_BASE}/api/auth/dev-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ user_id: user.id }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `login failed: ${response.status}`);
-      saveSession(data.user as SessionUser, data.accessToken, data.expiresIn);
+      saveSession(data.user as SessionUser);
       router.push("/system-control");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Verified login failed");
@@ -110,13 +112,13 @@ export default function LoginPage() {
           <div>
             <div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>LucyWorks OS access</div>
             <h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Verified identity required</h1>
-            <p style={{ color: "#94a3b8", marginBottom: 0 }}>The API validates token signature, issuer, audience, expiry and authorised role before protected actions run.</p>
+            <p style={{ color: "#94a3b8", marginBottom: 0 }}>The API validates identity and keeps the browser session in an HttpOnly cookie with CSRF and idle-expiry controls.</p>
           </div>
-          <span className={`lw-pill ${config ? "lw-green" : "lw-amber"}`}>{config?.mode || "loading"}</span>
+          <span className={`lw-pill ${config ? "lw-green" : "lw-amber"}`}>{config?.sessionMode || config?.mode || "loading"}</span>
         </div>
 
         <div style={{ padding: 12, display: "grid", gap: 10 }}>
-          {oidcEnabled ? <button onClick={() => void startOidc()} className="lw-command-panel" style={{ textAlign: "left", padding: 16, minHeight: 70 }}><strong>Sign in with hospital identity</strong><br /><span style={{ color: "#94a3b8" }}>OIDC authorization code flow with PKCE</span></button> : null}
+          {oidcEnabled ? <button onClick={() => void startOidc()} className="lw-command-panel" style={{ textAlign: "left", padding: 16, minHeight: 70 }}><strong>Sign in with hospital identity</strong><br /><span style={{ color: "#94a3b8" }}>OIDC authorization code flow with PKCE and a server-side session</span></button> : null}
           {localEnabled ? DEVELOPMENT_USERS.map((user) => (
             <button key={`${user.id}-${user.role}`} onClick={() => void enterDevelopment(user)} disabled={busyId === user.id} className="lw-command-panel" style={{ textAlign: "left", padding: 14, minHeight: 64, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
               <span><strong>{user.name}</strong><br /><span style={{ color: "#94a3b8" }}>{user.role} • {user.email}</span></span>
