@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "apps/api/app/hospital_command_*.py"
-      - "apps/api/hospital_command_v9_smoke_test.py"
+      - "apps/api/hospital_command_v9*_smoke_test.py"
       - "apps/api/migrations/versions/0010_*.py"
       - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
@@ -19,7 +19,7 @@ on:
     branches: [main, "feature/**"]
     paths:
       - "apps/api/app/hospital_command_*.py"
-      - "apps/api/hospital_command_v9_smoke_test.py"
+      - "apps/api/hospital_command_v9*_smoke_test.py"
       - "apps/api/migrations/versions/0010_*.py"
       - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
@@ -51,6 +51,10 @@ jobs:
         id: command_spine
         continue-on-error: true
         run: python hospital_command_v9_smoke_test.py > hospital-command-v9.log 2>&1
+      - name: Run UTC, waiver, financial authority and early-closure hardening
+        id: hardening
+        continue-on-error: true
+        run: python hospital_command_v9_hardening_smoke_test.py > hospital-command-v9-hardening.log 2>&1
       - name: Verify SQLite migration 0010
         id: migration
         continue-on-error: true
@@ -83,12 +87,13 @@ jobs:
           name: hospital-command-v9-api-logs
           path: |
             apps/api/hospital-command-v9.log
+            apps/api/hospital-command-v9-hardening.log
             apps/api/command-migration.log
           if-no-files-found: error
       - name: Report command API failure
-        if: steps.command_spine.outcome == 'failure' || steps.migration.outcome == 'failure'
+        if: steps.command_spine.outcome == 'failure' || steps.hardening.outcome == 'failure' || steps.migration.outcome == 'failure'
         run: |
-          for file in hospital-command-v9.log command-migration.log; do
+          for file in hospital-command-v9.log hospital-command-v9-hardening.log command-migration.log; do
             echo "--- $file ---"
             cat "$file" || true
           done
