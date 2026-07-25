@@ -16,7 +16,6 @@ class AuthSession(SQLModel, table=True):
         UniqueConstraint("session_ref", name="uq_authsession_ref"),
         UniqueConstraint("token_hash", name="uq_authsession_token_hash"),
     )
-
     id: Optional[int] = Field(default=None, primary_key=True)
     session_ref: str = Field(index=True)
     token_hash: str = Field(index=True)
@@ -44,7 +43,6 @@ class DurableEvent(SQLModel, table=True):
         UniqueConstraint("sequence", name="uq_durableevent_sequence"),
         UniqueConstraint("idempotency_key", name="uq_durableevent_idempotency"),
     )
-
     id: Optional[int] = Field(default=None, primary_key=True)
     event_ref: str = Field(index=True)
     sequence: int = Field(index=True)
@@ -66,9 +64,24 @@ class DurableEvent(SQLModel, table=True):
     last_delivery_error: Optional[str] = None
 
 
+class EventAcknowledgement(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("event_ref", name="uq_eventack_event_ref"),)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_ref: str = Field(index=True)
+    status: str = Field(default="unacknowledged", index=True)
+    assigned_role: Optional[str] = Field(default=None, index=True)
+    assigned_subject: Optional[str] = Field(default=None, index=True)
+    acknowledged_by_subject: Optional[str] = Field(default=None, index=True)
+    acknowledged_by_name: Optional[str] = None
+    note: Optional[str] = None
+    version: int = 1
+    acknowledged_at: Optional[datetime] = Field(default=None, index=True)
+    resolved_at: Optional[datetime] = Field(default=None, index=True)
+    updated_at: datetime = Field(default_factory=utc_now, index=True)
+
+
 class CanonicalShadowComparison(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("comparison_ref", name="uq_canonicalshadow_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     comparison_ref: str = Field(index=True)
     premises_ref: str = Field(index=True)
@@ -96,7 +109,6 @@ class IntegrationRetryJob(SQLModel, table=True):
         UniqueConstraint("job_ref", name="uq_integrationretry_ref"),
         UniqueConstraint("envelope_ref", name="uq_integrationretry_envelope"),
     )
-
     id: Optional[int] = Field(default=None, primary_key=True)
     job_ref: str = Field(index=True)
     envelope_ref: str = Field(index=True)
@@ -118,7 +130,6 @@ class IntegrationRetryJob(SQLModel, table=True):
 
 class LegacyWriteRetirement(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("route_key", name="uq_legacywrite_route_key"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     route_key: str = Field(index=True)
     replacement_path: str
