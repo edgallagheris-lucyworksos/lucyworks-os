@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -17,8 +18,10 @@ from app.auth import (
     issue_local_token,
     require_authenticated,
 )
+from app.auth_session_runtime import clear_browser_session, issue_browser_session, revoke_browser_session
 from app.database import get_session
 from app.models import User
+from app.v7_models import AuthSession
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -51,12 +54,18 @@ class OIDCExchangeRequest(BaseModel):
     redirect_uri: str
 
 
+class StepUpRequest(BaseModel):
+    reauthentication_token: str
+    reason: str
+
+
 @router.get("/config")
 def authentication_config() -> dict[str, Any]:
     mode = auth_mode()
     return {
         "mode": mode,
         "enforcement": auth_enforcement(),
+        "sessionMode": "secure_cookie",
         "devLoginEnabled": mode == "local" and dev_login_enabled(),
         "oidc": {
             "authorizationUrl": setting("OIDC_AUTHORIZATION_URL") or None,
@@ -75,8 +84,16 @@ def development_users(session: Session = Depends(get_session)) -> list[dict[str,
     return [{"id": row.id, "name": row.name, "role": row.role, "email": row.email} for row in rows]
 
 
+def login_response(session: Session, response: Response, auth: AuthContext, bearer_token: str | None = None, expires_in: int | None = None) -> dict[str, Any]:
+    browser = issue_browser_session(session, response, auth)
+    payload: dict[str, Any] = {"user": user_payload(auth), "session": browser, "tokenType": "Cookie"}
+    if setting("AUTH_RETURN_BEARER_DEV", "false").lower() in {"1", "true", "yes"} and bearer_token:
+        payload.update({"accessToken": bearer_token, "expiresIn": expires_in, "tokenType": "Bearer"})
+    return payload
+
+
 @router.post("/dev-login")
-def development_login(payload: DevLoginRequest, session: Session = Depends(get_session)) -> dict[str, Any]:
+def development_login(payload: DevLoginRequest, response: Response, session: Session = Depends(get_session)) -> dict[str, Any]:
     if auth_mode() != "local" or not dev_login_enabled():
         raise HTTPException(status_code=404, detail="development login is disabled")
     user = session.get(User, payload.user_id)
@@ -89,11 +106,11 @@ def development_login(payload: DevLoginRequest, session: Session = Depends(get_s
         email=user.email,
     )
     verified = decode_access_token(token)
-    return {"accessToken": token, "tokenType": "Bearer", "expiresIn": expires_in, "user": user_payload(verified)}
+    return login_response(session, response, verified, token, expires_in)
 
 
 @router.post("/oidc/exchange")
-async def oidc_exchange(payload: OIDCExchangeRequest) -> dict[str, Any]:
+async def oidc_exchange(payload: OIDCExchangeRequest, response: Response, session: Session = Depends(get_session)) -> dict[str, Any]:
     if auth_mode() != "oidc":
         raise HTTPException(status_code=404, detail="OIDC authentication is not enabled")
     token_url = setting("OIDC_TOKEN_URL")
@@ -114,22 +131,17 @@ async def oidc_exchange(payload: OIDCExchangeRequest) -> dict[str, Any]:
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(token_url, data=form, headers={"Accept": "application/json"})
+            provider_response = await client.post(token_url, data=form, headers={"Accept": "application/json"})
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail="OIDC provider could not be reached") from exc
-    if response.status_code >= 400:
+    if provider_response.status_code >= 400:
         raise HTTPException(status_code=401, detail="OIDC code exchange failed")
-    data = response.json()
+    data = provider_response.json()
     access_token = data.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="OIDC provider did not return an access token")
     verified = decode_access_token(str(access_token))
-    return {
-        "accessToken": access_token,
-        "tokenType": data.get("token_type", "Bearer"),
-        "expiresIn": data.get("expires_in"),
-        "user": user_payload(verified),
-    }
+    return login_response(session, response, verified, str(access_token), data.get("expires_in"))
 
 
 @router.get("/me")
@@ -137,6 +149,40 @@ def current_identity(auth: AuthContext = Depends(require_authenticated)) -> dict
     return {"user": user_payload(auth)}
 
 
+@router.post("/step-up")
+def step_up(payload: StepUpRequest, request: Request, session: Session = Depends(get_session), auth: AuthContext = Depends(require_authenticated)) -> dict[str, Any]:
+    fresh = decode_access_token(payload.reauthentication_token)
+    if fresh.subject != auth.subject:
+        raise HTTPException(status_code=403, detail="step-up identity does not match the active session")
+    cookie_header = request.headers.get("cookie", "")
+    from app.auth_session_runtime import SESSION_COOKIE, _cookie_value, digest
+
+    raw = _cookie_value(cookie_header, SESSION_COOKIE)
+    if not raw:
+        raise HTTPException(status_code=400, detail="step-up requires a browser session")
+    row = session.exec(select(AuthSession).where(AuthSession.token_hash == digest(raw))).first()
+    if not row or row.revoked_at:
+        raise HTTPException(status_code=401, detail="browser session is invalid")
+    row.step_up_until = datetime.now(timezone.utc) + timedelta(minutes=10)
+    session.add(row)
+    session.commit()
+    return {"ok": True, "stepUpUntil": row.step_up_until.isoformat(), "reason": payload.reason}
+
+
 @router.post("/logout")
-def logout(_: Request, auth: AuthContext = Depends(require_authenticated)) -> dict[str, Any]:
+def logout(request: Request, response: Response, session: Session = Depends(get_session), auth: AuthContext = Depends(require_authenticated)) -> dict[str, Any]:
+    revoke_browser_session(session, request.headers.get("cookie", ""), "logout")
+    clear_browser_session(response)
     return {"ok": True, "subject": auth.subject}
+
+
+@router.post("/revoke-all")
+def revoke_all_sessions(session: Session = Depends(get_session), auth: AuthContext = Depends(require_authenticated)) -> dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    rows = session.exec(select(AuthSession).where(AuthSession.subject == auth.subject, AuthSession.revoked_at == None)).all()  # noqa: E711
+    for row in rows:
+        row.revoked_at = now
+        row.revoked_reason = "user_revoke_all"
+        session.add(row)
+    session.commit()
+    return {"ok": True, "revoked": len(rows)}
