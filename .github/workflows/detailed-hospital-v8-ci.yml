@@ -105,10 +105,11 @@ jobs:
         env:
           POSTGRES_USER: lucyworks
           POSTGRES_PASSWORD: lucyworks
-          POSTGRES_DB: detailed_v8
-        ports: ["5432:5432"]
+          POSTGRES_DB: lucyworks_test
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U lucyworks -d detailed_v8"
+          --health-cmd "pg_isready -U lucyworks -d lucyworks_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -116,7 +117,7 @@ jobs:
       run:
         working-directory: apps/api
     env:
-      DATABASE_URL: postgresql+psycopg://lucyworks:lucyworks@localhost:5432/detailed_v8
+      DATABASE_URL: postgresql+psycopg://lucyworks:lucyworks@localhost:5432/lucyworks_test
       AUTO_CREATE_SCHEMA: "false"
     steps:
       - uses: actions/checkout@v4
@@ -126,19 +127,46 @@ jobs:
           cache: pip
           cache-dependency-path: apps/api/requirements.txt
       - run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
-      - run: alembic upgrade head
+      - name: Apply PostgreSQL migration 0009
+        id: postgres_migration
+        continue-on-error: true
+        run: alembic upgrade head > postgres-v8.log 2>&1
       - name: Verify PostgreSQL v8 tables
+        id: postgres_verify
+        if: steps.postgres_migration.outcome == 'success'
+        continue-on-error: true
         run: |
-          python - <<'PY'
+          python - <<'PY' >> postgres-v8.log 2>&1
           from sqlalchemy import inspect, text
           from app.database import engine
-          required = {"patientclinicalrecordv8", "clinicalencounterv8", "formularymedicinev8", "anaesthesiachartv8", "inpatientcareplanv8", "procedurerecordv8", "estimatev8", "insurancecasev8", "communicationeventv8", "clinicaldocumentv8"}
+          required = {
+              "owneraccountv8", "patientclinicalrecordv8", "patientownerlinkv8", "patientproblemv8",
+              "patientallergyv8", "patientweightv8", "clinicalencounterv8", "clinicalnotev8",
+              "formularymedicinev8", "formularydoserulev8", "medicationsafetyreviewv8",
+              "anaesthesiachartv8", "anaesthesiaobservationv8", "anaesthesiadrugeventv8",
+              "fluidplanv8", "fluidbalanceentryv8", "inpatientcareplanv8", "inpatientchartentryv8",
+              "procedurerecordv8", "implanttracev8", "estimatev8", "estimatelinev8",
+              "insurancecasev8", "financialtransactionv8", "communicationeventv8", "clinicaldocumentv8",
+          }
           missing = required - set(inspect(engine).get_table_names())
           assert not missing, sorted(missing)
           with engine.connect() as connection:
-              assert connection.execute(text("select version_num from alembic_version")).scalar_one() == "0009_detailed_hospital"
-          print("PostgreSQL v8 schema verified")
+              version = connection.execute(text("select version_num from alembic_version")).scalar_one()
+          assert version == "0009_detailed_hospital", version
+          print("PostgreSQL v8 schema verified", version)
           PY
+      - name: Upload PostgreSQL v8 log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detailed-hospital-v8-postgres-log
+          path: apps/api/postgres-v8.log
+          if-no-files-found: error
+      - name: Report PostgreSQL v8 failure
+        if: steps.postgres_migration.outcome == 'failure' || steps.postgres_verify.outcome == 'failure'
+        run: |
+          cat postgres-v8.log || true
+          exit 1
 
   web-build:
     runs-on: ubuntu-latest
