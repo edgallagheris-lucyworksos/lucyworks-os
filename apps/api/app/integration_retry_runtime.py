@@ -16,22 +16,28 @@ def utc_now() -> datetime:
 
 @event.listens_for(OrmSession, "before_flush")
 def enqueue_failed_integration_envelopes(session: OrmSession, _flush_context, _instances) -> None:
-    """Create the durable retry/dead-letter record in the same transaction.
+    """Create retry/dead-letter records in the integration transaction.
 
-    This applies to webhook handling and any future integration importer; it does
-    not depend on an operator visiting the retry dashboard.
+    SQLModel rows are mutable and may be unhashable, so session collections must
+    never be converted to a set. Deduplication is performed by stable envelope
+    reference instead.
     """
 
     pending_refs = {
         row.envelope_ref
         for row in session.new
-        if isinstance(row, IntegrationRetryJob)
+        if isinstance(row, IntegrationRetryJob) and row.envelope_ref
     }
-    candidates = [
-        row
-        for row in {*session.new, *session.dirty}
-        if isinstance(row, IntegrationEnvelope) and row.status == "failed" and row.envelope_ref
-    ]
+    candidates: list[IntegrationEnvelope] = []
+    seen_refs: set[str] = set()
+    for row in [*list(session.new), *list(session.dirty)]:
+        if not isinstance(row, IntegrationEnvelope) or row.status != "failed" or not row.envelope_ref:
+            continue
+        if row.envelope_ref in seen_refs:
+            continue
+        seen_refs.add(row.envelope_ref)
+        candidates.append(row)
+
     for envelope in candidates:
         if envelope.envelope_ref in pending_refs:
             continue
@@ -52,3 +58,4 @@ def enqueue_failed_integration_envelopes(session: OrmSession, _flush_context, _i
                 last_error=envelope.error if retained else "payload not retained; source system must resend",
             )
         )
+        pending_refs.add(envelope.envelope_ref)
