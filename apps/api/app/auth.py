@@ -39,6 +39,7 @@ CLINICAL_ROLES = {
     "senior_clinician",
     "supervisor",
 }
+PRESCRIBER_ROLES = {"clinician", "clinical_director", "senior_clinician", "supervisor"}
 ALL_AUTHENTICATED_ROLES = ALLOWED_ROLES
 PUBLIC_PATHS = {
     "/",
@@ -252,8 +253,20 @@ def required_roles_for(method: str, path: str) -> set[str] | None:
         return ALL_AUTHENTICATED_ROLES
     if path.startswith("/api/integrations/connections") and write:
         return SENIOR_ROLES
+    if path.startswith("/api/v7/integration-retries") and write:
+        return SENIOR_ROLES
     if path.startswith("/api/integrations"):
         return ALL_AUTHENTICATED_ROLES
+    if path.startswith("/api/v7/shadow") and write:
+        return SENIOR_ROLES
+    if path.startswith("/api/v7/events"):
+        return ALL_AUTHENTICATED_ROLES
+    if path.startswith("/api/clinical-execution/medication-orders") and write:
+        return PRESCRIBER_ROLES
+    if path.startswith("/api/clinical-execution/controlled-drugs") and write:
+        return CLINICAL_ROLES | SENIOR_ROLES
+    if path.startswith("/api/clinical-execution"):
+        return CLINICAL_ROLES | SENIOR_ROLES
     if path.startswith("/api/evidence"):
         return ALL_AUTHENTICATED_ROLES
     if path.startswith("/api/patient-care") and write:
@@ -264,14 +277,7 @@ def required_roles_for(method: str, path: str) -> set[str] | None:
 
 
 class VerifiedIdentityMiddleware:
-    """Validate bearer identity before protected API routes execute.
-
-    AUTH_ENFORCEMENT=required protects every API route except the explicit
-    public set. In audit mode, legacy routes remain reachable, while the
-    evidence/control-plane/patient-care write surfaces are still protected.
-    Integration webhooks are exempt from bearer authentication only because
-    they perform their own timestamped HMAC verification.
-    """
+    """Validate bearer or secure server-side browser identity before API routes execute."""
 
     def __init__(self, app: Any):
         self.app = app
@@ -301,11 +307,20 @@ class VerifiedIdentityMiddleware:
                 auth = decode_access_token(authorization.split(" ", 1)[1].strip())
             except HTTPException as exc:
                 auth_error = exc
+        else:
+            try:
+                from app.auth_session_runtime import resolve_cookie_auth
+
+                cookie_auth = resolve_cookie_auth(headers.get("cookie", ""), headers.get("x-csrf-token"), method)
+                if cookie_auth:
+                    auth = cookie_auth
+            except HTTPException as exc:
+                auth_error = exc
 
         required_roles = required_roles_for(method, path)
         must_authenticate = required_roles is not None or (auth_enforcement() == "required" and path.startswith("/api/"))
         if must_authenticate and (auth_error or not auth.verified):
-            error = auth_error or HTTPException(status_code=401, detail="verified bearer token required")
+            error = auth_error or HTTPException(status_code=401, detail="verified identity required")
             response = JSONResponse({"detail": error.detail}, status_code=error.status_code)
             await response(scope, receive, send)
             return
