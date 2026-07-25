@@ -3,6 +3,7 @@ import { AuthGuard } from "@/components/auth-guard";
 
 const surfaces = [
   { href: "/hospital-board", title: "Hospital master grid", description: "Canonical 15-minute operating plan with physical areas, conflicts and versioned commands." },
+  { href: "/referral-intake", title: "Canonical referral intake", description: "Create the canonical episode once and manage the received, accepted, information-needed and declined referral worklist." },
   { href: "/episode-command", title: "Canonical episode command", description: "Referral acceptance, decision authority, consent, accountable handovers, evidence-gated phase transitions and closure." },
   { href: "/live-control", title: "Live control", description: "Durable realtime events, acknowledgement, escalation, integration retries and dead-letter recovery." },
   { href: "/shadow-mode", title: "Canonical Shadow Mode", description: "Compare external hospital state with canonical episodes and blocks using evidence-backed versioned review." },
