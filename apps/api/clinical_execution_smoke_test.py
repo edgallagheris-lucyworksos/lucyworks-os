@@ -90,10 +90,12 @@ try:
         })
         assert order.status_code == 200, order.text
         administration = order.json()["administrations"][0]
+        administration_ref = administration.get("administration_ref") or administration.get("administrationRef")
+        assert administration_ref, administration
 
-        no_witness = client.patch(f"/api/clinical-execution/administrations/{administration['administration_ref']}", headers=nurse, json={"expected_version": 1, "status": "administered", "dose_given": "1 mg", "reason": "test"})
+        no_witness = client.patch(f"/api/clinical-execution/administrations/{administration_ref}", headers=nurse, json={"expected_version": 1, "status": "administered", "dose_given": "1 mg", "reason": "test"})
         assert no_witness.status_code == 409, no_witness.text
-        given = client.patch(f"/api/clinical-execution/administrations/{administration['administration_ref']}", headers=nurse, json={
+        given = client.patch(f"/api/clinical-execution/administrations/{administration_ref}", headers=nurse, json={
             "expected_version": 1, "status": "administered", "dose_given": "1 mg", "route_used": "IV", "witness_subject": "local-user:3", "reason": "identity, medicine and dose checked"
         })
         assert given.status_code == 200, given.text
