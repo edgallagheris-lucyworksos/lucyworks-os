@@ -55,6 +55,28 @@ services:
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
 
+  integration-retry-worker:
+    build:
+      context: ../apps/api
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lucyworks}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lucyworks}
+      AUTO_CREATE_SCHEMA: "false"
+      RUN_MIGRATIONS_ON_START: "false"
+      INTEGRATION_RETRY_POLL_SECONDS: ${INTEGRATION_RETRY_POLL_SECONDS:-5}
+      INTEGRATION_RETRY_BATCH_SIZE: ${INTEGRATION_RETRY_BATCH_SIZE:-20}
+    command: ["python", "-m", "app.integration_retry_worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
   web:
     build:
       context: ..

@@ -6,8 +6,10 @@ from app import database_exception_handlers as _database_exception_handlers  # n
 from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noqa: F401
 from app import production_readiness_runtime_patch as _production_readiness_runtime_patch  # noqa: F401
 from app import bvs_v6_runtime_patch as _bvs_v6_runtime_patch  # noqa: F401
+from app import integration_retry_runtime as _integration_retry_runtime  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
 from app.production_middleware import ProductionProtectionMiddleware
+from app.legacy_write_retirement import LegacyWriteRetirementMiddleware
 from app.auth_routes import router as auth_router
 from app.v3_operational_routes import router as v3_operational_router
 from app.ops_engine_routes import router as ops_engine_router
@@ -56,14 +58,19 @@ from app.observability_routes import router as observability_router
 from app.hospital_intelligence_routes import router as hospital_intelligence_router
 from app.bvs_v6_routes import router as bvs_v6_router
 from app.bvs_v6_rota_routes import router as bvs_v6_rota_router
+from app.v7_realtime_routes import router as v7_realtime_router
+from app.v7_shadow_routes import router as v7_shadow_router
+from app.v7_integration_retry_routes import router as v7_integration_retry_router
+from app.clinical_execution_routes import router as clinical_execution_router
+from app.clinical_execution_governance_routes import router as clinical_execution_governance_router
+from app.clinical_execution_governance_dashboard_routes import router as clinical_execution_governance_dashboard_router
 from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
 
-# Only the named legacy smoke fixtures may bypass middleware. Production and
-# normal development must never set this variable.
 if os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() not in {"1", "true", "yes"}:
     app.add_middleware(VerifiedIdentityMiddleware)
+app.add_middleware(LegacyWriteRetirementMiddleware)
 app.add_middleware(ProductionProtectionMiddleware)
 
 app.include_router(auth_router)
@@ -114,3 +121,9 @@ app.include_router(observability_router)
 app.include_router(hospital_intelligence_router)
 app.include_router(bvs_v6_router)
 app.include_router(bvs_v6_rota_router)
+app.include_router(v7_realtime_router)
+app.include_router(v7_shadow_router)
+app.include_router(v7_integration_retry_router)
+app.include_router(clinical_execution_router)
+app.include_router(clinical_execution_governance_router)
+app.include_router(clinical_execution_governance_dashboard_router)

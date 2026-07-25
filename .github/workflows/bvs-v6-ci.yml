@@ -17,7 +17,6 @@ on:
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/BVS_CONFIGURATION_WORKFORCE_REFERRAL_RUNBOOK.md"
       - ".github/workflows/bvs-v6-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
   push:
     branches: [main, "feature/**"]
     paths:
@@ -35,7 +34,6 @@ on:
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/BVS_CONFIGURATION_WORKFORCE_REFERRAL_RUNBOOK.md"
       - ".github/workflows/bvs-v6-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
 
 jobs:
   api-and-migration:
@@ -60,7 +58,7 @@ jobs:
         run: python bvs_v6_rota_smoke_test.py
       - name: Run BVS claim evidence preservation test
         run: python bvs_v6_claim_evidence_smoke_test.py
-      - name: Verify SQLite migration 0007 and tables
+      - name: Verify BVS tables survive the current migration head
         env:
           DATABASE_URL: sqlite:////tmp/lucyworks-bvs-v6-migration.db
           AUTO_CREATE_SCHEMA: "false"
@@ -70,6 +68,7 @@ jobs:
           python - <<'PY'
           from sqlalchemy import inspect, text
           from app.database import engine
+
           tables = set(inspect(engine).get_table_names())
           required = {
               "hospitalconfigurationrecord", "configurationclaim", "configurationverificationtask",
@@ -81,8 +80,7 @@ jobs:
           assert not missing, sorted(missing)
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0007_bvs_config_workforce", version
-          print("BVS v6 SQLite migration verified", version)
+          print("BVS v6 tables verified at current schema head", version)
           PY
 
   web-build:

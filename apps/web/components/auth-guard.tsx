@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { getSession, saveSession, type SessionUser } from "@/lib/session";
+import { saveSession, type SessionUser } from "@/lib/session";
 
 type AuthGuardChildren = ReactNode | ((user: SessionUser) => ReactNode);
 
@@ -21,17 +21,12 @@ export function AuthGuard({
   useEffect(() => {
     let active = true;
     async function verify() {
-      const session = getSession();
-      if (!session) {
-        if (active) setLoading(false);
-        return;
-      }
       try {
         const response = await apiFetch("/api/auth/me", { cache: "no-store" });
         if (!response.ok) throw new Error(`identity verification failed: ${response.status}`);
         const data = await response.json();
         const verifiedUser = data.user as SessionUser;
-        saveSession(verifiedUser, session.token);
+        saveSession(verifiedUser);
         if (active) setUser(verifiedUser);
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : "identity verification failed");
@@ -43,7 +38,7 @@ export function AuthGuard({
     return () => { active = false; };
   }, []);
 
-  if (loading) return <main style={{ padding: 24 }}>Verifying identity...</main>;
+  if (loading) return <main style={{ padding: 24 }}>Verifying secure session...</main>;
 
   if (!user) {
     return (

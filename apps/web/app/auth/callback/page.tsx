@@ -33,13 +33,14 @@ export default function AuthCallbackPage() {
         const response = await fetch(`${API_BASE}/api/auth/oidc/exchange`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ code, code_verifier: pending.verifier, redirect_uri: pending.redirectUri }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `OIDC exchange failed: ${response.status}`);
-        saveSession(data.user as SessionUser, data.accessToken, data.expiresIn);
+        saveSession(data.user as SessionUser);
         if (active) {
-          setStatus("Identity verified. Opening LucyWorks...");
+          setStatus("Identity verified. Secure session created. Opening LucyWorks...");
           router.replace("/system-control");
         }
       } catch (error) {
