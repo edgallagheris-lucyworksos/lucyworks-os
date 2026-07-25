@@ -67,6 +67,7 @@ from app.clinical_execution_governance_dashboard_routes import router as clinica
 from app.detailed_hospital_routes import router as detailed_hospital_router
 from app.detailed_hospital_completion_routes import router as detailed_hospital_completion_router
 from app.hospital_command_routes import router as hospital_command_router
+from app.hospital_command_intake_routes import router as hospital_command_intake_router
 from app import hospital_command_hardening as _hospital_command_hardening  # noqa: F401
 from app import detailed_hospital_serialization_patch as _detailed_hospital_serialization_patch  # noqa: F401
 from app import auth as auth_module
@@ -135,3 +136,4 @@ app.include_router(clinical_execution_governance_dashboard_router)
 app.include_router(detailed_hospital_router)
 app.include_router(detailed_hospital_completion_router)
 app.include_router(hospital_command_router)
+app.include_router(hospital_command_intake_router)
