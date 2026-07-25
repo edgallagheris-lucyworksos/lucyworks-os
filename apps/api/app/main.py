@@ -66,6 +66,7 @@ from app.clinical_execution_governance_routes import router as clinical_executio
 from app.clinical_execution_governance_dashboard_routes import router as clinical_execution_governance_dashboard_router
 from app.detailed_hospital_routes import router as detailed_hospital_router
 from app.detailed_hospital_completion_routes import router as detailed_hospital_completion_router
+from app import detailed_hospital_serialization_patch as _detailed_hospital_serialization_patch  # noqa: F401
 from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
