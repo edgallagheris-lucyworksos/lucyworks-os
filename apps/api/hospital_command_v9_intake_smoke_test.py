@@ -112,10 +112,12 @@ try:
         assert detail.json()["patient"]["display_name"] == "Queue Cat"
         assert detail.json()["episode"]["episode_ref"] == "EP-V9-Q-2"
 
-        denied = client.get("/api/v9/referrals", headers={})
+    with TestClient(app) as anonymous_client:
+        anonymous_client.cookies.clear()
+        denied = anonymous_client.get("/api/v9/referrals")
         assert denied.status_code == 401, denied.text
 
-        print("Canonical referral intake queue, filters and detail v9 OK")
+    print("Canonical referral intake queue, filters, detail and authentication v9 OK")
 finally:
     if TEST_DB.exists():
         TEST_DB.unlink()
