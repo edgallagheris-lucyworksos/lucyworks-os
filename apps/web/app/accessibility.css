@@ -1,0 +1,73 @@
+/* LucyWorks mobile and accessibility safety baseline */
+:focus-visible {
+  outline: 3px solid #2dd4bf !important;
+  outline-offset: 3px;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button,
+a[role="button"] {
+  -webkit-tap-highlight-color: rgba(45, 212, 191, .25);
+}
+
+[aria-live="polite"],
+[aria-live="assertive"] {
+  overflow-wrap: anywhere;
+}
+
+pre,
+code,
+table {
+  max-width: 100%;
+}
+
+.skip-link {
+  position: fixed;
+  left: 8px;
+  top: -60px;
+  z-index: 9999;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #020617;
+  font-weight: 900;
+}
+
+.skip-link:focus { top: 8px; }
+
+@media (max-width: 720px) {
+  body { overflow-x: hidden; }
+  main { width: 100%; }
+  button, a, input, select, textarea { font-size: 16px; }
+  button, a[role="button"] { min-height: 48px; }
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  pre { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  button, input, select, textarea, article, section { border: 1px solid CanvasText !important; }
+}
