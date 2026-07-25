@@ -17,6 +17,9 @@ RETIRED_WRITES = {
 RETIRED_PREFIX_WRITES = {
     ("PATCH", "/api/clinical-execution/discharge-plans/"): "/api/clinical-execution/governed/discharge-plans/{plan_ref}",
 }
+RETIRED_READS = {
+    "/api/episode-state-machine": "/api/v9/episode-state-machine",
+}
 RETIRED_READ_PREFIXES = {
     "/api/shadow-mode": "/api/v7/shadow",
     "/api/realtime": "/api/v7/events",
@@ -34,6 +37,8 @@ def replacement_for(method: str, path: str) -> str | None:
     exact = RETIRED_WRITES.get(path)
     if exact:
         return exact
+    if method == "POST" and path.startswith("/api/episodes/") and path.endswith("/transition"):
+        return "/api/v9/episodes/{episode_ref}/transition"
     for (candidate_method, prefix), replacement in RETIRED_PREFIX_WRITES.items():
         if method == candidate_method and path.startswith(prefix):
             return replacement
@@ -66,15 +71,24 @@ class LegacyWriteRetirementMiddleware:
 
         async def send_with_deprecation(message: dict[str, Any]) -> None:
             if message.get("type") == "http.response.start":
-                for prefix, successor in RETIRED_READ_PREFIXES.items():
-                    if path.startswith(prefix):
-                        headers = list(message.get("headers") or [])
-                        headers.extend([
-                            (b"deprecation", b"true"),
-                            (b"link", f'<{successor}>; rel="successor-version"'.encode("utf-8")),
-                        ])
-                        message["headers"] = headers
-                        break
+                successor = RETIRED_READS.get(path)
+                if successor:
+                    headers = list(message.get("headers") or [])
+                    headers.extend([
+                        (b"deprecation", b"true"),
+                        (b"link", f'<{successor}>; rel="successor-version"'.encode("utf-8")),
+                    ])
+                    message["headers"] = headers
+                else:
+                    for prefix, successor in RETIRED_READ_PREFIXES.items():
+                        if path.startswith(prefix):
+                            headers = list(message.get("headers") or [])
+                            headers.extend([
+                                (b"deprecation", b"true"),
+                                (b"link", f'<{successor}>; rel="successor-version"'.encode("utf-8")),
+                            ])
+                            message["headers"] = headers
+                            break
             await send(message)
 
         await self.app(scope, receive, send_with_deprecation)
