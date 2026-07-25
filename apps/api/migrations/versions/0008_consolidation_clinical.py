@@ -21,7 +21,7 @@ from app.clinical_execution_models import (
     SampleChainEvent,
     TreatmentTask,
 )
-from app.v7_models import AuthSession, CanonicalShadowComparison, DurableEvent, IntegrationRetryJob, LegacyWriteRetirement
+from app.v7_models import AuthSession, CanonicalShadowComparison, DurableEvent, EventAcknowledgement, IntegrationRetryJob, LegacyWriteRetirement
 
 revision: str = "0008_consolidation_clinical"
 down_revision: Union[str, None] = "0007_bvs_config_workforce"
@@ -34,6 +34,7 @@ def upgrade() -> None:
     for table in (
         AuthSession.__table__,
         DurableEvent.__table__,
+        EventAcknowledgement.__table__,
         CanonicalShadowComparison.__table__,
         IntegrationRetryJob.__table__,
         LegacyWriteRetirement.__table__,
