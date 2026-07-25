@@ -177,7 +177,10 @@ async def stream_events(request: Request, after_sequence: int):
             for row in rows:
                 cursor = row.sequence
                 yield f"id: {row.sequence}\n"
-                yield f"event: {row.event_type}\n"
+                # Use the standard message channel so every event type is
+                # delivered without the browser having to pre-register names.
+                # The actual domain type remains in data.eventType.
+                yield "event: message\n"
                 yield f"data: {json.dumps(event_dict(row), default=str)}\n\n"
             last_keepalive = utc_now()
             continue
