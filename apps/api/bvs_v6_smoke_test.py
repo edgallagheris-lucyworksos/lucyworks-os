@@ -36,12 +36,12 @@ def login(client: TestClient, user_id: int) -> dict[str, str]:
 
 try:
     with TestClient(app) as client:
+        unauthenticated = client.get("/api/bvs-v6/dashboard")
+        assert unauthenticated.status_code == 401, unauthenticated.text
+
         ops = login(client, 1)
         clinician = login(client, 3)
         admin = login(client, 4)
-
-        unauthenticated = client.get("/api/bvs-v6/dashboard")
-        assert unauthenticated.status_code == 401, unauthenticated.text
 
         denied = client.post("/api/bvs-v6/bootstrap", headers=clinician)
         assert denied.status_code == 403, denied.text
