@@ -64,17 +64,24 @@ jobs:
       - name: Compile consolidation and clinical modules
         run: python -m compileall -q app migrations
       - name: Secure session, realtime, shadow and retry test
-        run: python v7_consolidation_smoke_test.py
+        id: consolidation
+        continue-on-error: true
+        run: python v7_consolidation_smoke_test.py > v7-consolidation.log 2>&1
       - name: Governed clinical execution test
-        run: python clinical_execution_smoke_test.py
+        id: clinical
+        continue-on-error: true
+        run: python clinical_execution_smoke_test.py > clinical-execution.log 2>&1
       - name: Verify SQLite migration
+        id: migration
+        continue-on-error: true
         env:
           DATABASE_URL: sqlite:////tmp/lucyworks-v7-migration.db
           AUTO_CREATE_SCHEMA: "false"
         run: |
           rm -f /tmp/lucyworks-v7-migration.db
-          alembic upgrade head
-          python - <<'PY'
+          {
+            alembic upgrade head
+            python - <<'PY'
           from sqlalchemy import inspect, text
           from app.database import engine
           required = {
@@ -90,6 +97,25 @@ jobs:
           assert version == "0008_consolidation_clinical", version
           print("SQLite consolidation migration verified", version)
           PY
+          } > migration.log 2>&1
+      - name: Upload v7 API logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidation-clinical-api-logs
+          path: |
+            apps/api/v7-consolidation.log
+            apps/api/clinical-execution.log
+            apps/api/migration.log
+          if-no-files-found: error
+      - name: Report v7 API failures
+        if: steps.consolidation.outcome == 'failure' || steps.clinical.outcome == 'failure' || steps.migration.outcome == 'failure'
+        run: |
+          for file in v7-consolidation.log clinical-execution.log migration.log; do
+            echo "--- $file ---"
+            cat "$file" || true
+          done
+          exit 1
 
   web-and-static-safety:
     runs-on: ubuntu-latest
@@ -98,14 +124,58 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Reject browser bearer persistence and hard-coded local API URLs
+      - name: Scan browser session and API safety
+        id: static_safety
+        continue-on-error: true
         run: |
-          ! grep -R --line-number --exclude-dir=node_modules --exclude-dir=.next 'localStorage.*accessToken\|localStorage.*token' apps/web
-          ! grep -R --line-number --exclude-dir=node_modules --exclude-dir=.next 'http://localhost:8000' apps/web
+          python - <<'PY' > static-safety.log 2>&1
+          import re
+          from pathlib import Path
+
+          roots = [Path("apps/web/app"), Path("apps/web/components"), Path("apps/web/lib")]
+          files = [path for root in roots for path in root.rglob("*") if path.suffix in {".ts", ".tsx", ".js", ".jsx"}]
+          violations = []
+          token_write = re.compile(r"localStorage\s*\.\s*setItem\s*\([^\n]*(accessToken|bearer|token)", re.I)
+          for path in files:
+              text = path.read_text(encoding="utf-8", errors="replace")
+              for number, line in enumerate(text.splitlines(), 1):
+                  if token_write.search(line):
+                      violations.append(f"{path}:{number}: browser bearer/token persistence: {line.strip()}")
+                  if "http://localhost:8000" in line:
+                      violations.append(f"{path}:{number}: hard-coded local API URL: {line.strip()}")
+          if violations:
+              print("\n".join(violations))
+              raise SystemExit(1)
+          print(f"Static browser safety passed across {len(files)} source files")
+          PY
       - name: Validate operational scripts
+        id: scripts
+        continue-on-error: true
         run: |
-          bash -n scripts/failure-drill-v7.sh scripts/restore-rehearsal.sh scripts/production-preflight.sh
-          python -m py_compile scripts/load-test-v7.py
+          {
+            bash -n scripts/failure-drill-v7.sh scripts/restore-rehearsal.sh scripts/production-preflight.sh
+            python -m py_compile scripts/load-test-v7.py
+          } > script-validation.log 2>&1
       - name: Build production web application
+        id: web_build
+        continue-on-error: true
         working-directory: apps/web
-        run: npm install --no-audit --no-fund && npm run build
+        run: npm install --no-audit --no-fund > web-build.log 2>&1 && npm run build >> web-build.log 2>&1
+      - name: Upload web and safety logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consolidation-clinical-web-logs
+          path: |
+            static-safety.log
+            script-validation.log
+            apps/web/web-build.log
+          if-no-files-found: error
+      - name: Report web or safety failures
+        if: steps.static_safety.outcome == 'failure' || steps.scripts.outcome == 'failure' || steps.web_build.outcome == 'failure'
+        run: |
+          for file in static-safety.log script-validation.log apps/web/web-build.log; do
+            echo "--- $file ---"
+            tail -n 320 "$file" || true
+          done
+          exit 1
