@@ -9,7 +9,9 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/web/app/episode-command/**"
+      - "apps/web/app/referral-intake/**"
       - "apps/web/components/hospital-command-workspace.tsx"
+      - "apps/web/components/referral-intake-workspace.tsx"
       - "apps/web/app/system-control/page.tsx"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/HOSPITAL_COMMAND_SPINE_V9_RUNBOOK.md"
@@ -24,7 +26,9 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/web/app/episode-command/**"
+      - "apps/web/app/referral-intake/**"
       - "apps/web/components/hospital-command-workspace.tsx"
+      - "apps/web/components/referral-intake-workspace.tsx"
       - "apps/web/app/system-control/page.tsx"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/HOSPITAL_COMMAND_SPINE_V9_RUNBOOK.md"
@@ -55,6 +59,10 @@ jobs:
         id: hardening
         continue-on-error: true
         run: python hospital_command_v9_hardening_smoke_test.py > hospital-command-v9-hardening.log 2>&1
+      - name: Run canonical referral intake queue validation
+        id: intake
+        continue-on-error: true
+        run: python hospital_command_v9_intake_smoke_test.py > hospital-command-v9-intake.log 2>&1
       - name: Verify SQLite migration 0010
         id: migration
         continue-on-error: true
@@ -88,12 +96,13 @@ jobs:
           path: |
             apps/api/hospital-command-v9.log
             apps/api/hospital-command-v9-hardening.log
+            apps/api/hospital-command-v9-intake.log
             apps/api/command-migration.log
           if-no-files-found: error
       - name: Report command API failure
-        if: steps.command_spine.outcome == 'failure' || steps.hardening.outcome == 'failure' || steps.migration.outcome == 'failure'
+        if: steps.command_spine.outcome == 'failure' || steps.hardening.outcome == 'failure' || steps.intake.outcome == 'failure' || steps.migration.outcome == 'failure'
         run: |
-          for file in hospital-command-v9.log hospital-command-v9-hardening.log command-migration.log; do
+          for file in hospital-command-v9.log hospital-command-v9-hardening.log hospital-command-v9-intake.log command-migration.log; do
             echo "--- $file ---"
             cat "$file" || true
           done
@@ -176,5 +185,5 @@ jobs:
         with:
           node-version: "20"
       - run: npm install --no-audit --no-fund
-      - name: Build hospital command workspace
+      - name: Build hospital command and referral intake workspaces
         run: npm run build
