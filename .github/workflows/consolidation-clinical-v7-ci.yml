@@ -1,0 +1,111 @@
+name: Consolidation and Clinical Execution v7 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/auth*.py"
+      - "apps/api/app/v7_*.py"
+      - "apps/api/app/clinical_execution*.py"
+      - "apps/api/app/integration_retry_runtime.py"
+      - "apps/api/app/legacy_write_retirement.py"
+      - "apps/api/v7_*.py"
+      - "apps/api/clinical_execution_smoke_test.py"
+      - "apps/api/migrations/versions/0008_*.py"
+      - "apps/web/app/live-control/**"
+      - "apps/web/app/shadow-mode/**"
+      - "apps/web/app/clinical-execution/**"
+      - "apps/web/app/login/**"
+      - "apps/web/app/auth/**"
+      - "apps/web/lib/api*.ts"
+      - "apps/web/lib/session.ts"
+      - "apps/web/components/auth-guard.tsx"
+      - "scripts/load-test-v7.py"
+      - "scripts/failure-drill-v7.sh"
+      - ".github/workflows/consolidation-clinical-v7-ci.yml"
+      - ".github/workflows/control-spine-ci.yml"
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "apps/api/app/auth*.py"
+      - "apps/api/app/v7_*.py"
+      - "apps/api/app/clinical_execution*.py"
+      - "apps/api/app/integration_retry_runtime.py"
+      - "apps/api/app/legacy_write_retirement.py"
+      - "apps/api/v7_*.py"
+      - "apps/api/clinical_execution_smoke_test.py"
+      - "apps/api/migrations/versions/0008_*.py"
+      - "apps/web/app/live-control/**"
+      - "apps/web/app/shadow-mode/**"
+      - "apps/web/app/clinical-execution/**"
+      - "apps/web/app/login/**"
+      - "apps/web/app/auth/**"
+      - "apps/web/lib/api*.ts"
+      - "apps/web/lib/session.ts"
+      - "apps/web/components/auth-guard.tsx"
+      - "scripts/load-test-v7.py"
+      - "scripts/failure-drill-v7.sh"
+      - ".github/workflows/consolidation-clinical-v7-ci.yml"
+      - ".github/workflows/control-spine-ci.yml"
+
+jobs:
+  api-sqlite:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile consolidation and clinical modules
+        run: python -m compileall -q app migrations
+      - name: Secure session, realtime, shadow and retry test
+        run: python v7_consolidation_smoke_test.py
+      - name: Governed clinical execution test
+        run: python clinical_execution_smoke_test.py
+      - name: Verify SQLite migration
+        env:
+          DATABASE_URL: sqlite:////tmp/lucyworks-v7-migration.db
+          AUTO_CREATE_SCHEMA: "false"
+        run: |
+          rm -f /tmp/lucyworks-v7-migration.db
+          alembic upgrade head
+          python - <<'PY'
+          from sqlalchemy import inspect, text
+          from app.database import engine
+          required = {
+              "authsession", "durableevent", "eventacknowledgement", "canonicalshadowcomparison",
+              "integrationretryjob", "legacywriteretirement", "medicationorder", "medicationadministration",
+              "anaesthesiarecord", "clinicalobservation", "treatmenttask", "controlleddrugledgerentry",
+              "inventoryitem", "inventorymovement", "diagnosticworkitem", "samplechainevent", "dischargeplan",
+          }
+          missing = required - set(inspect(engine).get_table_names())
+          assert not missing, sorted(missing)
+          with engine.connect() as connection:
+              version = connection.execute(text("select version_num from alembic_version")).scalar_one()
+          assert version == "0008_consolidation_clinical", version
+          print("SQLite consolidation migration verified", version)
+          PY
+
+  web-and-static-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Reject browser bearer persistence and hard-coded local API URLs
+        run: |
+          ! grep -R --line-number --exclude-dir=node_modules --exclude-dir=.next 'localStorage.*accessToken\|localStorage.*token' apps/web
+          ! grep -R --line-number --exclude-dir=node_modules --exclude-dir=.next 'http://localhost:8000' apps/web
+      - name: Validate operational scripts
+        run: |
+          bash -n scripts/failure-drill-v7.sh scripts/restore-rehearsal.sh scripts/production-preflight.sh
+          python -m py_compile scripts/load-test-v7.py
+      - name: Build production web application
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund && npm run build
