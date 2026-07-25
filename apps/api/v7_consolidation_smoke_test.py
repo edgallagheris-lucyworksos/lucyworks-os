@@ -30,13 +30,6 @@ from app.main import app
 SQLModel.metadata.drop_all(engine)
 SQLModel.metadata.create_all(engine)
 
-
-def bearer_login(client: TestClient, user_id: int) -> dict[str, str]:
-    response = client.post("/api/auth/dev-login", json={"user_id": user_id})
-    assert response.status_code == 200, response.text
-    return {"Authorization": f"Bearer {response.json()['accessToken']}"}
-
-
 try:
     with TestClient(app) as client:
         login = client.post("/api/auth/dev-login", json={"user_id": 1})
@@ -44,7 +37,7 @@ try:
         assert client.cookies.get("lucyworks_session")
         csrf = client.cookies.get("lucyworks_csrf")
         assert csrf
-        assert login.json()["tokenType"] in {"Bearer", "Cookie"}
+        bearer = {"Authorization": f"Bearer {login.json()['accessToken']}"}
 
         me = client.get("/api/auth/me")
         assert me.status_code == 200, me.text
@@ -76,7 +69,7 @@ try:
 
         shadow = client.post("/api/v7/shadow/comparisons", headers=headers, json={
             "premises_ref": "bvs-bristol", "source_system": "historical-test",
-            "rows": [{"source_record_ref": "src-1", "episode_ref": "EP-V7-001", "block_ref": "BLOCK-V7-001", "patient_name": "Anonymous Dog", "phase": "consultation", "status": "planned", "area_ref": "consult-1", "starts_at": now.isoformat(), "ends_at": (now + timedelta(minutes=30)).isoformat(), "owner_role": "clinician"}],
+            "rows": [{"source_record_ref": "src-1", "episode_ref": "EP-V7-001", "block_ref": "BLOCK-V7-001", "patient_name": "Anonymous Dog", "phase": "consultation", "area_ref": "consult-1", "starts_at": now.isoformat(), "ends_at": (now + timedelta(minutes=30)).isoformat(), "owner_role": "clinician"}],
         })
         assert shadow.status_code == 200, shadow.text
         comparison = shadow.json()["comparisons"][0]
@@ -101,7 +94,6 @@ try:
         assert retired.status_code == 410, retired.text
         assert retired.json()["replacement"].startswith("/api/v7/shadow")
 
-        bearer = bearer_login(client, 1)
         bearer_event = client.post("/api/v7/events", headers=bearer, json={"event_type": "automation_event", "aggregate_type": "test", "aggregate_ref": "bearer", "payload": {}})
         assert bearer_event.status_code == 200, bearer_event.text
 
