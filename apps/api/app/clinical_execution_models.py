@@ -13,7 +13,6 @@ def utc_now() -> datetime:
 
 class MedicationOrder(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("order_ref", name="uq_medicationorder_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     order_ref: str = Field(index=True)
     episode_ref: str = Field(index=True)
@@ -38,7 +37,6 @@ class MedicationOrder(SQLModel, table=True):
 
 class MedicationAdministration(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("administration_ref", name="uq_medicationadministration_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     administration_ref: str = Field(index=True)
     order_ref: str = Field(index=True)
@@ -59,7 +57,6 @@ class MedicationAdministration(SQLModel, table=True):
 
 class AnaesthesiaRecord(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("record_ref", name="uq_anaesthesiarecord_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     record_ref: str = Field(index=True)
     episode_ref: str = Field(index=True)
@@ -83,7 +80,6 @@ class AnaesthesiaRecord(SQLModel, table=True):
 
 class ClinicalObservation(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("observation_ref", name="uq_clinicalobservation_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     observation_ref: str = Field(index=True)
     episode_ref: str = Field(index=True)
@@ -93,15 +89,19 @@ class ClinicalObservation(SQLModel, table=True):
     concern_level: str = Field(default="green", index=True)
     escalation_required: bool = False
     escalation_status: str = Field(default="not_required", index=True)
+    escalated_to_role: Optional[str] = Field(default=None, index=True)
+    escalation_note: Optional[str] = None
+    resolved_by_subject: Optional[str] = Field(default=None, index=True)
+    resolved_at: Optional[datetime] = Field(default=None, index=True)
     recorded_by_subject: str = Field(index=True)
     recorded_by_name: str
     recorded_at: datetime = Field(default_factory=utc_now, index=True)
+    version: int = 1
     evidence_event_ref: Optional[str] = Field(default=None, index=True)
 
 
 class TreatmentTask(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("task_ref", name="uq_treatmenttask_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     task_ref: str = Field(index=True)
     episode_ref: str = Field(index=True)
@@ -122,7 +122,6 @@ class TreatmentTask(SQLModel, table=True):
 
 class ControlledDrugLedgerEntry(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("entry_ref", name="uq_controlleddrugentry_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     entry_ref: str = Field(index=True)
     medication_ref: str = Field(index=True)
@@ -139,13 +138,16 @@ class ControlledDrugLedgerEntry(SQLModel, table=True):
     witness_name: Optional[str] = None
     discrepancy: bool = False
     discrepancy_status: str = Field(default="none", index=True)
+    discrepancy_resolution: Optional[str] = None
+    discrepancy_resolved_by_subject: Optional[str] = Field(default=None, index=True)
+    discrepancy_resolved_at: Optional[datetime] = Field(default=None, index=True)
+    version: int = 1
     created_at: datetime = Field(default_factory=utc_now, index=True)
     evidence_event_ref: Optional[str] = Field(default=None, index=True)
 
 
 class InventoryItem(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("item_ref", name="uq_inventoryitem_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     item_ref: str = Field(index=True)
     name: str
@@ -161,9 +163,25 @@ class InventoryItem(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now, index=True)
 
 
+class InventoryMovement(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("movement_ref", name="uq_inventorymovement_ref"),)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    movement_ref: str = Field(index=True)
+    item_ref: str = Field(index=True)
+    movement_type: str = Field(index=True)
+    quantity_change: float
+    previous_quantity: float
+    new_quantity: float
+    reason: str
+    episode_ref: Optional[str] = Field(default=None, index=True)
+    actor_subject: str = Field(index=True)
+    actor_name: str
+    created_at: datetime = Field(default_factory=utc_now, index=True)
+    evidence_event_ref: Optional[str] = Field(default=None, index=True)
+
+
 class DiagnosticWorkItem(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("work_ref", name="uq_diagnosticwork_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     work_ref: str = Field(index=True)
     episode_ref: str = Field(index=True)
@@ -185,7 +203,6 @@ class DiagnosticWorkItem(SQLModel, table=True):
 
 class SampleChainEvent(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("event_ref", name="uq_samplechainevent_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     event_ref: str = Field(index=True)
     specimen_ref: str = Field(index=True)
@@ -200,7 +217,6 @@ class SampleChainEvent(SQLModel, table=True):
 
 class DischargePlan(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("plan_ref", name="uq_dischargeplan_ref"),)
-
     id: Optional[int] = Field(default=None, primary_key=True)
     plan_ref: str = Field(index=True)
     episode_ref: str = Field(index=True)
@@ -210,7 +226,9 @@ class DischargePlan(SQLModel, table=True):
     follow_up: str = ""
     warning_signs: str = ""
     referring_vet_report_status: str = Field(default="not_started", index=True)
+    referring_vet_report_evidence_ref: Optional[str] = Field(default=None, index=True)
     owner_communication_status: str = Field(default="not_started", index=True)
+    owner_communication_evidence_ref: Optional[str] = Field(default=None, index=True)
     approved_by_subject: Optional[str] = Field(default=None, index=True)
     approved_by_name: Optional[str] = None
     approved_at: Optional[datetime] = Field(default=None, index=True)
