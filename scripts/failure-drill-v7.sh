@@ -15,7 +15,8 @@ BASE_URL="${LUCYWORKS_BASE_URL:-https://${PUBLIC_DOMAIN:-}}"
 
 COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$DEPLOY_DIR/docker-compose.production.yml")
 COOKIE_JAR="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR"' EXIT
+AFTER_FILE="$(mktemp)"
+trap 'rm -f "$COOKIE_JAR" "$AFTER_FILE"' EXIT
 
 health() {
   curl --fail --silent --show-error "$BASE_URL/api/health/ready"
@@ -55,11 +56,13 @@ for _ in $(seq 1 60); do
 done
 health >/dev/null || { echo "API did not recover within the drill window" >&2; exit 1; }
 
-after="$(curl --fail --silent --show-error -b "$COOKIE_JAR" "$BASE_URL/api/v7/events?after_sequence=$before_sequence&limit=100")"
-python - "$checkpoint" <<'PY' <<<"$after"
+curl --fail --silent --show-error -b "$COOKIE_JAR" \
+  "$BASE_URL/api/v7/events?after_sequence=$before_sequence&limit=100" >"$AFTER_FILE"
+python - "$checkpoint" "$AFTER_FILE" <<'PY'
 import json, sys
 expected = int(sys.argv[1])
-payload = json.load(sys.stdin)
+with open(sys.argv[2], encoding="utf-8") as handle:
+    payload = json.load(handle)
 sequences = [row["sequence"] for row in payload.get("events", [])]
 assert expected in sequences, (expected, sequences)
 print("Durable event replay after API restart passed", expected)
