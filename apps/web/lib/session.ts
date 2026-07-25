@@ -12,17 +12,20 @@ export type SessionUser = {
 
 export type LucyWorksSession = {
   user: SessionUser;
-  token: string;
   expiresAt: string | null;
+  /** Compatibility only. Browser bearer tokens are no longer persisted. */
+  token?: undefined;
 };
 
-const SESSION_KEY = "lucyworks_session";
+const SESSION_KEY = "lucyworks_session_user";
 
-export function saveSession(user: SessionUser, token: string, expiresInSeconds?: number | null) {
+export function saveSession(user: SessionUser, _legacyToken?: string, expiresInSeconds?: number | null) {
   if (typeof window === "undefined") return;
   const expiresAt = user.expiresAt || (expiresInSeconds ? new Date(Date.now() + expiresInSeconds * 1000).toISOString() : null);
   const normalisedUser: SessionUser = { ...user, email: user.email || undefined, expiresAt };
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify({ user: normalisedUser, token, expiresAt }));
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify({ user: normalisedUser, expiresAt }));
+  // Remove the former bearer-token storage key during migration.
+  window.localStorage.removeItem("lucyworks_session");
 }
 
 export function getSession(): LucyWorksSession | null {
@@ -31,7 +34,7 @@ export function getSession(): LucyWorksSession | null {
   if (!raw) return null;
   try {
     const session = JSON.parse(raw) as LucyWorksSession;
-    if (!session?.token || !session?.user) throw new Error("invalid session");
+    if (!session?.user) throw new Error("invalid session cache");
     if (session.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()) {
       clearSession();
       return null;
@@ -46,4 +49,5 @@ export function getSession(): LucyWorksSession | null {
 export function clearSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(SESSION_KEY);
+  window.localStorage.removeItem("lucyworks_session");
 }
