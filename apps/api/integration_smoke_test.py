@@ -58,11 +58,12 @@ def signed_webhook(client: TestClient, connection_ref: str, secret: str, payload
 
 try:
     with TestClient(app) as client:
+        unauthenticated = client.post("/api/integrations/connections", json={})
+        assert unauthenticated.status_code == 401, unauthenticated.text
+
         senior_headers = login(client, 1)
         clinician_headers = login(client, 3)
 
-        unauthenticated = client.post("/api/integrations/connections", json={})
-        assert unauthenticated.status_code == 401, unauthenticated.text
         blocked = client.post("/api/integrations/connections", headers=clinician_headers, json={})
         assert blocked.status_code == 403, blocked.text
         print("Integration administration role guard OK")
