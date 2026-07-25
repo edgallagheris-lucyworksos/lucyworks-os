@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Sequence, Union
 
 from alembic import op
-
 from app.hospital_ops_models import (
     BoardChangeEvent,
     CanonicalEpisodeState,
@@ -31,6 +30,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     bind = op.get_bind()
+    # Alembic creates version_num as VARCHAR(32) by default. This revision ID is
+    # longer than 32 characters, so a completely fresh PostgreSQL database would
+    # otherwise fail after the upgrade body when Alembic records this revision.
+    # Widen the control column before Alembic updates it. Existing databases at a
+    # later revision are unaffected because this code only runs during 0004.
+    if bind.dialect.name == "postgresql":
+        op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
     for table in (
         HospitalPremises.__table__,
         OperationalArea.__table__,
