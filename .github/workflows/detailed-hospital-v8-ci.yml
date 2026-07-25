@@ -4,9 +4,12 @@ on:
   pull_request:
     paths:
       - "apps/api/app/detailed_hospital_*.py"
-      - "apps/api/detailed_hospital_v8_smoke_test.py"
+      - "apps/api/detailed_hospital*_smoke_test.py"
       - "apps/api/migrations/versions/0009_*.py"
+      - "apps/api/migrations/versions/0004_*.py"
       - "apps/api/app/main.py"
+      - "apps/api/app/legacy_write_retirement.py"
+      - "apps/api/clinical_execution_smoke_test.py"
       - "apps/web/app/patient-record/**"
       - "apps/web/components/detailed-patient-record-workspace.tsx"
       - "apps/web/app/system-control/page.tsx"
@@ -18,9 +21,12 @@ on:
     branches: [main, "feature/**"]
     paths:
       - "apps/api/app/detailed_hospital_*.py"
-      - "apps/api/detailed_hospital_v8_smoke_test.py"
+      - "apps/api/detailed_hospital*_smoke_test.py"
       - "apps/api/migrations/versions/0009_*.py"
+      - "apps/api/migrations/versions/0004_*.py"
       - "apps/api/app/main.py"
+      - "apps/api/app/legacy_write_retirement.py"
+      - "apps/api/clinical_execution_smoke_test.py"
       - "apps/web/app/patient-record/**"
       - "apps/web/components/detailed-patient-record-workspace.tsx"
       - "apps/web/app/system-control/page.tsx"
@@ -49,6 +55,10 @@ jobs:
         id: journey
         continue-on-error: true
         run: python detailed_hospital_v8_smoke_test.py > detailed-v8.log 2>&1
+      - name: Run connected prescribing, anaesthesia transition and document-delivery gates
+        id: completion
+        continue-on-error: true
+        run: python detailed_hospital_completion_smoke_test.py > detailed-completion.log 2>&1
       - name: Verify SQLite migration 0009
         id: migration
         continue-on-error: true
@@ -86,15 +96,16 @@ jobs:
           name: detailed-hospital-v8-api-logs
           path: |
             apps/api/detailed-v8.log
+            apps/api/detailed-completion.log
             apps/api/migration.log
           if-no-files-found: error
       - name: Report detailed API failure
-        if: steps.journey.outcome == 'failure' || steps.migration.outcome == 'failure'
+        if: steps.journey.outcome == 'failure' || steps.completion.outcome == 'failure' || steps.migration.outcome == 'failure'
         run: |
-          echo "--- detailed journey ---"
-          cat detailed-v8.log || true
-          echo "--- migration ---"
-          cat migration.log || true
+          for file in detailed-v8.log detailed-completion.log migration.log; do
+            echo "--- $file ---"
+            cat "$file" || true
+          done
           exit 1
 
   postgres-schema:
