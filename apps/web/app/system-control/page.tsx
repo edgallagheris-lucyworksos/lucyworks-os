@@ -5,6 +5,7 @@ const surfaces = [
   { href: "/hospital-board", title: "Hospital master grid", description: "Canonical 15-minute operating plan with physical areas, conflicts and versioned commands." },
   { href: "/live-control", title: "Live control", description: "Durable realtime events, acknowledgement, escalation, integration retries and dead-letter recovery." },
   { href: "/shadow-mode", title: "Canonical Shadow Mode", description: "Compare external hospital state with canonical episodes and blocks using evidence-backed versioned review." },
+  { href: "/patient-record", title: "Longitudinal patient record", description: "Patient and owner identity, history, medication safety, anaesthesia, inpatient care, procedures, finance, communication and documents." },
   { href: "/clinical-execution", title: "Clinical execution", description: "Medication, anaesthesia, inpatient observations, treatment tasks, diagnostics, pharmacy and discharge gates." },
   { href: "/hospital-episodes", title: "Referral episodes", description: "Intake, ownership, governance gates and controlled phase transitions from referral to closure." },
   { href: "/patient-care", title: "Patient care evidence", description: "Consent, estimates, case communication, clinical/admin decisions and evidence timeline." },
@@ -26,7 +27,7 @@ export default function SystemControlPage() {
       <header style={{ background: "#071019", color: "white", borderRadius: 18, padding: 18 }}>
         <span style={{ color: "#2dd4bf", fontSize: 11, fontWeight: 900, letterSpacing: ".13em", textTransform: "uppercase" }}>LucyWorks OS</span>
         <h1 style={{ fontSize: "clamp(38px, 8vw, 72px)", lineHeight: .93, margin: "7px 0" }}>System control</h1>
-        <p style={{ color: "#94a3b8", maxWidth: 850 }}>The hospital board remains the canonical operating plan. Live control, clinical execution, governance, configuration, workforce and integrations now use the same verified identity and evidence boundaries.</p>
+        <p style={{ color: "#94a3b8", maxWidth: 850 }}>The hospital board remains the canonical operating plan. Live control, the longitudinal record, clinical execution, governance, configuration, workforce and integrations use the same verified identity and evidence boundaries.</p>
       </header>
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 10, marginTop: 10 }}>
         {surfaces.map((surface) => <Link key={surface.href} href={surface.href} style={{ display: "grid", gap: 7, minHeight: 145, padding: 16, background: "white", border: "1px solid #cbd5e1", borderRadius: 15, color: "#0f172a", textDecoration: "none", boxShadow: "0 6px 18px rgba(15,23,42,.05)" }}>
