@@ -11,6 +11,7 @@ RETIRED_WRITES = {
     "/api/shadow-mode/approve": "/api/v7/shadow/comparisons/{comparison_ref}",
     "/api/shadow-mode/reject": "/api/v7/shadow/comparisons/{comparison_ref}",
     "/api/realtime/publish": "/api/v7/events",
+    "/api/clinical-execution/medication-orders": "/api/v8/episodes/{episode_ref}/medication-orders",
     "/api/clinical-execution/anaesthesia": "/api/clinical-execution/governed/anaesthesia",
 }
 RETIRED_PREFIX_WRITES = {

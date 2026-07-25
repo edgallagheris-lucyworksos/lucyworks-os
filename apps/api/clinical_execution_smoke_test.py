@@ -42,22 +42,60 @@ try:
             session.add(OperationalBlock(block_ref="BLOCK-CLIN-001", premises_ref="bvs-bristol", operational_date=date.today(), episode_ref="EP-CLIN-001", patient_ref="PAT-CLIN-001", patient_name="Anonymous Cat", procedure_name="Synthetic procedure", area_ref="theatre-1", area_name="Theatre 1", starts_at=now, ends_at=now + timedelta(hours=1), status="planned"))
             session.commit()
 
-        denied = client.post("/api/clinical-execution/medication-orders", headers=nurse, json={
-            "episode_ref": "EP-CLIN-001", "medication_ref": "med-a", "medication_name": "Medication A", "dose": "1 mg", "route": "IV", "frequency": "once", "indication": "test", "starts_at": now.isoformat()
-        })
-        assert denied.status_code == 403, denied.text
-
-        order = client.post("/api/clinical-execution/medication-orders", headers=clinician, json={
+        retired_medication = client.post("/api/clinical-execution/medication-orders", headers=clinician, json={
             "episode_ref": "EP-CLIN-001", "medication_ref": "med-a", "medication_name": "Medication A",
             "dose": "1 mg", "route": "IV", "frequency": "once", "indication": "synthetic analgesia",
             "starts_at": now.isoformat(), "scheduled_times": [now.isoformat()], "high_risk": True,
         })
+        assert retired_medication.status_code == 410, retired_medication.text
+        assert retired_medication.json()["replacement"].startswith("/api/v8/episodes/")
+
+        patient = client.put("/api/v8/patients/PAT-CLIN-001", headers=clinician, json={
+            "display_name": "Anonymous Cat", "species": "Cat", "breed": "Domestic shorthair",
+            "alerts": [], "reason": "Synthetic clinical execution patient",
+        })
+        assert patient.status_code == 200, patient.text
+        weight = client.post("/api/v8/patients/PAT-CLIN-001/weights", headers=nurse, json={
+            "episode_ref": "EP-CLIN-001", "weight_kg": 4.0, "reason": "Admission weight",
+        })
+        assert weight.status_code == 200, weight.text
+        medicine = client.put("/api/v8/formulary/medicines/med-a", headers=ops, json={
+            "generic_name": "Medication A", "brand_names": [], "high_risk": True,
+            "routes": ["IV"], "status": "approved", "reason": "Synthetic formulary approval",
+        })
+        assert medicine.status_code == 200, medicine.text
+        rule = client.put("/api/v8/formulary/dose-rules/rule-med-a-cat", headers=ops, json={
+            "medicine_ref": "med-a", "species": "Cat", "indication": "analgesia", "route": "IV",
+            "minimum_mg_per_kg": 0.1, "maximum_mg_per_kg": 0.5, "maximum_single_dose_mg": 2,
+            "minimum_interval_hours": 4, "source_reference": "SYNTHETIC-RULE", "status": "approved",
+            "reason": "Synthetic dose rule",
+        })
+        assert rule.status_code == 200, rule.text
+        denied = client.post("/api/v8/episodes/EP-CLIN-001/medication-safety-check", headers=nurse, json={
+            "patient_ref": "PAT-CLIN-001", "medicine_ref": "med-a", "indication": "analgesia",
+            "route": "IV", "dose_mg": 1, "interval_hours": 4, "reason": "Nurse prescribing attempt",
+        })
+        assert denied.status_code == 403, denied.text
+        review_response = client.post("/api/v8/episodes/EP-CLIN-001/medication-safety-check", headers=clinician, json={
+            "patient_ref": "PAT-CLIN-001", "medicine_ref": "med-a", "indication": "analgesia",
+            "route": "IV", "dose_mg": 1, "interval_hours": 4, "reason": "Pre-prescription safety review",
+        })
+        assert review_response.status_code == 200, review_response.text
+        review = review_response.json()["review"]
+        assert review["blocks_order"] is False
+        order = client.post("/api/v8/episodes/EP-CLIN-001/medication-orders", headers=clinician, json={
+            "patient_ref": "PAT-CLIN-001", "safety_review_ref": review["review_ref"],
+            "medication_name": "Medication A", "frequency": "once", "starts_at": now.isoformat(),
+            "scheduled_times": [now.isoformat()], "reason": "Safety-reviewed prescription",
+        })
         assert order.status_code == 200, order.text
         administration = order.json()["administrations"][0]
+        administration_ref = administration.get("administration_ref") or administration.get("administrationRef")
+        assert administration_ref, administration
 
-        no_witness = client.patch(f"/api/clinical-execution/administrations/{administration['administrationRef']}", headers=nurse, json={"expected_version": 1, "status": "administered", "dose_given": "1 mg", "reason": "test"})
+        no_witness = client.patch(f"/api/clinical-execution/administrations/{administration_ref}", headers=nurse, json={"expected_version": 1, "status": "administered", "dose_given": "1 mg", "reason": "test"})
         assert no_witness.status_code == 409, no_witness.text
-        given = client.patch(f"/api/clinical-execution/administrations/{administration['administrationRef']}", headers=nurse, json={
+        given = client.patch(f"/api/clinical-execution/administrations/{administration_ref}", headers=nurse, json={
             "expected_version": 1, "status": "administered", "dose_given": "1 mg", "route_used": "IV", "witness_subject": "local-user:3", "reason": "identity, medicine and dose checked"
         })
         assert given.status_code == 200, given.text
@@ -177,6 +215,6 @@ try:
         assert summary["openControlledDrugDiscrepancies"] == 0
         assert summary["unapprovedDischarges"] == 0
         assert dashboard.json()["inventoryMovements"]
-        print("Governed medication, anaesthesia, escalation, controlled-drug, inventory, diagnostics and discharge evidence gates OK")
+        print("Safety-reviewed medication, anaesthesia, escalation, controlled-drug, inventory, diagnostics and discharge evidence gates OK")
 finally:
     if TEST_DB.exists(): TEST_DB.unlink()

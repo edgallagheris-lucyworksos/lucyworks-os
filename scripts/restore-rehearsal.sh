@@ -38,7 +38,7 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0008_consolidation_clinical" ]] || { echo "restored migration version is $version, expected 0008_consolidation_clinical" >&2; exit 1; }
+[[ "$version" == "0009_detailed_hospital" ]] || { echo "restored migration version is $version, expected 0009_detailed_hospital" >&2; exit 1; }
 
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
@@ -46,7 +46,12 @@ for table in \
   workforceshiftv6 workforceavailabilityexceptionv6 referralintake historicalreplayrun \
   authsession durableevent eventacknowledgement canonicalshadowcomparison integrationretryjob \
   medicationorder medicationadministration anaesthesiarecord clinicalobservation treatmenttask \
-  controlleddrugledgerentry inventoryitem inventorymovement diagnosticworkitem samplechainevent dischargeplan; do
+  controlleddrugledgerentry inventoryitem inventorymovement diagnosticworkitem samplechainevent dischargeplan \
+  owneraccountv8 patientclinicalrecordv8 patientownerlinkv8 patientproblemv8 patientallergyv8 patientweightv8 \
+  clinicalencounterv8 clinicalnotev8 formularymedicinev8 formularydoserulev8 medicationsafetyreviewv8 \
+  anaesthesiachartv8 anaesthesiaobservationv8 anaesthesiadrugeventv8 fluidplanv8 fluidbalanceentryv8 \
+  inpatientcareplanv8 inpatientchartentryv8 procedurerecordv8 implanttracev8 estimatev8 estimatelinev8 \
+  insurancecasev8 financialtransactionv8 communicationeventv8 clinicaldocumentv8; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
@@ -58,8 +63,13 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'referrals'"'"', (select count(*) from referralintake),
   '"'"'durableEvents'"'"', (select count(*) from durableevent),
   '"'"'medicationOrders'"'"', (select count(*) from medicationorder),
-  '"'"'diagnostics'"'"', (select count(*) from diagnosticworkitem),
-  '"'"'discharges'"'"', (select count(*) from dischargeplan)
+  '"'"'patients'"'"', (select count(*) from patientclinicalrecordv8),
+  '"'"'encounters'"'"', (select count(*) from clinicalencounterv8),
+  '"'"'anaesthesiaCharts'"'"', (select count(*) from anaesthesiachartv8),
+  '"'"'procedures'"'"', (select count(*) from procedurerecordv8),
+  '"'"'estimates'"'"', (select count(*) from estimatev8),
+  '"'"'communications'"'"', (select count(*) from communicationeventv8),
+  '"'"'documents'"'"', (select count(*) from clinicaldocumentv8)
 )')"
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"

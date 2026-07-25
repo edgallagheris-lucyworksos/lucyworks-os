@@ -64,6 +64,9 @@ from app.v7_integration_retry_routes import router as v7_integration_retry_route
 from app.clinical_execution_routes import router as clinical_execution_router
 from app.clinical_execution_governance_routes import router as clinical_execution_governance_router
 from app.clinical_execution_governance_dashboard_routes import router as clinical_execution_governance_dashboard_router
+from app.detailed_hospital_routes import router as detailed_hospital_router
+from app.detailed_hospital_completion_routes import router as detailed_hospital_completion_router
+from app import detailed_hospital_serialization_patch as _detailed_hospital_serialization_patch  # noqa: F401
 from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
@@ -127,3 +130,5 @@ app.include_router(v7_integration_retry_router)
 app.include_router(clinical_execution_router)
 app.include_router(clinical_execution_governance_router)
 app.include_router(clinical_execution_governance_dashboard_router)
+app.include_router(detailed_hospital_router)
+app.include_router(detailed_hospital_completion_router)

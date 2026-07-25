@@ -10,7 +10,7 @@ on:
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/api/v7_*.py"
       - "apps/api/clinical_execution_smoke_test.py"
-      - "apps/api/migrations/versions/0008_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/web/**"
       - "scripts/load-test-v7.py"
       - "scripts/failure-drill-v7.sh"
@@ -25,7 +25,7 @@ on:
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/api/v7_*.py"
       - "apps/api/clinical_execution_smoke_test.py"
-      - "apps/api/migrations/versions/0008_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/web/**"
       - "scripts/load-test-v7.py"
       - "scripts/failure-drill-v7.sh"
@@ -51,7 +51,7 @@ jobs:
         run: python v7_consolidation_smoke_test.py
       - name: Governed clinical execution test
         run: python clinical_execution_smoke_test.py
-      - name: Verify SQLite migration
+      - name: Verify v7 tables remain present after the current migration head
         env:
           DATABASE_URL: sqlite:////tmp/lucyworks-v7-migration.db
           AUTO_CREATE_SCHEMA: "false"
@@ -72,8 +72,9 @@ jobs:
           assert not missing, sorted(missing)
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0008_consolidation_clinical", version
-          print("SQLite consolidation migration verified", version)
+          numeric_revision = int(str(version).split("_", 1)[0])
+          assert numeric_revision >= 8, version
+          print("v7 consolidation tables verified at current migration head", version)
           PY
 
   web-and-static-safety:
