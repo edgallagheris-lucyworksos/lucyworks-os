@@ -87,7 +87,8 @@ def development_users(session: Session = Depends(get_session)) -> list[dict[str,
 def login_response(session: Session, response: Response, auth: AuthContext, bearer_token: str | None = None, expires_in: int | None = None) -> dict[str, Any]:
     browser = issue_browser_session(session, response, auth)
     payload: dict[str, Any] = {"user": user_payload(auth), "session": browser, "tokenType": "Cookie"}
-    if setting("AUTH_RETURN_BEARER_DEV", "false").lower() in {"1", "true", "yes"} and bearer_token:
+    default_bearer = "true" if auth_mode() == "local" else "false"
+    if setting("AUTH_RETURN_BEARER_DEV", default_bearer).lower() in {"1", "true", "yes"} and bearer_token:
         payload.update({"accessToken": bearer_token, "expiresIn": expires_in, "tokenType": "Bearer"})
     return payload
 
@@ -99,12 +100,7 @@ def development_login(payload: DevLoginRequest, response: Response, session: Ses
     user = session.get(User, payload.user_id)
     if not user or not user.active:
         raise HTTPException(status_code=404, detail="active user not found")
-    token, expires_in = issue_local_token(
-        user_id=user.id or payload.user_id,
-        name=user.name,
-        role=user.role,
-        email=user.email,
-    )
+    token, expires_in = issue_local_token(user_id=user.id or payload.user_id, name=user.name, role=user.role, email=user.email)
     verified = decode_access_token(token)
     return login_response(session, response, verified, token, expires_in)
 
@@ -117,18 +113,10 @@ async def oidc_exchange(payload: OIDCExchangeRequest, response: Response, sessio
     client_id = setting("OIDC_CLIENT_ID")
     if not token_url or not client_id:
         raise HTTPException(status_code=503, detail="OIDC token exchange is not configured")
-
-    form = {
-        "grant_type": "authorization_code",
-        "client_id": client_id,
-        "code": payload.code,
-        "code_verifier": payload.code_verifier,
-        "redirect_uri": payload.redirect_uri,
-    }
+    form = {"grant_type": "authorization_code", "client_id": client_id, "code": payload.code, "code_verifier": payload.code_verifier, "redirect_uri": payload.redirect_uri}
     client_secret = setting("OIDC_CLIENT_SECRET")
     if client_secret:
         form["client_secret"] = client_secret
-
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             provider_response = await client.post(token_url, data=form, headers={"Accept": "application/json"})
@@ -156,7 +144,6 @@ def step_up(payload: StepUpRequest, request: Request, session: Session = Depends
         raise HTTPException(status_code=403, detail="step-up identity does not match the active session")
     cookie_header = request.headers.get("cookie", "")
     from app.auth_session_runtime import SESSION_COOKIE, _cookie_value, digest
-
     raw = _cookie_value(cookie_header, SESSION_COOKIE)
     if not raw:
         raise HTTPException(status_code=400, detail="step-up requires a browser session")
