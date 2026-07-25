@@ -22,6 +22,24 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def aware_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def parse_instant(value: str) -> datetime:
+    normalised = value.strip().replace("Z", "+00:00")
+    try:
+        return aware_utc(datetime.fromisoformat(normalised))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid ISO-8601 timestamp: {value}") from exc
+
+
+def same_instant(source: str, canonical: datetime, tolerance_seconds: float = 0.001) -> bool:
+    return abs((parse_instant(source) - aware_utc(canonical)).total_seconds()) <= tolerance_seconds
+
+
 def comparison_dict(row: CanonicalShadowComparison) -> dict[str, Any]:
     return {
         "comparisonRef": row.comparison_ref,
@@ -74,8 +92,6 @@ class ReviewPayload(BaseModel):
 def canonical_snapshot(session: Session, row: SourceRow) -> tuple[dict[str, Any], list[str]]:
     snapshot: dict[str, Any] = {}
     mismatches: list[str] = []
-    episode = None
-    block = None
     if row.episode_ref:
         episode = session.exec(select(CanonicalEpisodeState).where(CanonicalEpisodeState.episode_ref == row.episode_ref)).first()
         if not episode:
@@ -111,8 +127,8 @@ def canonical_snapshot(session: Session, row: SourceRow) -> tuple[dict[str, Any]
                 "patientName": block.patient_name,
                 "status": block.status,
                 "areaRef": block.area_ref,
-                "startsAt": block.starts_at.isoformat(),
-                "endsAt": block.ends_at.isoformat(),
+                "startsAt": aware_utc(block.starts_at).isoformat(),
+                "endsAt": aware_utc(block.ends_at).isoformat(),
                 "leadStaffRole": block.lead_staff_role,
                 "version": block.version,
             }
@@ -122,9 +138,9 @@ def canonical_snapshot(session: Session, row: SourceRow) -> tuple[dict[str, Any]
                 mismatches.append("block_area_mismatch")
             if row.status and row.status.strip().lower() != block.status.strip().lower():
                 mismatches.append("block_status_mismatch")
-            if row.starts_at and row.starts_at != block.starts_at.isoformat():
+            if row.starts_at and not same_instant(row.starts_at, block.starts_at):
                 mismatches.append("start_time_mismatch")
-            if row.ends_at and row.ends_at != block.ends_at.isoformat():
+            if row.ends_at and not same_instant(row.ends_at, block.ends_at):
                 mismatches.append("end_time_mismatch")
     if not row.episode_ref and not row.block_ref:
         mismatches.append("missing_canonical_reference")
