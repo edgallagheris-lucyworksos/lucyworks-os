@@ -59,8 +59,6 @@ function LiveControl() {
         setEvents(current => [...current.filter(item => item.eventRef !== row.eventRef), row].slice(-300));
       } catch { /* keepalive or malformed external event */ }
     };
-    const known = ["shadow_comparison_updated", "shadow_comparison_reviewed", "integration_retry_completed", "integration_retry_failed", "event_acknowledgement_changed", "medication_order_prescribed", "clinical_observation_recorded", "diagnostic_work_reported"];
-    known.forEach(name => source.addEventListener(name, source.onmessage as EventListener));
     return () => source.close();
   }, []);
 
@@ -109,7 +107,7 @@ function LiveControl() {
       <p style={{ color: "#94a3b8" }}>Database-backed events, reconnect replay, named acknowledgement, escalation and integration dead-letter recovery.</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><span style={{ color: connected ? "#86efac" : "#fca5a5" }}>Stream: {connected ? "connected" : "reconnecting"}</span><button style={button} disabled={busy} onClick={() => void load()}>Refresh</button><button style={{ ...button, background: "#2563eb" }} disabled={busy} onClick={() => void runRetries()}>Process integration retries</button></div>
     </header>
-    {error && <section style={{ ...panel, marginTop: 10, borderColor: "#ef4444", color: "#fecaca" }}>{error}</section>}
+    {error && <section aria-live="assertive" style={{ ...panel, marginTop: 10, borderColor: "#ef4444", color: "#fecaca" }}>{error}</section>}
 
     <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8, marginTop: 10 }}>
       <div style={panel}><small>Stored events</small><div style={{ fontSize: 30, fontWeight: 900 }}>{events.length}</div></div>
@@ -118,12 +116,12 @@ function LiveControl() {
       <div style={panel}><small>Queued retries</small><div style={{ fontSize: 30, fontWeight: 900 }}>{jobs.filter(row => row.status === "queued").length}</div></div>
     </section>
 
-    <section style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(290px,1fr)", gap: 10, marginTop: 10 }}>
-      <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
+    <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,420px),1fr))", gap: 10, marginTop: 10 }}>
+      <div style={{ display: "grid", gap: 8, alignContent: "start", minWidth: 0 }}>
         <h2 style={{ margin: 0 }}>Event stream</h2>
-        {[...events].reverse().map(row => <article key={row.eventRef} style={{ ...panel, borderColor: ["red", "error", "critical"].includes(row.severity) ? "#ef4444" : row.severity === "warning" ? "#f59e0b" : "#334155" }}>
+        {[...events].reverse().map(row => <article key={row.eventRef} style={{ ...panel, borderColor: ["red", "error", "critical"].includes(row.severity) ? "#ef4444" : row.severity === "warning" ? "#f59e0b" : "#334155", minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><strong>#{row.sequence} · {row.eventType.replaceAll("_", " ")}</strong><span>{row.severity.toUpperCase()}</span></div>
-          <p style={{ color: "#cbd5e1" }}>{row.aggregateType}: {row.aggregateRef}</p>
+          <p style={{ color: "#cbd5e1", overflowWrap: "anywhere" }}>{row.aggregateType}: {row.aggregateRef}</p>
           <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: "#020617", padding: 8, borderRadius: 8, maxHeight: 180, overflow: "auto" }}>{JSON.stringify(row.payload, null, 2)}</pre>
           <small style={{ color: "#94a3b8" }}>{new Date(row.createdAt).toLocaleString()} · {row.actorName} ({row.actorRole})</small>
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 8 }}>
@@ -135,10 +133,10 @@ function LiveControl() {
         </article>)}
       </div>
 
-      <aside style={{ display: "grid", gap: 8, alignContent: "start" }}>
+      <aside style={{ display: "grid", gap: 8, alignContent: "start", minWidth: 0 }}>
         <h2 style={{ margin: 0 }}>Integration reliability</h2>
         {jobs.map(job => <article key={job.jobRef} style={{ ...panel, borderColor: job.status === "dead_letter" ? "#ef4444" : "#334155" }}>
-          <strong>{job.connectionRef}</strong><p style={{ margin: "6px 0" }}>{job.status} · attempt {job.attemptCount}/{job.maximumAttempts}</p><small style={{ color: "#94a3b8" }}>{job.envelopeRef}</small>{job.lastError && <p style={{ color: "#fecaca" }}>{job.lastError}</p>}{job.status === "dead_letter" && <button disabled={busy} style={button} onClick={() => void replay(job)}>Queue controlled replay</button>}
+          <strong>{job.connectionRef}</strong><p style={{ margin: "6px 0" }}>{job.status} · attempt {job.attemptCount}/{job.maximumAttempts}</p><small style={{ color: "#94a3b8", overflowWrap: "anywhere" }}>{job.envelopeRef}</small>{job.lastError && <p style={{ color: "#fecaca", overflowWrap: "anywhere" }}>{job.lastError}</p>}{job.status === "dead_letter" && <button disabled={busy} style={button} onClick={() => void replay(job)}>Queue controlled replay</button>}
         </article>)}
       </aside>
     </section>
