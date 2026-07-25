@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlmodel import Session, select
 
 from app.auth import get_current_auth_context
@@ -34,6 +34,19 @@ def event_dict(row: DurableEvent) -> dict[str, Any]:
     }
 
 
+def _lock_sequence_allocator(session: Session) -> None:
+    """Serialise sequence allocation for the current database transaction.
+
+    PostgreSQL advisory transaction locks work across every API process and are
+    released automatically on commit/rollback. SQLite serialises writers at the
+    database layer and is used only for local development and tests.
+    """
+
+    bind = session.get_bind()
+    if bind.dialect.name == "postgresql":
+        session.exec(text("SELECT pg_advisory_xact_lock(73478101)"))
+
+
 def publish_event(
     session: Session,
     *,
@@ -47,6 +60,13 @@ def publish_event(
     causation_ref: str | None = None,
     idempotency_key: str | None = None,
 ) -> DurableEvent:
+    if idempotency_key:
+        existing = session.exec(select(DurableEvent).where(DurableEvent.idempotency_key == idempotency_key)).first()
+        if existing:
+            return existing
+    _lock_sequence_allocator(session)
+    # Check idempotency again after acquiring the allocator lock, since another
+    # transaction may have committed the same event while this one was waiting.
     if idempotency_key:
         existing = session.exec(select(DurableEvent).where(DurableEvent.idempotency_key == idempotency_key)).first()
         if existing:
