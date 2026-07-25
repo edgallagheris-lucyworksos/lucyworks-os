@@ -48,6 +48,10 @@ jobs:
         id: clinical_execution
         continue-on-error: true
         run: python clinical_execution_smoke_test.py > clinical-execution.log 2>&1
+      - name: Run detailed longitudinal hospital record v8 test
+        id: detailed_v8
+        continue-on-error: true
+        run: python detailed_hospital_v8_smoke_test.py > detailed-v8.log 2>&1
       - name: Run BVS configuration workforce referrals v6 test
         id: bvs_v6
         continue-on-error: true
@@ -102,6 +106,7 @@ jobs:
           path: |
             apps/api/v7-consolidation.log
             apps/api/clinical-execution.log
+            apps/api/detailed-v8.log
             apps/api/bvs-v6.log
             apps/api/bvs-rota-v6.log
             apps/api/production-readiness.log
@@ -113,11 +118,11 @@ jobs:
             apps/api/migration.log
           if-no-files-found: error
       - name: Report API validation failures
-        if: steps.v7_consolidation.outcome == 'failure' || steps.clinical_execution.outcome == 'failure' || steps.bvs_v6.outcome == 'failure' || steps.bvs_rota_v6.outcome == 'failure' || steps.production_readiness.outcome == 'failure' || steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
+        if: steps.v7_consolidation.outcome == 'failure' || steps.clinical_execution.outcome == 'failure' || steps.detailed_v8.outcome == 'failure' || steps.bvs_v6.outcome == 'failure' || steps.bvs_rota_v6.outcome == 'failure' || steps.production_readiness.outcome == 'failure' || steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
         run: |
-          for file in v7-consolidation.log clinical-execution.log bvs-v6.log bvs-rota-v6.log production-readiness.log hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
+          for file in v7-consolidation.log clinical-execution.log detailed-v8.log bvs-v6.log bvs-rota-v6.log production-readiness.log hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
             echo "--- $file ---"
-            tail -n 260 "$file" || true
+            tail -n 300 "$file" || true
           done
           exit 1
 
@@ -175,15 +180,22 @@ jobs:
               "authsession", "durableevent", "eventacknowledgement", "canonicalshadowcomparison",
               "integrationretryjob", "legacywriteretirement", "medicationorder", "medicationadministration",
               "anaesthesiarecord", "clinicalobservation", "treatmenttask", "controlleddrugledgerentry",
-              "inventoryitem", "inventorymovement", "diagnosticworkitem", "samplechainevent",
-              "dischargeplan", "alembic_version",
+              "inventoryitem", "inventorymovement", "diagnosticworkitem", "samplechainevent", "dischargeplan",
+              "owneraccountv8", "patientclinicalrecordv8", "patientownerlinkv8", "patientproblemv8",
+              "patientallergyv8", "patientweightv8", "clinicalencounterv8", "clinicalnotev8",
+              "formularymedicinev8", "formularydoserulev8", "medicationsafetyreviewv8",
+              "anaesthesiachartv8", "anaesthesiaobservationv8", "anaesthesiadrugeventv8",
+              "fluidplanv8", "fluidbalanceentryv8", "inpatientcareplanv8", "inpatientchartentryv8",
+              "procedurerecordv8", "implanttracev8", "estimatev8", "estimatelinev8",
+              "insurancecasev8", "financialtransactionv8", "communicationeventv8", "clinicaldocumentv8",
+              "alembic_version",
           }
           missing = required - set(inspector.get_table_names())
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0008_consolidation_clinical", version
-          print("PostgreSQL consolidation and clinical migration verified", version)
+          assert version == "0009_detailed_hospital", version
+          print("PostgreSQL detailed hospital record migration verified", version)
           PY
       - name: Prove operational stale-write protection
         run: python hospital_ops_postgres_concurrency_test.py | tee -a postgres-migration.log
@@ -222,7 +234,7 @@ jobs:
           if-no-files-found: error
       - name: Report web build failure
         if: steps.web_build.outcome == 'failure'
-        run: tail -n 260 web-build.log && exit 1
+        run: tail -n 300 web-build.log && exit 1
 
   production-images:
     runs-on: ubuntu-latest
@@ -268,9 +280,9 @@ jobs:
         if: steps.api_image.outcome == 'failure' || steps.web_image.outcome == 'failure'
         run: |
           echo "--- API image ---"
-          tail -n 260 api-image.log || true
+          tail -n 300 api-image.log || true
           echo "--- Web image ---"
-          tail -n 260 web-image.log || true
+          tail -n 300 web-image.log || true
           exit 1
       - name: Validate production Compose stack
         run: |
