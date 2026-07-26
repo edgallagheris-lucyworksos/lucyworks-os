@@ -10,10 +10,7 @@ const sections = ["Reception / Intake", "Triage / Consult", "Imaging", "Surgery 
 const urgencies = ["green", "amber", "red"];
 const owners = ["ops_manager", "clinician", "nurse", "admin", "theatre_staff", "ward_staff", "imaging_staff", "stock_controller"];
 
-type CaptureResponse = {
-  ok: boolean;
-  work_item?: { id?: number; title?: string };
-};
+type CaptureResponse = { ok: boolean; work_item?: { id?: number; title?: string } };
 
 function InputInner() {
   const [title, setTitle] = useState("");
@@ -36,10 +33,7 @@ function InputInner() {
       setError("Enter a title or operational note before creating work.");
       return;
     }
-
-    setBusy(true);
-    setStatus("");
-    setError("");
+    setBusy(true); setStatus(""); setError("");
     try {
       const data = await apiPost<CaptureResponse>("/api/input/capture", {
         title: title.trim() || description.trim().slice(0, 80) || "Mobile capture",
@@ -51,54 +45,40 @@ function InputInner() {
         linked_episode_ref: episode.trim() || null,
         room_name: room.trim() || null,
       });
-      setStatus(`Captured work item #${data.work_item?.id || "new"}. Open Workspace or Command to see it.`);
-      setTitle("");
-      setDescription("");
-      setPatient("");
-      setEpisode("");
-      setRoom("");
+      setStatus(episode.trim()
+        ? `Work item #${data.work_item?.id || "new"} created and linked to ${episode.trim()}. Open Patient Command to continue.`
+        : `Work item #${data.work_item?.id || "new"} created as unlinked operational work. Link it to an episode before treating it as live patient care.`);
+      setTitle(""); setDescription(""); setPatient(""); setEpisode(""); setRoom("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Capture failed");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
 
-  return <HospitalShell title="Mobile Input" subtitle="Capture operational information into the live work queue">
+  return <HospitalShell title="Quick Input" subtitle="capture an operational problem once and give it clear ownership">
     <div style={{ display: "grid", gap: 12 }}>
       <section className="lw-command-panel">
         <div className="lw-command-header">
-          <div>
-            <div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>Operational capture</div>
-            <h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Type it once. Create owned work.</h1>
-            <p style={{ color: "#94a3b8", marginBottom: 0 }}>Use this on phone for intake notes, blockers, owner comms, room problems, case updates or tasks.</p>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link href="/workspace" className="lw-pill">Workspace</Link>
-            <Link href="/command" className="lw-pill">Command</Link>
-            <Link href="/actions" className="lw-pill">Actions</Link>
-          </div>
+          <div><div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>Operational capture</div><h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Type it once. Create owned work.</h1><p style={{ color: "#94a3b8", marginBottom: 0 }}>Record the problem, patient, place, urgency and accountable role. Clinical judgement and consent remain in the governed patient workflow.</p></div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link href="/workspace" className="lw-pill">Patient Command</Link><Link href="/hospital-board" className="lw-pill">Hospital Today</Link><Link href="/referral-intake" className="lw-pill">Referrals</Link></div>
         </div>
       </section>
 
       <section className="lw-command-panel" style={{ padding: 12, display: "grid", gap: 10 }}>
-        <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. MRI owner update overdue" maxLength={200} /></label>
-        <label>Details<textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Type the operational note here..." rows={7} maxLength={10000} /></label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <label>Section<select value={sectionName} onChange={(e) => setSectionName(e.target.value)}>{sections.map((s) => <option key={s}>{s}</option>)}</select></label>
-          <label>Urgency<select value={urgency} onChange={(e) => setUrgency(e.target.value)}>{urgencies.map((u) => <option key={u}>{u}</option>)}</select></label>
-          <label>Owner role<select value={ownerRole} onChange={(e) => setOwnerRole(e.target.value)}>{owners.map((o) => <option key={o}>{o}</option>)}</select></label>
+        <label>What needs attention<input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. MRI owner update overdue" maxLength={200} /></label>
+        <label>What happened and what is needed<textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Record the facts, required action and relevant context." rows={7} maxLength={10000} /></label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
+          <label>Where / service<select value={sectionName} onChange={e => setSectionName(e.target.value)}>{sections.map(value => <option key={value}>{value}</option>)}</select></label>
+          <label>Urgency<select value={urgency} onChange={e => setUrgency(e.target.value)}>{urgencies.map(value => <option key={value}>{value}</option>)}</select></label>
+          <label>Who owns the next action<select value={ownerRole} onChange={e => setOwnerRole(e.target.value)}>{owners.map(value => <option key={value}>{value}</option>)}</select></label>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <label>Patient<input value={patient} onChange={(e) => setPatient(e.target.value)} placeholder="optional" /></label>
-          <label>Episode ref<input value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="EP-2001 optional" /></label>
-          <label>Room<input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="MRI / ICU Bay 1 optional" /></label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
+          <label>Patient<input value={patient} onChange={e => setPatient(e.target.value)} placeholder="Optional patient name" /></label>
+          <label>Episode reference<input value={episode} onChange={e => setEpisode(e.target.value)} placeholder="Use EP-... when known" /></label>
+          <label>Exact room / location<input value={room} onChange={e => setRoom(e.target.value)} placeholder="MRI / ICU Bay 1" /></label>
         </div>
-        <button className="lw-pill lw-btn-primary" style={{ minHeight: 48 }} onClick={() => void submit()} disabled={busy || !hasOperationalText}>{busy ? "Capturing..." : "Create work item"}</button>
-        <div aria-live="polite">
-          {status ? <p style={{ color: "#86efac", margin: 0 }}>{status}</p> : null}
-          {error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}
-        </div>
+        {!episode.trim() ? <p style={{ margin: 0, padding: 9, border: "1px solid #f59e0b", borderRadius: 9, background: "#fffbeb", color: "#92400e" }}>Without an episode reference this remains clearly separated legacy/unlinked work until reviewed.</p> : null}
+        <button className="lw-pill lw-btn-primary" style={{ minHeight: 48 }} onClick={() => void submit()} disabled={busy || !hasOperationalText}>{busy ? "Creating…" : "Create owned work"}</button>
+        <div aria-live="polite">{status ? <p style={{ color: "#86efac", margin: 0 }}>{status}</p> : null}{error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}</div>
       </section>
     </div>
   </HospitalShell>;
