@@ -10,6 +10,8 @@ from app import compliance_safety_routes as base
 from app.auth import AuthContext, require_roles
 from app.compliance_safety_models import DeploymentProfileV10, utc_now
 from app.database import get_session
+from app.evidence_event_models import EvidenceEvent
+from app.production_readiness_models import ReadinessEvidence
 
 router = APIRouter(prefix="/api/v10/compliance-safety", tags=["compliance-safety-v10"])
 APPROVAL_ROLES = ("clinical_director", "governance_lead", "hospital_director")
@@ -98,6 +100,13 @@ base.profile_dict = profile_dict
 base.release_gate = release_gate
 
 
+def _evidence_exists(session: Session, evidence_ref: str) -> bool:
+    readiness = session.exec(select(ReadinessEvidence).where(ReadinessEvidence.evidence_ref == evidence_ref)).first()
+    if readiness:
+        return True
+    return session.exec(select(EvidenceEvent).where(EvidenceEvent.event_ref == evidence_ref)).first() is not None
+
+
 @router.patch("/deployment-profile/{profile_ref}/evidence")
 def record_deployment_evidence(
     profile_ref: str,
@@ -116,6 +125,26 @@ def record_deployment_evidence(
     organisation = payload.organisationName.strip()
     if not organisation:
         raise HTTPException(status_code=422, detail="organisationName is required")
+
+    submitted = {
+        "identityEvidenceRef": payload.identityEvidenceRef,
+        "dataGovernanceEvidenceRef": payload.dataGovernanceEvidenceRef,
+        "vendorEvidenceRef": payload.vendorEvidenceRef,
+        "clinicalSafetyOfficerEvidenceRef": payload.clinicalSafetyOfficerEvidenceRef,
+        "dpiaEvidenceRef": payload.dpiaEvidenceRef,
+        "penetrationTestEvidenceRef": payload.penetrationTestEvidenceRef,
+        "staffUatEvidenceRef": payload.staffUatEvidenceRef,
+    }
+    invalid = {
+        field: value.strip()
+        for field, value in submitted.items()
+        if value and not _evidence_exists(session, value.strip())
+    }
+    if invalid:
+        raise HTTPException(status_code=409, detail={
+            "message": "deployment evidence reference is not present in the readiness or audit evidence store",
+            "invalidEvidence": invalid,
+        })
 
     before = profile_dict(row)
     row.organisation_name = organisation
