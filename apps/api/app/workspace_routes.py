@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 
+from app.auth import AuthContext, SENIOR_ROLES, require_authenticated
+from app.care_brief_v16_routes import router as care_brief_v16_router
 from app.database import get_session
 from app.flow_state_models import DischargeBlocker, OccupancyRecord, SeverityGate, StaffAssignmentRisk
 from app.inpatient_models import NightHandover, ObservationTask
@@ -20,6 +22,7 @@ from app.operational_workspace_v14_routes import router as operational_workspace
 
 router = APIRouter()
 router.include_router(operational_workspace_v14_router)
+router.include_router(care_brief_v16_router)
 
 ROLE_SCOPES = {
     "ops_manager": {"ops_manager", "clinical_director", "clinician", "nurse", "ward_nurse", "icu_nurse", "admin", "insurance_admin", "reception", "theatre_nurse", "anaesthetist", "surgeon", "radiographer", "stock_controller"},
@@ -51,11 +54,18 @@ def staff_name_for(session: Session, staff_member_id: int | None):
 
 @router.get("/api/workspace")
 def get_workspace(
-    role: str = Query("ops_manager"),
+    role: str | None = Query(default=None, description="Legacy compatibility only; must match the verified session role"),
     staff_member_id: int | None = None,
     session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_authenticated),
 ):
-    scope = role_scope(role)
+    effective_role = auth.role
+    if role and role != effective_role:
+        raise HTTPException(status_code=403, detail="workspace role is derived from the verified session")
+    if staff_member_id is not None and effective_role not in SENIOR_ROLES:
+        raise HTTPException(status_code=403, detail="only a senior operational role can inspect another staff workspace")
+
+    scope = role_scope(effective_role)
     staff_name = staff_name_for(session, staff_member_id)
 
     work_items = session.exec(select(WorkItem).where(WorkItem.status != "done").order_by(WorkItem.created_at.desc())).all()
@@ -72,24 +82,24 @@ def get_workspace(
     occupancy = session.exec(select(OccupancyRecord).where(OccupancyRecord.status != "released").order_by(OccupancyRecord.created_at.desc())).all()
     schedule_blocks = session.exec(select(ScheduleBlock).where(ScheduleBlock.status != "completed").order_by(ScheduleBlock.starts_at)).all()
 
-    if not is_command(role):
-        work_items = [x for x in work_items if x.owner_role in scope or (staff_member_id and x.owner_user_id == staff_member_id)]
-        care_tasks = [x for x in care_tasks if x.owner_role in scope or (staff_member_id and x.owner_user_id == staff_member_id)]
-        handovers = [x for x in handovers if x.to_owner in scope or x.to_owner == role or (staff_name and x.to_owner == staff_name)]
-        night_handovers = [x for x in night_handovers if x.to_role in scope or x.to_role == role]
-        results = [x for x in results if x.review_owner in scope or x.review_owner == role or (staff_name and x.review_owner == staff_name)]
+    if not is_command(effective_role):
+        work_items = [x for x in work_items if x.owner_role in scope]
+        care_tasks = [x for x in care_tasks if x.owner_role in scope]
+        handovers = [x for x in handovers if x.to_owner in scope or x.to_owner == effective_role]
+        night_handovers = [x for x in night_handovers if x.to_role in scope or x.to_role == effective_role]
+        results = [x for x in results if x.review_owner in scope or x.review_owner == effective_role]
         discharge_blockers = [x for x in discharge_blockers if x.owner_role in scope]
         observations = [x for x in observations if x.owner_role in scope]
-        messages = [x for x in messages if x.owner_role in scope or (staff_member_id and x.owner_user_id == staff_member_id)]
+        messages = [x for x in messages if x.owner_role in scope]
         owner_comms = [x for x in owner_comms if x.owner_role in scope]
-        gates = [x for x in gates if role in {"clinical_director", "ops_manager"} or x.severity != "CRITICAL"]
-        staff_risks = [x for x in staff_risks if role in {"clinical_director", "ops_manager"} or x.role_required in scope]
-        schedule_blocks = [x for x in schedule_blocks if x.owner_role in scope or (staff_member_id and x.assigned_staff_member_id == staff_member_id)]
+        gates = [x for x in gates if x.severity != "CRITICAL"]
+        staff_risks = [x for x in staff_risks if x.role_required in scope]
+        schedule_blocks = [x for x in schedule_blocks if x.owner_role in scope]
 
     shifts = []
     if staff_member_id:
         shifts = session.exec(select(Shift).where(Shift.staff_member_id == staff_member_id).order_by(Shift.starts_at)).all()
-    elif is_command(role):
+    elif is_command(effective_role):
         shifts = session.exec(select(Shift).order_by(Shift.starts_at)).all()
 
     summary = {
@@ -108,11 +118,17 @@ def get_workspace(
         "shifts": len(shifts),
     }
 
-    session.add(AuditEvent(actor_name=f"workspace:{role}", action="read", entity_type="workspace", entity_id=staff_member_id or 0, summary=f"Workspace opened for role {role}"))
+    session.add(AuditEvent(
+        actor_name=auth.actor_name,
+        action="read",
+        entity_type="workspace",
+        entity_id=staff_member_id or 0,
+        summary=f"Verified workspace opened for role {effective_role}",
+    ))
     session.commit()
 
     return {
-        "role": role,
+        "role": effective_role,
         "staff_member_id": staff_member_id,
         "staff_name": staff_name,
         "scope": sorted(scope),
