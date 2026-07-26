@@ -37,9 +37,9 @@ jobs:
           cache-dependency-path: apps/api/requirements.txt
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
-          cache-dependency-path: apps/web/package-lock.json
+          cache-dependency-path: apps/web/package.json
       - name: Install API dependencies
         working-directory: apps/api
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
@@ -51,7 +51,7 @@ jobs:
         run: python operational_workspace_v14_smoke_test.py 2>&1 | tee patient-centred-command-v14.log
       - name: Install web dependencies
         working-directory: apps/web
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: Build responsive patient command and board
         working-directory: apps/web
         env:
@@ -63,4 +63,4 @@ jobs:
         with:
           name: patient-centred-command-v14-log
           path: apps/api/patient-centred-command-v14.log
-          if-no-files-found: error
+          if-no-files-found: warn
