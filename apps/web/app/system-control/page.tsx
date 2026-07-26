@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AuthGuard } from "@/components/auth-guard";
 
 const surfaces = [
+  { href: "/workspace", title: "Patient command", description: "Primary patient-centred operating view: active care, next safe action, ownership, deadlines, blockers, schedule and unlinked work." },
   { href: "/hospital-board", title: "Hospital master grid", description: "Canonical 15-minute operating plan with physical areas, conflicts, versioned commands and governed emergency insertion." },
   { href: "/referral-intake", title: "Referral identity & triage", description: "Create owner, patient, authority, referral, episode, triage deadlines and document provenance; hold duplicates for review and propose accepted work." },
   { href: "/episode-command", title: "Canonical episode command", description: "Referral acceptance, decision authority, consent, accountable handovers, evidence-gated phase transitions and closure." },
@@ -33,7 +34,7 @@ export default function SystemControlPage() {
       <header style={{ background: "#071019", color: "white", borderRadius: 18, padding: 18 }}>
         <span style={{ color: "#2dd4bf", fontSize: 11, fontWeight: 900, letterSpacing: ".13em", textTransform: "uppercase" }}>LucyWorks OS</span>
         <h1 style={{ fontSize: "clamp(38px, 8vw, 72px)", lineHeight: .93, margin: "7px 0" }}>System control</h1>
-        <p style={{ color: "#94a3b8", maxWidth: 850 }}>The hospital board is the canonical operating plan and Episode command is the canonical case phase authority. Referral identity, clinical execution, records, governance, configuration, workforce and integrations use the same verified identity and evidence boundaries.</p>
+        <p style={{ color: "#94a3b8", maxWidth: 850 }}>Patient command is the primary operational view. The hospital board remains the canonical physical plan and Episode command remains the canonical case-phase authority. Every other surface supports those three controls.</p>
       </header>
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 10, marginTop: 10 }}>
         {surfaces.map((surface) => <Link key={surface.href} href={surface.href} style={{ display: "grid", gap: 7, minHeight: 145, padding: 16, background: "white", border: "1px solid #cbd5e1", borderRadius: 15, color: "#0f172a", textDecoration: "none", boxShadow: "0 6px 18px rgba(15,23,42,.05)" }}>
