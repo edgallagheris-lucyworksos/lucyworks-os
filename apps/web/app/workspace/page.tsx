@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/auth-guard";
-import { OperationalWorkspaceV14 } from "@/components/operational-workspace-v14";
+import { OperationalWorkspaceV15 } from "@/components/operational-workspace-v15";
 
 const allowedRoles = [
   "admin",
@@ -14,5 +14,5 @@ const allowedRoles = [
 ];
 
 export default function WorkspacePage() {
-  return <AuthGuard allowedRoles={allowedRoles}><OperationalWorkspaceV14 /></AuthGuard>;
+  return <AuthGuard allowedRoles={allowedRoles}><OperationalWorkspaceV15 /></AuthGuard>;
 }
