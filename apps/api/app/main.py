@@ -70,6 +70,7 @@ from app.detailed_hospital_completion_routes import router as detailed_hospital_
 from app.hospital_command_routes import router as hospital_command_router
 from app.hospital_command_intake_routes import router as hospital_command_intake_router
 from app.compliance_safety_routes import router as compliance_safety_router
+from app.compliance_safety_deployment_routes import router as compliance_safety_deployment_router
 from app import hospital_command_hardening as _hospital_command_hardening  # noqa: F401
 from app import hospital_command_early_closure_patch as _hospital_command_early_closure_patch  # noqa: F401
 from app import detailed_hospital_serialization_patch as _detailed_hospital_serialization_patch  # noqa: F401
@@ -141,3 +142,4 @@ app.include_router(detailed_hospital_completion_router)
 app.include_router(hospital_command_router)
 app.include_router(hospital_command_intake_router)
 app.include_router(compliance_safety_router)
+app.include_router(compliance_safety_deployment_router)
