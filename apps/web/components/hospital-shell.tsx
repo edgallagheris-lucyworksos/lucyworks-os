@@ -2,83 +2,70 @@
 
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
+import { apiGet } from "@/lib/api";
 import { clearSession, getSession, type SessionUser } from "@/lib/session";
-import { DailyOperationalBoard } from "@/components/daily-operational-board";
-import { ResourceControlBoard } from "@/components/resource-control-board";
-import { BvsClinicalServiceBoard } from "@/components/bvs-clinical-service-board";
-import { BvsFlowActionBoard } from "@/components/bvs-flow-action-board";
-import {
-  ClinicalDirectorDashboard,
-  InterruptionsDashboard,
-  MyShiftDashboard,
-} from "@/components/hospital-operational-screens";
-import { moduleByTitle, primaryHospitalModules, secondaryHospitalModules } from "@/lib/hospital-modules";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
-type AlertSummary = { total_alerts: number; high_alerts: number };
+type AlertSummary = { total_alerts?: number; high_alerts?: number; totalAlerts?: number; highAlerts?: number };
 
-function contentFor(title: string, children: ReactNode, user: SessionUser | null) {
-  const module = moduleByTitle(title);
-  const u = user || undefined;
-  if (module?.id === "now") return <DailyOperationalBoard />;
-  if (module?.id === "flow") return <BvsFlowActionBoard />;
-  if (module?.id === "ops") return <ResourceControlBoard />;
-  if (module?.id === "clinical") return <BvsClinicalServiceBoard />;
-  if (module?.id === "hr") return <MyShiftDashboard user={u} />;
-  if (module?.id === "pulse") return <InterruptionsDashboard user={u} />;
-  if (title === "Manager") return <ClinicalDirectorDashboard user={u} />;
-  if (module?.id === "care" || module?.id === "move") return <MyShiftDashboard user={u} />;
-  return children;
-}
+const primary = [
+  { href: "/workspace", label: "Patients" },
+  { href: "/hospital-board", label: "Hospital today" },
+  { href: "/referral-intake", label: "Referrals" },
+  { href: "/input", label: "Quick input" },
+  { href: "/my-shift", label: "My work" },
+];
+
+const more = [
+  { href: "/clinical-execution", label: "Patient work" },
+  { href: "/patient-record", label: "Patient record" },
+  { href: "/resources", label: "Resources" },
+  { href: "/workforce-rota", label: "Rota" },
+  { href: "/control-plane", label: "Safety control" },
+  { href: "/system-control", label: "System tools" },
+];
 
 export function HospitalShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
-  const [alerts, setAlerts] = useState<AlertSummary>({ total_alerts: 0, high_alerts: 0 });
+  const [alerts, setAlerts] = useState({ total: 0, high: 0 });
 
   useEffect(() => {
-    const session = getSession();
-    setUser(session?.user || null);
+    setUser(getSession()?.user || null);
     async function loadAlerts() {
       try {
-        const res = await fetch(`${API_BASE}/api/alerts`, { cache: "no-store" });
-        const data = await res.json();
-        setAlerts({ total_alerts: data.total_alerts || 0, high_alerts: data.high_alerts || 0 });
+        const data = await apiGet<AlertSummary>("/api/alerts");
+        setAlerts({ total: data.total_alerts ?? data.totalAlerts ?? 0, high: data.high_alerts ?? data.highAlerts ?? 0 });
       } catch {
-        setAlerts({ total_alerts: 0, high_alerts: 0 });
+        setAlerts({ total: 0, high: 0 });
       }
     }
-    loadAlerts();
+    void loadAlerts();
   }, []);
 
-  return (
-    <main className="lw-shell lw-cinematic-bg">
-      <div className="lw-topbar lw-glass-topbar">
-        <div className="lw-wrap">
-          <div className="lw-brand-row">
-            <Link href="/hospital-board" className="lw-brand-title lw-wordmark-link">
-              <span className="lw-orbit-mark small"><span /></span>
-              <span>
-                <span className="lw-product lw-wordmark">lucyworks</span>
-                <span className="lw-subtitle">Operational Integrity OS • {title} • {subtitle}</span>
-              </span>
-            </Link>
-            <div className="lw-actions">
-              {user ? <span className="lw-pill">{user.name} • {user.role}</span> : <Link className="lw-pill" href="/login">Login</Link>}
-              <Link href="/alerts" className={alerts.high_alerts ? "lw-pill lw-alert-pill" : "lw-pill"}>Alerts {alerts.total_alerts} / high {alerts.high_alerts}</Link>
-              <Link href="/system-control" className="lw-pill">System</Link>
-              <button onClick={() => { clearSession(); window.location.href = "/login"; }} className="lw-pill">Sign out</button>
-            </div>
-          </div>
-          <div className="lw-nav lw-primary-nav">
-            {primaryHospitalModules.map((item) => <Link key={item.id} href={item.route}>{item.label}</Link>)}
-            <Link href="/manager-dashboard">Manager</Link>
-          </div>
-          <div className="lw-nav lw-secondary-nav">
-            {secondaryHospitalModules.map((item) => <Link key={item.id} href={item.route}>{item.label}</Link>)}
+  return <main className="lw-shell lw-cinematic-bg">
+    <div className="lw-topbar lw-glass-topbar">
+      <div className="lw-wrap">
+        <div className="lw-brand-row">
+          <Link href="/workspace" className="lw-brand-title lw-wordmark-link">
+            <span className="lw-orbit-mark small"><span /></span>
+            <span><span className="lw-product lw-wordmark">lucyworks</span><span className="lw-subtitle">{title} · {subtitle}</span></span>
+          </Link>
+          <div className="lw-actions">
+            {user ? <span className="lw-pill">{user.name} · {user.role}</span> : <Link className="lw-pill" href="/login">Login</Link>}
+            <Link href="/alerts" className={alerts.high ? "lw-pill lw-alert-pill" : "lw-pill"}>Alerts {alerts.total}{alerts.high ? ` · ${alerts.high} high` : ""}</Link>
+            <button onClick={() => { clearSession(); window.location.href = "/login"; }} className="lw-pill">Sign out</button>
           </div>
         </div>
+        <nav className="lw-nav lw-primary-nav" aria-label="Primary hospital navigation">
+          {primary.map(item => <Link key={item.href} href={item.href}>{item.label}</Link>)}
+        </nav>
+        <details style={{ marginTop: 7 }}>
+          <summary className="lw-pill" style={{ width: "max-content", cursor: "pointer" }}>More tools</summary>
+          <nav className="lw-nav lw-secondary-nav" aria-label="Additional hospital tools">
+            {more.map(item => <Link key={item.href} href={item.href}>{item.label}</Link>)}
+          </nav>
+        </details>
       </div>
-      <div className="lw-main">{contentFor(title, children, user)}</div>
-    </main>
-  );
+    </div>
+    <div className="lw-main">{children}</div>
+  </main>;
 }
