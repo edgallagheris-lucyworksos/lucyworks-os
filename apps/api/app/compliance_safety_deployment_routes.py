@@ -10,8 +10,7 @@ from app import compliance_safety_routes as base
 from app.auth import AuthContext, require_roles
 from app.compliance_safety_models import DeploymentProfileV10, utc_now
 from app.database import get_session
-from app.evidence_event_models import EvidenceEvent
-from app.production_readiness_models import ReadinessEvidence
+from app.production_readiness_models import ReadinessControl, ReadinessEvidence
 
 router = APIRouter(prefix="/api/v10/compliance-safety", tags=["compliance-safety-v10"])
 APPROVAL_ROLES = ("clinical_director", "governance_lead", "hospital_director")
@@ -100,11 +99,12 @@ base.profile_dict = profile_dict
 base.release_gate = release_gate
 
 
-def _evidence_exists(session: Session, evidence_ref: str) -> bool:
-    readiness = session.exec(select(ReadinessEvidence).where(ReadinessEvidence.evidence_ref == evidence_ref)).first()
-    if readiness:
-        return True
-    return session.exec(select(EvidenceEvent).where(EvidenceEvent.event_ref == evidence_ref)).first() is not None
+def _approved_evidence(session: Session, evidence_ref: str) -> bool:
+    evidence = session.exec(select(ReadinessEvidence).where(ReadinessEvidence.evidence_ref == evidence_ref)).first()
+    if not evidence:
+        return False
+    control = session.exec(select(ReadinessControl).where(ReadinessControl.control_ref == evidence.control_ref)).first()
+    return bool(control and control.status == "passed" and control.evidence_ref == evidence_ref)
 
 
 @router.patch("/deployment-profile/{profile_ref}/evidence")
@@ -138,11 +138,11 @@ def record_deployment_evidence(
     invalid = {
         field: value.strip()
         for field, value in submitted.items()
-        if value and not _evidence_exists(session, value.strip())
+        if value and not _approved_evidence(session, value.strip())
     }
     if invalid:
         raise HTTPException(status_code=409, detail={
-            "message": "deployment evidence reference is not present in the readiness or audit evidence store",
+            "message": "deployment evidence must reference the current evidence record of a passed readiness control",
             "invalidEvidence": invalid,
         })
 
