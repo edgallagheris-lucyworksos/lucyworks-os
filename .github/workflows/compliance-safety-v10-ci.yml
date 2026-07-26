@@ -1,0 +1,167 @@
+name: Compliance and Safety v10 Check
+
+on:
+  pull_request:
+    paths:
+      - "config/compliance/**"
+      - "apps/api/app/compliance_safety_*.py"
+      - "apps/api/compliance_safety_v10_smoke_test.py"
+      - "apps/api/migrations/versions/0011_*.py"
+      - "apps/api/app/main.py"
+      - "apps/web/app/compliance-safety/**"
+      - "apps/web/components/compliance-safety-workspace.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "docs/validation/COMPLIANCE_SAFETY_V10_RUNBOOK.md"
+      - ".github/workflows/compliance-safety-v10-ci.yml"
+      - ".github/workflows/control-spine-ci.yml"
+      - "scripts/restore-rehearsal.sh"
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "config/compliance/**"
+      - "apps/api/app/compliance_safety_*.py"
+      - "apps/api/compliance_safety_v10_smoke_test.py"
+      - "apps/api/migrations/versions/0011_*.py"
+      - "apps/api/app/main.py"
+      - "apps/web/app/compliance-safety/**"
+      - "apps/web/components/compliance-safety-workspace.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "docs/validation/COMPLIANCE_SAFETY_V10_RUNBOOK.md"
+      - ".github/workflows/compliance-safety-v10-ci.yml"
+      - ".github/workflows/control-spine-ci.yml"
+      - "scripts/restore-rehearsal.sh"
+
+jobs:
+  api-and-sqlite:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile compliance and safety modules
+        run: python -m compileall -q app migrations
+      - name: Run legal baseline, hazard log and release-gate journey
+        id: assurance
+        continue-on-error: true
+        run: python compliance_safety_v10_smoke_test.py > compliance-safety-v10.log 2>&1
+      - name: Verify SQLite migration 0011
+        id: migration
+        continue-on-error: true
+        env:
+          DATABASE_URL: sqlite:////tmp/lucyworks-compliance-safety-v10-migration.db
+          AUTO_CREATE_SCHEMA: "false"
+        run: |
+          rm -f /tmp/lucyworks-compliance-safety-v10-migration.db
+          {
+            alembic upgrade head
+            python - <<'PY'
+          from sqlalchemy import inspect, text
+          from app.database import engine
+          required = {"safetycasev10", "safetyhazardv10", "safetyreviewv10", "deploymentprofilev10"}
+          tables = set(inspect(engine).get_table_names())
+          assert not (required - tables), sorted(required - tables)
+          with engine.connect() as connection:
+              version = connection.execute(text("select version_num from alembic_version")).scalar_one()
+          assert version == "0011_compliance_safety", version
+          print("SQLite compliance and safety migration verified", version)
+          PY
+          } > compliance-safety-migration.log 2>&1
+      - name: Upload assurance API logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-safety-v10-api-logs
+          path: |
+            apps/api/compliance-safety-v10.log
+            apps/api/compliance-safety-migration.log
+          if-no-files-found: error
+      - name: Report assurance API failure
+        if: steps.assurance.outcome == 'failure' || steps.migration.outcome == 'failure'
+        run: |
+          for file in compliance-safety-v10.log compliance-safety-migration.log; do
+            echo "--- $file ---"
+            cat "$file" || true
+          done
+          exit 1
+
+  postgres-schema:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: lucyworks
+          POSTGRES_PASSWORD: lucyworks
+          POSTGRES_DB: lucyworks_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lucyworks -d lucyworks_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql+psycopg://lucyworks:lucyworks@localhost:5432/lucyworks_test
+      AUTO_CREATE_SCHEMA: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Apply PostgreSQL migration 0011
+        id: postgres_migration
+        continue-on-error: true
+        run: alembic upgrade head > postgres-v10.log 2>&1
+      - name: Verify PostgreSQL assurance tables
+        id: postgres_verify
+        if: steps.postgres_migration.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python - <<'PY' >> postgres-v10.log 2>&1
+          from sqlalchemy import inspect, text
+          from app.database import engine
+          required = {"safetycasev10", "safetyhazardv10", "safetyreviewv10", "deploymentprofilev10"}
+          missing = required - set(inspect(engine).get_table_names())
+          assert not missing, sorted(missing)
+          with engine.connect() as connection:
+              version = connection.execute(text("select version_num from alembic_version")).scalar_one()
+          assert version == "0011_compliance_safety", version
+          print("PostgreSQL compliance and safety schema verified", version)
+          PY
+      - name: Upload PostgreSQL assurance log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-safety-v10-postgres-log
+          path: apps/api/postgres-v10.log
+          if-no-files-found: error
+      - name: Report PostgreSQL assurance failure
+        if: steps.postgres_migration.outcome == 'failure' || steps.postgres_verify.outcome == 'failure'
+        run: cat postgres-v10.log && exit 1
+
+  web-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - name: Build compliance and safety workspace
+        run: npm run build
