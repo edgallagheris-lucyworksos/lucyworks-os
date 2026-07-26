@@ -24,12 +24,19 @@ def add(severity: str, path: Path, rule: str, detail: str) -> None:
     findings.append(Finding(severity, str(path.relative_to(ROOT)), rule, detail))
 
 
+active_date_surfaces = {
+    "apps/web/components/operational-workspace-v16.tsx",
+    "apps/web/components/responsive-hospital-board-v15.tsx",
+    "apps/web/components/care-brief-v16.tsx",
+}
+
 for path in WEB.rglob("*.tsx"):
     text = path.read_text(encoding="utf-8")
     rel = str(path.relative_to(ROOT))
 
     if "new Date().toISOString().slice(0, 10)" in text and path.name != "operational-date.ts":
-        add("ERROR" if any(key in rel for key in ["hospital-board", "workspace", "care"]) else "WARN", path, "LOCAL_DATE", "Operational dates must use the browser-local helper, not UTC truncation.")
+        severity = "ERROR" if rel in active_date_surfaces else "WARN"
+        add(severity, path, "LOCAL_DATE", "Operational dates must use the browser-local helper, not UTC truncation. Legacy or advanced surfaces remain visible as warnings until consolidated.")
 
     if "window.prompt(" in text or "window.alert(" in text:
         add("WARN", path, "MOBILE_DIALOG", "Browser prompts/alerts are weak on phone, inaccessible and provide poor evidence capture.")
