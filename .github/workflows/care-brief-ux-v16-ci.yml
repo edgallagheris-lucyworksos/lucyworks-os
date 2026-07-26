@@ -1,0 +1,74 @@
+name: Care Brief and Operational UX v16 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/care_brief_v16_routes.py"
+      - "apps/api/app/workspace_routes.py"
+      - "apps/api/care_brief_v16_smoke_test.py"
+      - "apps/web/app/care/page.tsx"
+      - "apps/web/app/workspace/page.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/care-brief-v16.tsx"
+      - "apps/web/components/operational-workspace-v16.tsx"
+      - "apps/web/components/hospital-shell.tsx"
+      - "scripts/audit_operational_ux.py"
+      - ".github/workflows/care-brief-ux-v16-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/care_brief_v16_routes.py"
+      - "apps/api/app/workspace_routes.py"
+      - "apps/api/care_brief_v16_smoke_test.py"
+      - "apps/web/app/care/page.tsx"
+      - "apps/web/app/workspace/page.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/care-brief-v16.tsx"
+      - "apps/web/components/operational-workspace-v16.tsx"
+      - "apps/web/components/hospital-shell.tsx"
+      - "scripts/audit_operational_ux.py"
+      - ".github/workflows/care-brief-ux-v16-ci.yml"
+
+jobs:
+  care-brief-and-ux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile care brief and workspace scope
+        working-directory: apps/api
+        run: python -m py_compile care_brief_v16_smoke_test.py app/care_brief_v16_routes.py app/workspace_routes.py
+      - name: Run care brief and verified-scope proof
+        working-directory: apps/api
+        run: python care_brief_v16_smoke_test.py 2>&1 | tee care-brief-v16.log
+      - name: Run operational UX audit
+        run: python scripts/audit_operational_ux.py 2>&1 | tee operational-ux-audit.log
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build patient command and care brief
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: care-brief-ux-v16-evidence
+          path: |
+            apps/api/care-brief-v16.log
+            operational-ux-audit.log
+          if-no-files-found: warn
