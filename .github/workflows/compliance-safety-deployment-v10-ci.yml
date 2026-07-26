@@ -1,0 +1,41 @@
+name: Deployment Assurance v10 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/compliance_safety_deployment_routes.py"
+      - "apps/api/app/compliance_safety_evidence_patch.py"
+      - "apps/api/app/compliance_safety_models.py"
+      - "apps/api/app/compliance_safety_routes.py"
+      - "apps/api/compliance_safety_v10_deployment_smoke_test.py"
+      - "apps/api/app/main.py"
+      - ".github/workflows/compliance-safety-deployment-v10-ci.yml"
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "apps/api/app/compliance_safety_deployment_routes.py"
+      - "apps/api/app/compliance_safety_evidence_patch.py"
+      - "apps/api/app/compliance_safety_models.py"
+      - "apps/api/app/compliance_safety_routes.py"
+      - "apps/api/compliance_safety_v10_deployment_smoke_test.py"
+      - "apps/api/app/main.py"
+      - ".github/workflows/compliance-safety-deployment-v10-ci.yml"
+
+jobs:
+  evidence-and-review-chain:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile assurance modules
+        run: python -m compileall -q app migrations
+      - name: Prove tick boxes, arbitrary references and evidence-only release cannot pass
+        run: python compliance_safety_v10_deployment_smoke_test.py
