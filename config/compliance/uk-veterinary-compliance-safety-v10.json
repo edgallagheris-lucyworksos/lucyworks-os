@@ -1,1 +1,109 @@
-PLACEHOLDER
+{
+  "schemaVersion": 1,
+  "baselineId": "uk-veterinary-compliance-safety-v10",
+  "asOfDate": "2026-07-26",
+  "jurisdiction": "United Kingdom; Great Britain medicines defaults; Northern Ireland differences require deployment configuration",
+  "rules": {
+    "noFalseCertification": true,
+    "noRealDataRequiredForSyntheticValidation": true,
+    "liveApprovalRequiresDeploymentOrganisation": true,
+    "humanHealthStandardsAreAdaptedNotClaimedApplicable": true
+  },
+  "sourceStatuses": [
+    {"code":"law_in_force","meaning":"Current legislation or regulator guidance describing current legal duties"},
+    {"code":"binding_professional_duty","meaning":"Current RCVS Code or supporting guidance for regulated professionals"},
+    {"code":"draft_future_requirement","meaning":"CMA final remedy or draft Order not yet in force on the as-of date"},
+    {"code":"government_policy_proposal","meaning":"Government policy requiring future legislation or regulator rules"},
+    {"code":"voluntary_standard","meaning":"Voluntary accreditation or assurance standard"},
+    {"code":"best_practice_adaptation","meaning":"Useful framework adapted from another sector; no claim of legal applicability"}
+  ],
+  "sources": [
+    {"id":"rcvs-code-vs","title":"RCVS Code of Professional Conduct for Veterinary Surgeons","status":"binding_professional_duty","url":"https://www.rcvs.org.uk/veterinary-professionals/conduct-and-guidance/code-of-professional-conduct-for-veterinary-surgeons"},
+    {"id":"rcvs-code-vn","title":"RCVS Code of Professional Conduct for Veterinary Nurses","status":"binding_professional_duty","url":"https://www.rcvs.org.uk/veterinary-professionals/conduct-and-guidance/code-of-professional-conduct-for-veterinary-nurses"},
+    {"id":"rcvs-ai-2026","title":"RCVS Spring 2026 AI and clinical-record advice","status":"binding_professional_duty","url":"https://www.rcvs.org.uk/veterinary-professionals/conduct-and-guidance/resources-and-updates/standards-and-advice-spring-2026-update"},
+    {"id":"rcvs-consent","title":"RCVS communication and consent guidance","status":"binding_professional_duty","url":"https://www.rcvs.org.uk/veterinary-professionals/conduct-and-guidance/supporting-guidance/11-communication-and-consent"},
+    {"id":"rcvs-delegation","title":"RCVS delegation to veterinary nurses","status":"binding_professional_duty","url":"https://www.rcvs.org.uk/veterinary-professionals/conduct-and-guidance/supporting-guidance/18-delegation-to-veterinary-nurses"},
+    {"id":"rcvs-team","title":"RCVS veterinary teams and leaders","status":"binding_professional_duty","url":"https://www.rcvs.org.uk/veterinary-professionals/conduct-and-guidance/supporting-guidance/17-veterinary-teams-and-leaders"},
+    {"id":"rcvs-emergency","title":"RCVS 24-hour emergency first aid and pain relief","status":"binding_professional_duty","url":"https://www.rcvs.org.uk/veterinary-professionals/conduct-and-guidance/supporting-guidance/3-24-hour-emergency-first-aid-and-pain-relief"},
+    {"id":"rcvs-pss","title":"RCVS Practice Standards Scheme veterinary hospital modules","status":"voluntary_standard","url":"https://www.rcvs.org.uk/practices/practice-standards-scheme/pss-accreditation-levels"},
+    {"id":"vmr-records","title":"Veterinary medicines record-keeping requirements","status":"law_in_force","url":"https://www.gov.uk/guidance/record-keeping-requirements-for-veterinary-medicines"},
+    {"id":"controlled-drugs","title":"Controlled drugs recording, use, storage and disposal","status":"law_in_force","url":"https://www.gov.uk/guidance/controlled-drugs-recording-using-storing-and-disposal"},
+    {"id":"ico-dpia","title":"ICO data protection impact assessment guidance","status":"law_in_force","url":"https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/accountability-and-governance/data-protection-impact-assessments-dpias/"},
+    {"id":"cma-final-2026","title":"CMA final veterinary remedies guidance","status":"draft_future_requirement","effective":"Order expected September 2026 with staged compliance","url":"https://www.gov.uk/guidance/what-veterinary-businesses-and-vets-need-to-do-following-the-cmas-final-vets-report"},
+    {"id":"cma-draft-order-2026","title":"Draft Veterinary Services Market Investigation Order 2026","status":"draft_future_requirement","effective":"Consultation open until 20 August 2026","url":"https://www.gov.uk/cma-cases/veterinary-services-market-for-pets-review"},
+    {"id":"defra-white-paper-2026","title":"Our vision for a thriving veterinary sector","status":"government_policy_proposal","effective":"New primary legislation when Parliamentary time allows","url":"https://www.gov.uk/government/publications/our-vision-for-a-thriving-veterinary-sector/our-vision-for-a-thriving-veterinary-sector"},
+    {"id":"ncsc-software-code","title":"NCSC Software Security Code of Practice guidance","status":"best_practice_adaptation","url":"https://www.ncsc.gov.uk/collection/software-security-code-of-practice-implementation-guidance/about"},
+    {"id":"dcb0129","title":"DCB0129 clinical risk management for health IT manufacturers","status":"best_practice_adaptation","effective":"Not legally applicable to veterinary care; documentation structure adapted","url":"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dcb0129-clinical-risk-management-its-application-in-the-manufacture-of-health-it-systems/"},
+    {"id":"dcb0160","title":"DCB0160 clinical risk management for deployment and use","status":"best_practice_adaptation","effective":"Not legally applicable to veterinary care; deployment structure adapted","url":"https://digital.nhs.uk/data-and-information/information-standards/governance/latest-activity/standards-and-collections/dcb0160-clinical-risk-management-its-application-in-the-deployment-and-use-of-health-it-systems"}
+  ],
+  "obligations": [
+    {"code":"PROF-001","domain":"clinical_governance","status":"binding_professional_duty","requirement":"Animal welfare and qualified professional judgement remain the priority; LucyWorks must not make autonomous clinical decisions.","controls":["human-authority","clinical-role-gates","evidence-ledger"],"sourceIds":["rcvs-code-vs","rcvs-code-vn","rcvs-ai-2026"]},
+    {"code":"PROF-002","domain":"ai","status":"binding_professional_duty","requirement":"AI output is advisory. Clinical records generated with AI require manual verification by a competent professional.","controls":["advisory-only","manual-verification","model-register","audit"],"sourceIds":["rcvs-ai-2026"]},
+    {"code":"PROF-003","domain":"records","status":"binding_professional_duty","requirement":"Clinical and client records must be clear, accurate, adequately detailed, attributed and correction-preserving.","controls":["versioning","actor-attribution","append-only-evidence","correction-not-deletion"],"sourceIds":["rcvs-code-vs","rcvs-ai-2026"]},
+    {"code":"PROF-004","domain":"consent","status":"binding_professional_duty","requirement":"Valid informed consent and decision authority must be recorded before treatment or procedures.","controls":["scoped-consent","decision-authority","withdrawal-history"],"sourceIds":["rcvs-code-vs","rcvs-consent"]},
+    {"code":"PROF-005","domain":"delegation","status":"binding_professional_duty","requirement":"Tasks are delegated only to registered and competent people with the required direction or supervision.","controls":["competency-profile","registration-check","supervision-mode","task-boundary"],"sourceIds":["rcvs-delegation","rcvs-team"]},
+    {"code":"PROF-006","domain":"emergency","status":"binding_professional_duty","requirement":"Emergency staffing, facilities and arrangements must match likely workload and be reviewed.","controls":["service-availability","safe-staffing","escalation","transfer-plan"],"sourceIds":["rcvs-emergency"]},
+    {"code":"MED-001","domain":"medicines","status":"law_in_force","requirement":"Medicine supply and administration records are durable, permanent and available for inspection.","controls":["medicine-ledger","batch-traceability","immutable-audit"],"sourceIds":["vmr-records"]},
+    {"code":"MED-002","domain":"controlled_drugs","status":"law_in_force","requirement":"Controlled-drug receipt, use, wastage, storage and destruction are recorded with required witnessing and reconciliation.","controls":["controlled-drug-ledger","dual-witness","discrepancy-alert","safe-custody"],"sourceIds":["controlled-drugs"]},
+    {"code":"DATA-001","domain":"privacy","status":"law_in_force","requirement":"Client, owner and workforce data is lawful, fair, transparent, secure, necessary and access-controlled.","controls":["data-minimisation","purpose-binding","retention","least-privilege","subject-rights"],"sourceIds":["ico-dpia"]},
+    {"code":"DATA-002","domain":"privacy","status":"law_in_force","requirement":"A DPIA is completed before high-risk processing, including sensitive workforce monitoring and large integrated datasets.","controls":["dpia","risk-register","consultation","residual-risk-acceptance"],"sourceIds":["ico-dpia"]},
+    {"code":"CMA-001","domain":"consumer","status":"draft_future_requirement","requirement":"Future-ready written estimate at £500 including VAT, with update when likely cost increases by 20% or £500, whichever is lower.","controls":["estimate-threshold","variance-alert","written-estimate"],"sourceIds":["cma-final-2026","cma-draft-order-2026"]},
+    {"code":"CMA-002","domain":"billing","status":"draft_future_requirement","requirement":"Future-ready itemised bills separate medicines, goods, services and external-service charges.","controls":["itemised-billing","external-fee-lineage"],"sourceIds":["cma-final-2026"]},
+    {"code":"CMA-003","domain":"complaints","status":"draft_future_requirement","requirement":"Future-ready complaint process logs cases, acknowledges actionable complaints within five working days and targets a full response within eight weeks.","controls":["complaint-log","deadline-engine","learning-review"],"sourceIds":["cma-final-2026"]},
+    {"code":"CMA-004","domain":"consumer","status":"draft_future_requirement","requirement":"Policies support impartial advice, reasonable treatment options, price information and conflict disclosure.","controls":["option-record","conflict-disclosure","price-provenance"],"sourceIds":["cma-final-2026"]},
+    {"code":"REFORM-001","domain":"business_regulation","status":"government_policy_proposal","requirement":"Prepare inspection-ready evidence covering clinical standards, staffing, transparency, medicines, governance, records, equipment and premises.","controls":["inspection-pack","responsible-person","staffing-proof","facility-proof"],"sourceIds":["defra-white-paper-2026"]},
+    {"code":"SAFE-001","domain":"safety_engineering","status":"best_practice_adaptation","requirement":"Maintain a safety plan, hazard log, verification evidence, safety case, release decision and post-release monitoring for every material release.","controls":["hazard-log","safety-case","release-gate","incident-capa"],"sourceIds":["dcb0129","dcb0160"]},
+    {"code":"SEC-001","domain":"cyber","status":"best_practice_adaptation","requirement":"Use secure-by-design and secure-by-default controls through development, deployment, updates and supplier assurance.","controls":["secure-defaults","least-privilege","dependency-scanning","incident-response"],"sourceIds":["ncsc-software-code"]}
+  ],
+  "identityGroups": [
+    {"group":"LW-Clinical-Director","platformRole":"clinical_director","purpose":"Clinical governance, senior clinical decisions and emergency oversight","capabilities":["clinical_read","clinical_write","prescribe","approve_high_risk","safety_review","emergency_override"]},
+    {"group":"LW-Senior-Clinician","platformRole":"senior_clinician","purpose":"Senior case management and controlled clinical approvals","capabilities":["clinical_read","clinical_write","prescribe","approve_clinical","handover","time_limited_waiver"]},
+    {"group":"LW-Clinician","platformRole":"clinician","purpose":"Assessment, diagnosis, prescribing and procedure records","capabilities":["clinical_read","clinical_write","prescribe","consent","handover"]},
+    {"group":"LW-Nursing-Supervisor","platformRole":"supervisor","purpose":"Nursing governance and competency supervision","capabilities":["clinical_read","nursing_write","task_delegate","competency_attest","handover"]},
+    {"group":"LW-Nurse","platformRole":"nurse","purpose":"Nursing execution within lawful direction and competence","capabilities":["clinical_read","nursing_write","medicine_administer_as_directed","observations","handover"]},
+    {"group":"LW-Reception-Referral","platformRole":"admin","purpose":"Referral intake, identity checks, appointments and communication","capabilities":["demographic_write","referral_create","communication_log","document_receive"]},
+    {"group":"LW-Insurance-Finance","platformRole":"admin","purpose":"Estimates, pre-authorisation, claims and billing","capabilities":["financial_read","financial_write","insurance_write","estimate_prepare"]},
+    {"group":"LW-Operations-Control","platformRole":"ops_manager","purpose":"Hospital flow, staffing, facilities and incidents","capabilities":["board_write","staffing_read","service_control","incident_coordinate","pilot_manage"]},
+    {"group":"LW-Hospital-Director","platformRole":"hospital_director","purpose":"Executive accountability and deployment approval","capabilities":["governance_read","approve_pilot","accept_business_risk","appoint_responsible_person"]},
+    {"group":"LW-Governance-DPO","platformRole":"governance_lead","purpose":"Privacy, compliance, complaints, audit and safety governance","capabilities":["audit_read","dpia_manage","complaint_manage","risk_accept","safety_review"]},
+    {"group":"LW-System-Administration","platformRole":"admin","purpose":"Technical configuration, identity mapping and integrations","capabilities":["system_config","identity_mapping","integration_config","security_test"]},
+    {"group":"LW-Read-Only-Audit","platformRole":"governance_lead","purpose":"Inspection and assurance without operational write authority","capabilities":["audit_read","export_evidence","inspection_pack"],"constraints":["no_operational_write","no_approval"]},
+    {"group":"LW-Synthetic-Test","platformRole":"admin","purpose":"Non-production validation only","capabilities":["synthetic_seed","test_execute"],"constraints":["no_live_data","no_production_login"]}
+  ],
+  "vendorContracts": [
+    {"systemType":"PIMS","required":["messageId","occurredAt","sourceSystem","patientExternalId","ownerExternalId","episodeExternalId","eventType","payload"],"rules":["idempotent messageId","no silent overwrite","source provenance","reconciliation on mismatch"]},
+    {"systemType":"PACS_DICOM","required":["messageId","studyInstanceUid","patientExternalId","episodeExternalId","modality","studyStatus","reportText","occurredAt"],"rules":["patient and episode cross-check","critical-result acknowledgement","amendment history","images remain in PACS"]},
+    {"systemType":"LIS","required":["messageId","sampleId","patientExternalId","episodeExternalId","testCode","result","units","abnormalFlag","status","occurredAt"],"rules":["sample chain","unit preservation","preliminary/final distinction","critical escalation"]},
+    {"systemType":"WORKFORCE_HR","required":["messageId","staffExternalId","employmentStatus","role","registrationStatus","competencies","availability","occurredAt"],"rules":["minimum necessary data","health details separated","competency expiry","job title never grants clinical permission"]},
+    {"systemType":"INSURANCE","required":["messageId","caseExternalId","ownerExternalId","patientExternalId","policyReference","status","authorisedAmountPence","currency","occurredAt"],"rules":["GBP integer pence","consent before disclosure","status history","clinical independence"]},
+    {"systemType":"PAYMENTS","required":["messageId","transactionExternalId","episodeExternalId","amountPence","currency","status","occurredAt"],"rules":["no card data stored","provider token only","refund lineage","reconciliation"]}
+  ],
+  "syntheticDataPacks": [
+    {"pack":"referral-neurology-standard","purpose":"Routine referral through consent, imaging, procedure, ward and discharge"},
+    {"pack":"emergency-icu-conflict","purpose":"Emergency intake with staffing conflict, critical result and ICU escalation"},
+    {"pack":"controlled-drug-discrepancy","purpose":"Controlled-drug balance, witness and discrepancy escalation"},
+    {"pack":"declined-referral-closure","purpose":"Declined referral with communication evidence and non-clinical closure"},
+    {"pack":"privacy-subject-rights","purpose":"Owner access, export and correction without altering clinical history"},
+    {"pack":"vendor-duplicate-out-of-order","purpose":"Duplicate, stale and unmatched PIMS, LIS and PACS messages"}
+  ],
+  "dpia": {
+    "status":"draft_baseline_requires_controller_approval",
+    "dataClasses":[
+      {"class":"owner_client","personal":true,"specialCategory":false,"minimise":"No card data; separate contact and finance access"},
+      {"class":"animal_clinical","personal":"context-dependent","specialCategory":false,"minimise":"Treat as confidential because linked to an identifiable owner"},
+      {"class":"workforce_identity","personal":true,"specialCategory":false,"minimise":"Role, registration, competence and availability only"},
+      {"class":"workforce_health","personal":true,"specialCategory":true,"minimise":"Separate access; store operational restriction rather than diagnosis where possible"},
+      {"class":"audit_security","personal":true,"specialCategory":false,"minimise":"Accountability, security and legal-defence purpose only"}
+    ],
+    "highRisks":["large integrated client and workforce datasets","systematic monitoring","workforce health data","automated prioritisation or fatigue flags","clinical harm from wrong or unavailable records"],
+    "mitigations":["least privilege","strong authentication","encryption","immutable attribution","data minimisation","segregation of duties","retention schedule","subject-rights workflow","breach response","human verification of AI","synthetic-first validation"],
+    "controllerDecisions":["lawful basis by purpose","special-category condition and policy document","retention periods","international transfers","processor contracts","actual vendors","DPO consultation","residual high-risk acceptance"]
+  },
+  "safetyMethodology": {
+    "name":"LucyWorks Veterinary Clinical and Operational Safety Method",
+    "basis":"DCB0129/DCB0160 documentation structure adapted as good practice; no NHS applicability or certification claimed",
+    "riskScore":"severity x likelihood, each 1 to 5",
+    "acceptance":{"1-4":"controlled","5-9":"review","10-15":"senior acceptance required","16-25":"release blocked"},
+    "documents":["safety plan","hazard log","verification evidence","safety case report","release decision","post-release monitoring","incident and CAPA process"]
+  }
+}
