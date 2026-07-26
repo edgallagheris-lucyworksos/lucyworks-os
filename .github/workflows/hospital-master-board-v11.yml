@@ -1,0 +1,55 @@
+name: Hospital Master Board v11 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/hospital_master_board_v11_routes.py"
+      - "apps/api/hospital_master_board_v11_smoke_test.py"
+      - "apps/api/app/main.py"
+      - "apps/web/app/hospital-board/**"
+      - "apps/web/components/hospital-master-board-v11.tsx"
+      - ".github/workflows/hospital-master-board-v11.yml"
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "apps/api/app/hospital_master_board_v11_routes.py"
+      - "apps/api/hospital_master_board_v11_smoke_test.py"
+      - "apps/api/app/main.py"
+      - "apps/web/app/hospital-board/**"
+      - "apps/web/components/hospital-master-board-v11.tsx"
+      - ".github/workflows/hospital-master-board-v11.yml"
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile master board API
+        run: python -m py_compile app/hospital_master_board_v11_routes.py app/main.py hospital_master_board_v11_smoke_test.py
+      - name: Run emergency insertion and displacement journey
+        run: python hospital_master_board_v11_smoke_test.py
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build master board workspace
+        run: npm run build
