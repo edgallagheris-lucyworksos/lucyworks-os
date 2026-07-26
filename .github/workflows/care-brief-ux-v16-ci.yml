@@ -6,6 +6,7 @@ on:
       - "apps/api/app/care_brief_v16_routes.py"
       - "apps/api/app/workspace_routes.py"
       - "apps/api/care_brief_v16_smoke_test.py"
+      - "apps/api/workspace_smoke_test.py"
       - "apps/web/app/care/page.tsx"
       - "apps/web/app/workspace/page.tsx"
       - "apps/web/app/system-control/page.tsx"
@@ -20,6 +21,7 @@ on:
       - "apps/api/app/care_brief_v16_routes.py"
       - "apps/api/app/workspace_routes.py"
       - "apps/api/care_brief_v16_smoke_test.py"
+      - "apps/api/workspace_smoke_test.py"
       - "apps/web/app/care/page.tsx"
       - "apps/web/app/workspace/page.tsx"
       - "apps/web/app/system-control/page.tsx"
@@ -49,12 +51,19 @@ jobs:
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile care brief and workspace scope
         working-directory: apps/api
-        run: python -m py_compile care_brief_v16_smoke_test.py app/care_brief_v16_routes.py app/workspace_routes.py
+        run: python -m py_compile care_brief_v16_smoke_test.py workspace_smoke_test.py app/care_brief_v16_routes.py app/workspace_routes.py
       - name: Run care brief and verified-scope proof
         working-directory: apps/api
-        run: python care_brief_v16_smoke_test.py 2>&1 | tee care-brief-v16.log
+        shell: bash
+        run: |
+          set -o pipefail
+          python care_brief_v16_smoke_test.py 2>&1 | tee care-brief-v16.log
+          python workspace_smoke_test.py 2>&1 | tee -a care-brief-v16.log
       - name: Run operational UX audit
-        run: python scripts/audit_operational_ux.py 2>&1 | tee operational-ux-audit.log
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/audit_operational_ux.py 2>&1 | tee operational-ux-audit.log
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
