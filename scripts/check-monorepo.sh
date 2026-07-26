@@ -25,6 +25,7 @@ python hr_smoke_test.py
 python readiness_smoke_test.py
 python input_smoke_test.py
 python operational_proof_v13_smoke_test.py
+python critical_result_deadline_v13_smoke_test.py
 python ops_engine_smoke_test.py
 python canonical_v3_smoke_test.py
 python canonical_modules_smoke_test.py
