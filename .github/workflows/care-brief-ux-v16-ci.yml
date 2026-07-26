@@ -10,9 +10,11 @@ on:
       - "apps/web/app/care/page.tsx"
       - "apps/web/app/workspace/page.tsx"
       - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/input/page.tsx"
       - "apps/web/components/care-brief-v16.tsx"
       - "apps/web/components/operational-workspace-v16.tsx"
       - "apps/web/components/hospital-shell.tsx"
+      - "apps/web/components/module-page.tsx"
       - "scripts/audit_operational_ux.py"
       - ".github/workflows/care-brief-ux-v16-ci.yml"
   push:
@@ -25,9 +27,11 @@ on:
       - "apps/web/app/care/page.tsx"
       - "apps/web/app/workspace/page.tsx"
       - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/input/page.tsx"
       - "apps/web/components/care-brief-v16.tsx"
       - "apps/web/components/operational-workspace-v16.tsx"
       - "apps/web/components/hospital-shell.tsx"
+      - "apps/web/components/module-page.tsx"
       - "scripts/audit_operational_ux.py"
       - ".github/workflows/care-brief-ux-v16-ci.yml"
 
