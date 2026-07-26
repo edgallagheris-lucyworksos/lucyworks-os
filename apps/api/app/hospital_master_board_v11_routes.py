@@ -5,13 +5,13 @@ import json
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from app.auth import AuthContext, require_authenticated, require_roles
 from app.database import get_session
-from app.hospital_ops_models import OperationalArea, OperationalBlock
+from app.hospital_ops_models import OperationalArea, OperationalBlock, OperationalCommand
 from app.hospital_ops_service import (
     block_dict,
     board_snapshot,
@@ -146,7 +146,6 @@ def _candidate(
         if len(affected) > payload.maxDisplacedBlocks:
             return None
 
-    equipment_collisions: list[str] = []
     requested_equipment = set(payload.equipmentRefs)
     if requested_equipment:
         for row in blocks:
@@ -154,11 +153,8 @@ def _candidate(
                 continue
             if not _overlaps(starts_at, emergency_end, row.starts_at, row.ends_at):
                 continue
-            used = set(parse_json(row.equipment_refs_json, []))
-            overlap = sorted(requested_equipment & used)
-            equipment_collisions.extend(overlap)
-    if equipment_collisions:
-        return None
+            if requested_equipment & set(parse_json(row.equipment_refs_json, [])):
+                return None
 
     displacement_minutes = sum(
         max(
@@ -177,9 +173,8 @@ def _candidate(
     if missing_area_skills:
         warnings.append("Area configuration does not declare skills: " + ", ".join(missing_area_skills))
 
-    option_ref = _option_ref(payload, area.area_ref, starts_at, affected)
     return {
-        "optionRef": option_ref,
+        "optionRef": _option_ref(payload, area.area_ref, starts_at, affected),
         "areaRef": area.area_ref,
         "areaName": area.name,
         "startsAt": starts_at.isoformat(),
@@ -227,7 +222,7 @@ def emergency_options(session: Session, payload: EmergencyPreviewPayload) -> lis
 @router.get("/day")
 def get_day(
     premises_ref: str = "default-premises",
-    operational_date: date = date.today(),
+    operational_date: date = Query(default_factory=date.today),
     session: Session = Depends(get_session),
     auth: AuthContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
@@ -271,7 +266,17 @@ def apply_emergency(
     session: Session = Depends(get_session),
     auth: AuthContext = Depends(require_roles(*WRITE_ROLES)),
 ) -> dict[str, Any]:
-    preview_payload = EmergencyPreviewPayload(**payload.model_dump(exclude={"areaRef", "startsAt", "optionRef", "expectedVersions", "reason", "idempotencyKey"}))
+    existing = session.exec(
+        select(OperationalCommand).where(OperationalCommand.idempotency_key == payload.idempotencyKey)
+    ).first()
+    if existing:
+        if existing.command_type != "CreateOperationalBlock":
+            raise HTTPException(status_code=409, detail="idempotency key belongs to another command")
+        return json.loads(existing.result_json or "{}")
+
+    preview_payload = EmergencyPreviewPayload(**payload.model_dump(exclude={
+        "areaRef", "startsAt", "optionRef", "expectedVersions", "reason", "idempotencyKey"
+    }))
     options = emergency_options(session, preview_payload)
     selected = next(
         (
@@ -285,14 +290,22 @@ def apply_emergency(
     if not selected:
         raise HTTPException(status_code=409, detail="emergency option is stale or no longer safe")
 
-    for item in selected["affected"]:
-        expected = payload.expectedVersions.get(item["blockRef"])
-        if expected is None or expected != item["expectedVersion"]:
-            raise HTTPException(status_code=409, detail={
-                "message": "displacement plan is stale",
-                "blockRef": item["blockRef"],
-                "expectedVersion": item["expectedVersion"],
-            })
+    affected_refs = sorted(item["blockRef"] for item in selected["affected"])
+    if affected_refs:
+        lock_query = select(OperationalBlock).where(OperationalBlock.block_ref.in_(affected_refs)).order_by(OperationalBlock.block_ref)
+        if session.get_bind().dialect.name == "postgresql":
+            lock_query = lock_query.with_for_update()
+        locked_rows = {row.block_ref: row for row in session.exec(lock_query).all()}
+        for item in selected["affected"]:
+            row = locked_rows.get(item["blockRef"])
+            expected = payload.expectedVersions.get(item["blockRef"])
+            if not row or expected is None or row.version != expected or expected != item["expectedVersion"]:
+                raise HTTPException(status_code=409, detail={
+                    "message": "displacement plan is stale",
+                    "blockRef": item["blockRef"],
+                    "expectedVersion": item["expectedVersion"],
+                    "currentVersion": row.version if row else None,
+                })
 
     emergency, create_command, created = create_block(
         session,
@@ -341,9 +354,8 @@ def apply_emergency(
         displaced.append({"block": block_dict(row), "commandRef": command.command_ref})
 
     conflicts = detect_constraints(session, payload.premisesRef, payload.operationalDate, persist=True)
-    session.commit()
-    session.refresh(emergency)
-    return {
+    session.flush()
+    result = {
         "created": created,
         "emergencyBlock": block_dict(emergency),
         "createCommandRef": create_command.command_ref,
@@ -351,3 +363,9 @@ def apply_emergency(
         "conflicts": conflicts,
         "option": selected,
     }
+    create_command.result_json = json.dumps(result, default=str, sort_keys=True)
+    session.add(create_command)
+    session.commit()
+    session.refresh(emergency)
+    result["emergencyBlock"] = block_dict(emergency)
+    return result
