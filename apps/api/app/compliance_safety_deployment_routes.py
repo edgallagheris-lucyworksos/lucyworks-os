@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app import compliance_safety_routes as base
 from app.auth import AuthContext, require_roles
-from app.compliance_safety_models import DeploymentProfileV10, utc_now
+from app.compliance_safety_models import DeploymentProfileV10, SafetyCaseV10, SafetyReviewV10, utc_now
 from app.database import get_session
 from app.production_readiness_models import ReadinessControl, ReadinessEvidence
 
@@ -60,12 +60,62 @@ def profile_dict(row: DeploymentProfileV10) -> dict[str, Any]:
 
 
 _original_release_gate = base.release_gate
+_original_seed = base.seed
 
 
-def release_gate(
+def seed(session: Session, auth: AuthContext) -> tuple[Any, list[Any], DeploymentProfileV10]:
+    case, hazards, profile = _original_seed(session, auth)
+    baseline_review = session.exec(select(SafetyReviewV10).where(
+        SafetyReviewV10.safety_case_ref == case.safety_case_ref,
+        SafetyReviewV10.review_type == "developer_safety_baseline",
+        SafetyReviewV10.target == "synthetic",
+    )).first()
+    if not baseline_review:
+        baseline_review = SafetyReviewV10(
+            review_ref=base.ref("safety-review"),
+            safety_case_ref=case.safety_case_ref,
+            review_type="developer_safety_baseline",
+            target="synthetic",
+            outcome="developer_baseline_review",
+            findings_json=base.json_text([
+                {"code": "scope", "status": "accepted", "detail": "Review covers synthetic and historical engineering validation only."},
+                {"code": "clinical-authority", "status": "boundary", "detail": "Qualified professionals retain all clinical judgement."},
+                {"code": "deployment", "status": "boundary", "detail": "No live organisation approval, identity mapping or vendor connection is claimed."},
+            ]),
+            reason="Developer safety baseline and seeded hazard controls reviewed for non-live validation",
+            reviewer_subject=auth.subject,
+            reviewer_name=auth.actor_name,
+            reviewer_role=auth.role,
+        )
+        session.add(baseline_review)
+        if not case.approved_for_target:
+            case.status = "approved_for_target"
+            case.approved_for_target = "synthetic"
+            case.approved_by_subject = auth.subject
+            case.approved_by_name = auth.actor_name
+            case.approved_at = utc_now()
+            case.version += 1
+            case.updated_at = utc_now()
+            session.add(case)
+        base.record_event(
+            session,
+            auth,
+            "developer safety baseline reviewed",
+            "safety_case",
+            case.safety_case_ref,
+            None,
+            {"reviewRef": baseline_review.review_ref, "target": "synthetic", "outcome": baseline_review.outcome},
+            baseline_review.reason,
+            "green",
+        )
+    session.flush()
+    return case, hazards, profile
+
+
+def control_gate(
     session: Session,
     target: str,
-    case: Any = None,
+    case: SafetyCaseV10 | None = None,
     profile: DeploymentProfileV10 | None = None,
 ) -> dict[str, Any]:
     result = _original_release_gate(session, target, case=case, profile=profile)
@@ -95,6 +145,33 @@ def release_gate(
     return result
 
 
+def _approved_review(session: Session, safety_case_ref: str, target: str) -> SafetyReviewV10 | None:
+    rows = session.exec(select(SafetyReviewV10).where(
+        SafetyReviewV10.safety_case_ref == safety_case_ref,
+    ).order_by(SafetyReviewV10.created_at.desc())).all()
+    if target in {"synthetic", "historical_replay"}:
+        return next((row for row in rows if row.target == "synthetic" and row.outcome in {"developer_baseline_review", "approved", "approved_with_conditions"}), None)
+    return next((row for row in rows if row.target == target and row.outcome in {"approved", "approved_with_conditions"}), None)
+
+
+def release_gate(
+    session: Session,
+    target: str,
+    case: SafetyCaseV10 | None = None,
+    profile: DeploymentProfileV10 | None = None,
+) -> dict[str, Any]:
+    result = control_gate(session, target, case=case, profile=profile)
+    case = case or session.exec(select(SafetyCaseV10).order_by(SafetyCaseV10.created_at.desc())).first()
+    if case and not _approved_review(session, case.safety_case_ref, target):
+        result["blockers"].append({
+            "code": "target_safety_review",
+            "detail": f"An accountable safety review approving the {target.replace('_', ' ')} target is required after all control evidence passes.",
+        })
+        result["canRelease"] = False
+    return result
+
+
+base.seed = seed
 base.profile_dict = profile_dict
 base.release_gate = release_gate
 
@@ -182,3 +259,75 @@ def record_deployment_evidence(
     session.commit()
     session.refresh(row)
     return {"deploymentProfile": profile_dict(row), "gate": release_gate(session, row.target, profile=row)}
+
+
+def create_review(
+    payload: base.ReviewCreate,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*APPROVAL_ROLES)),
+) -> dict[str, Any]:
+    if payload.target not in base.TARGETS:
+        raise HTTPException(status_code=422, detail="invalid target")
+    if payload.outcome not in {"approved", "approved_with_conditions", "changes_required", "rejected", "developer_baseline_review"}:
+        raise HTTPException(status_code=422, detail="invalid outcome")
+    query = select(SafetyCaseV10).where(SafetyCaseV10.safety_case_ref == payload.safetyCaseRef)
+    if session.get_bind().dialect.name == "postgresql":
+        query = query.with_for_update()
+    case = session.exec(query).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="safety case not found")
+    gate = control_gate(session, payload.target, case=case)
+    if payload.outcome in {"approved", "approved_with_conditions"} and not gate["canRelease"]:
+        raise HTTPException(status_code=409, detail={"message": "control evidence gate blocked", "blockers": gate["blockers"]})
+    row = SafetyReviewV10(
+        review_ref=base.ref("safety-review"),
+        safety_case_ref=case.safety_case_ref,
+        review_type=payload.reviewType,
+        target=payload.target,
+        outcome=payload.outcome,
+        findings_json=base.json_text(payload.findings),
+        reason=payload.reason,
+        reviewer_subject=auth.subject,
+        reviewer_name=auth.actor_name,
+        reviewer_role=auth.role,
+    )
+    session.add(row)
+    if payload.outcome in {"approved", "approved_with_conditions"}:
+        case.status = "approved_for_target"
+        case.approved_for_target = payload.target
+        case.approved_by_subject = auth.subject
+        case.approved_by_name = auth.actor_name
+        case.approved_at = utc_now()
+        case.version += 1
+        case.updated_at = utc_now()
+        session.add(case)
+    base.record_event(
+        session,
+        auth,
+        "safety review recorded",
+        "safety_case",
+        case.safety_case_ref,
+        None,
+        {"reviewRef": row.review_ref, "target": payload.target, "outcome": payload.outcome, "controlGate": gate},
+        payload.reason,
+        "green" if payload.outcome in {"approved", "approved_with_conditions"} else "amber",
+    )
+    session.commit()
+    session.refresh(case)
+    final_gate = release_gate(session, payload.target, case=case)
+    return {
+        "review": {"reviewRef": row.review_ref, "target": row.target, "outcome": row.outcome, "reviewerRole": row.reviewer_role},
+        "safetyCase": base.case_dict(case),
+        "gate": final_gate,
+    }
+
+
+def patch_route(path: str, method: str, endpoint: Any) -> None:
+    for route in base.router.routes:
+        if getattr(route, "path", None) == path and method in getattr(route, "methods", set()):
+            route.endpoint = endpoint
+            route.dependant.call = endpoint
+
+
+base.create_review = create_review
+patch_route("/api/v10/compliance-safety/reviews", "POST", create_review)
