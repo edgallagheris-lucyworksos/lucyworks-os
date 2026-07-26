@@ -71,7 +71,7 @@ export default function LoginPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `login failed: ${response.status}`);
       saveSession(data.user as SessionUser);
-      router.push("/system-control");
+      router.push("/hospital-board");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Verified login failed");
       setBusyId(null);
@@ -122,11 +122,11 @@ export default function LoginPage() {
           {localEnabled ? DEVELOPMENT_USERS.map((user) => (
             <button key={`${user.id}-${user.role}`} onClick={() => void enterDevelopment(user)} disabled={busyId === user.id} className="lw-command-panel" style={{ textAlign: "left", padding: 14, minHeight: 64, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
               <span><strong>{user.name}</strong><br /><span style={{ color: "#94a3b8" }}>{user.role} • {user.email}</span></span>
-              <span className="lw-pill lw-btn-primary">{busyId === user.id ? "Verifying" : "Enter"}</span>
+              <span className="lw-pill lw-btn-primary">{busyId === user.id ? "Verifying" : "Enter hospital board"}</span>
             </button>
           )) : null}
           <p style={{ color: config ? "#86efac" : "#fbbf24", margin: 0 }}>{status}</p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><Link href="/" className="lw-pill">Home</Link></div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}><Link href="/hospital-board" className="lw-pill">Hospital board</Link></div>
         </div>
       </section>
     </main>
