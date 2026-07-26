@@ -5,6 +5,7 @@ from app import audit_attribution as _audit_attribution  # noqa: F401
 from app import database_exception_handlers as _database_exception_handlers  # noqa: F401
 from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noqa: F401
 from app import production_readiness_runtime_patch as _production_readiness_runtime_patch  # noqa: F401
+from app import compliance_safety_readiness_patch as _compliance_safety_readiness_patch  # noqa: F401
 from app import bvs_v6_runtime_patch as _bvs_v6_runtime_patch  # noqa: F401
 from app import integration_retry_runtime as _integration_retry_runtime  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
@@ -68,6 +69,9 @@ from app.detailed_hospital_routes import router as detailed_hospital_router
 from app.detailed_hospital_completion_routes import router as detailed_hospital_completion_router
 from app.hospital_command_routes import router as hospital_command_router
 from app.hospital_command_intake_routes import router as hospital_command_intake_router
+from app.compliance_safety_routes import router as compliance_safety_router
+from app.compliance_safety_deployment_routes import router as compliance_safety_deployment_router
+from app import compliance_safety_evidence_patch as _compliance_safety_evidence_patch  # noqa: F401
 from app import hospital_command_hardening as _hospital_command_hardening  # noqa: F401
 from app import hospital_command_early_closure_patch as _hospital_command_early_closure_patch  # noqa: F401
 from app import detailed_hospital_serialization_patch as _detailed_hospital_serialization_patch  # noqa: F401
@@ -138,3 +142,5 @@ app.include_router(detailed_hospital_router)
 app.include_router(detailed_hospital_completion_router)
 app.include_router(hospital_command_router)
 app.include_router(hospital_command_intake_router)
+app.include_router(compliance_safety_router)
+app.include_router(compliance_safety_deployment_router)
