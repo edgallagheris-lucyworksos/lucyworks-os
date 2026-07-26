@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/auth-guard";
-import { HospitalMasterBoardV11 } from "@/components/hospital-master-board-v11";
+import { ResponsiveHospitalBoardV14 } from "@/components/responsive-hospital-board-v14";
 
 const allowedRoles = [
   "admin",
@@ -15,7 +15,7 @@ const allowedRoles = [
 export default function HospitalBoardPage() {
   return (
     <AuthGuard allowedRoles={allowedRoles}>
-      <HospitalMasterBoardV11 />
+      <ResponsiveHospitalBoardV14 />
     </AuthGuard>
   );
 }
