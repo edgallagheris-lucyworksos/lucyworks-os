@@ -16,8 +16,10 @@ from app.models import (
     StaffMember,
     WorkItem,
 )
+from app.operational_workspace_v14_routes import router as operational_workspace_v14_router
 
 router = APIRouter()
+router.include_router(operational_workspace_v14_router)
 
 ROLE_SCOPES = {
     "ops_manager": {"ops_manager", "clinical_director", "clinician", "nurse", "ward_nurse", "icu_nurse", "admin", "insurance_admin", "reception", "theatre_nurse", "anaesthetist", "surgeon", "radiographer", "stock_controller"},
