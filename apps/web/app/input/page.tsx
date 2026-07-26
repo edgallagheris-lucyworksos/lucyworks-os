@@ -4,12 +4,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+import { apiPost } from "@/lib/api";
 
 const sections = ["Reception / Intake", "Triage / Consult", "Imaging", "Surgery / Theatre", "ICU", "Ward", "Pharmacy", "Owner Comms", "Insurance"];
 const urgencies = ["green", "amber", "red"];
 const owners = ["ops_manager", "clinician", "nurse", "admin", "theatre_staff", "ward_staff", "imaging_staff", "stock_controller"];
+
+type CaptureResponse = {
+  ok: boolean;
+  work_item?: { id?: number; title?: string };
+};
 
 function InputInner() {
   const [title, setTitle] = useState("");
@@ -24,28 +28,29 @@ function InputInner() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const hasOperationalText = Boolean(title.trim() || description.trim());
+
   async function submit() {
+    if (!hasOperationalText) {
+      setStatus("");
+      setError("Enter a title or operational note before creating work.");
+      return;
+    }
+
     setBusy(true);
     setStatus("");
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/input/capture`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title || description.slice(0, 80) || "Mobile capture",
-          description,
-          section_name: sectionName,
-          urgency,
-          owner_role: ownerRole,
-          linked_patient_name: patient || null,
-          linked_episode_ref: episode || null,
-          room_name: room || null,
-          actor_name: "Mobile Input",
-        }),
+      const data = await apiPost<CaptureResponse>("/api/input/capture", {
+        title: title.trim() || description.trim().slice(0, 80) || "Mobile capture",
+        description: description.trim(),
+        section_name: sectionName,
+        urgency,
+        owner_role: ownerRole,
+        linked_patient_name: patient.trim() || null,
+        linked_episode_ref: episode.trim() || null,
+        room_name: room.trim() || null,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(JSON.stringify(data));
       setStatus(`Captured work item #${data.work_item?.id || "new"}. Open Workspace or Command to see it.`);
       setTitle("");
       setDescription("");
@@ -77,8 +82,8 @@ function InputInner() {
       </section>
 
       <section className="lw-command-panel" style={{ padding: 12, display: "grid", gap: 10 }}>
-        <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. MRI owner update overdue" /></label>
-        <label>Details<textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Type the operational note here..." rows={7} /></label>
+        <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. MRI owner update overdue" maxLength={200} /></label>
+        <label>Details<textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Type the operational note here..." rows={7} maxLength={10000} /></label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
           <label>Section<select value={sectionName} onChange={(e) => setSectionName(e.target.value)}>{sections.map((s) => <option key={s}>{s}</option>)}</select></label>
           <label>Urgency<select value={urgency} onChange={(e) => setUrgency(e.target.value)}>{urgencies.map((u) => <option key={u}>{u}</option>)}</select></label>
@@ -89,9 +94,11 @@ function InputInner() {
           <label>Episode ref<input value={episode} onChange={(e) => setEpisode(e.target.value)} placeholder="EP-2001 optional" /></label>
           <label>Room<input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="MRI / ICU Bay 1 optional" /></label>
         </div>
-        <button className="lw-pill lw-btn-primary" style={{ minHeight: 48 }} onClick={submit} disabled={busy}>{busy ? "Capturing..." : "Create work item"}</button>
-        {status ? <p style={{ color: "#86efac", margin: 0 }}>{status}</p> : null}
-        {error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}
+        <button className="lw-pill lw-btn-primary" style={{ minHeight: 48 }} onClick={() => void submit()} disabled={busy || !hasOperationalText}>{busy ? "Capturing..." : "Create work item"}</button>
+        <div aria-live="polite">
+          {status ? <p style={{ color: "#86efac", margin: 0 }}>{status}</p> : null}
+          {error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}
+        </div>
       </section>
     </div>
   </HospitalShell>;
