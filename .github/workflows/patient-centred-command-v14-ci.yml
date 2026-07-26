@@ -1,0 +1,66 @@
+name: Patient-Centred Command v14 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/operational_workspace_v14_smoke_test.py"
+      - "apps/api/app/operational_workspace_v14_routes.py"
+      - "apps/api/app/workspace_routes.py"
+      - "apps/web/app/workspace/page.tsx"
+      - "apps/web/app/hospital-board/page.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/operational-workspace-v14.tsx"
+      - "apps/web/components/responsive-hospital-board-v14.tsx"
+      - ".github/workflows/patient-centred-command-v14-ci.yml"
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "apps/api/operational_workspace_v14_smoke_test.py"
+      - "apps/api/app/operational_workspace_v14_routes.py"
+      - "apps/api/app/workspace_routes.py"
+      - "apps/web/app/workspace/page.tsx"
+      - "apps/web/app/hospital-board/page.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/operational-workspace-v14.tsx"
+      - "apps/web/components/responsive-hospital-board-v14.tsx"
+      - ".github/workflows/patient-centred-command-v14-ci.yml"
+
+jobs:
+  patient-centred-command:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile patient-centred command API
+        working-directory: apps/api
+        run: python -m py_compile operational_workspace_v14_smoke_test.py app/operational_workspace_v14_routes.py app/workspace_routes.py
+      - name: Run patient-centred workspace proof
+        working-directory: apps/api
+        run: python operational_workspace_v14_smoke_test.py 2>&1 | tee patient-centred-command-v14.log
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build responsive patient command and board
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build
+      - name: Upload proof log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-centred-command-v14-log
+          path: apps/api/patient-centred-command-v14.log
+          if-no-files-found: warn
