@@ -57,6 +57,7 @@ jobs:
           run_test hospital_command_v9_smoke_test.py hospital-command-v9.log
           run_test hospital_command_v9_hardening_smoke_test.py hospital-command-v9-hardening.log
           run_test compliance_safety_v10_smoke_test.py compliance-safety-v10.log
+          run_test referral_identity_v12_smoke_test.py referral-identity-v12.log
           run_test bvs_v6_smoke_test.py bvs-v6.log
           run_test bvs_v6_rota_smoke_test.py bvs-rota-v6.log
           run_test production_readiness_smoke_test.py production-readiness.log
@@ -65,7 +66,7 @@ jobs:
           run_test integration_smoke_test.py integrations.log
           LUCYWORKS_LEGACY_TEST_BYPASS=true python control_spine_smoke_test.py 2>&1 | tee control-spine.log
           LUCYWORKS_LEGACY_TEST_BYPASS=true python evidence_patient_care_smoke_test.py 2>&1 | tee patient-evidence.log
-      - name: Run SQLite migration chain through 0011
+      - name: Run SQLite migration chain through 0012
         id: sqlite_migration
         continue-on-error: true
         env:
@@ -75,7 +76,7 @@ jobs:
           rm -f /tmp/lucyworks-migration.db
           alembic upgrade head 2>&1 | tee migration.log
           alembic current 2>&1 | tee -a migration.log
-          grep -q "0011_compliance_safety" migration.log
+          grep -q "0012_referral_identity" migration.log
       - name: Upload API validation logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -89,6 +90,7 @@ jobs:
             apps/api/hospital-command-v9.log
             apps/api/hospital-command-v9-hardening.log
             apps/api/compliance-safety-v10.log
+            apps/api/referral-identity-v12.log
             apps/api/bvs-v6.log
             apps/api/bvs-rota-v6.log
             apps/api/production-readiness.log
@@ -173,15 +175,16 @@ jobs:
               "referralintakev9", "consentauthorisationv9", "episodehandoverv9",
               "episodecheckpointv9", "episodetransitionv9", "episodeclosurev9",
               "safetycasev10", "safetyhazardv10", "safetyreviewv10", "deploymentprofilev10",
-              "alembic_version",
+              "referralidentityintakev12", "identitymatchreviewv12", "referraldocumentv12",
+              "referraltriagev12", "accessreviewv12", "alembic_version",
           }
           tables = set(inspect(engine).get_table_names())
           missing = required - tables
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0011_compliance_safety", version
-          print("PostgreSQL compliance and safety migration verified", version)
+          assert version == "0012_referral_identity", version
+          print("PostgreSQL referral identity assurance migration verified", version)
           PY
       - name: Prove operational stale-write protection
         run: python hospital_ops_postgres_concurrency_test.py 2>&1 | tee -a postgres-migration.log
