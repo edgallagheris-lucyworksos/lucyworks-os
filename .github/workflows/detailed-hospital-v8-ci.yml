@@ -70,6 +70,8 @@ jobs:
           {
             alembic upgrade head
             python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
           from sqlalchemy import inspect, text
           from app.database import engine
           required = {
@@ -85,7 +87,8 @@ jobs:
           assert not (required - tables), sorted(required - tables)
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version in {"0009_detailed_hospital", "0010_hospital_command_spine"}, version
+          expected = ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
+          assert version == expected, (version, expected)
           print("SQLite v8 tables verified at current migration head", version)
           PY
           } > migration.log 2>&1
@@ -148,6 +151,8 @@ jobs:
         continue-on-error: true
         run: |
           python - <<'PY' >> postgres-v8.log 2>&1
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
           from sqlalchemy import inspect, text
           from app.database import engine
           required = {
@@ -163,7 +168,8 @@ jobs:
           assert not missing, sorted(missing)
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version in {"0009_detailed_hospital", "0010_hospital_command_spine"}, version
+          expected = ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
+          assert version == expected, (version, expected)
           print("PostgreSQL v8 tables verified at current migration head", version)
           PY
       - name: Upload PostgreSQL v8 log
