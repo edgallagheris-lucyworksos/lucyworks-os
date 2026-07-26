@@ -6,12 +6,22 @@ if TEST_DB.exists():
     TEST_DB.unlink()
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
+os.environ["AUTH_MODE"] = "local"
+os.environ["AUTH_JWT_SECRET"] = "workspace-smoke-test-secret-long-enough"
+os.environ["AUTH_AUDIENCE"] = "lucyworks-api"
+os.environ["AUTH_ISSUER"] = "lucyworks-local"
 
 from fastapi.testclient import TestClient
 
+from app.auth import issue_local_token
 from app.main import app
 
-print("\n--- RUNNING WORKSPACE ROLE QUEUE SMOKE TEST ---\n")
+print("\n--- RUNNING VERIFIED WORKSPACE ROLE QUEUE SMOKE TEST ---\n")
+
+ops_token, _ = issue_local_token(user_id=701, name="Workspace Ops", role="ops_manager", email="workspace-ops@lucyworks.local")
+clinician_token, _ = issue_local_token(user_id=702, name="Workspace Clinician", role="clinician", email="workspace-clinician@lucyworks.local")
+ops_headers = {"Authorization": f"Bearer {ops_token}"}
+clinician_headers = {"Authorization": f"Bearer {clinician_token}"}
 
 with TestClient(app) as client:
     r = client.get("/api/health")
@@ -32,31 +42,41 @@ with TestClient(app) as client:
     client.post("/api/flow/severity-gates/evaluate", json={"episode_id": episode_id, "gate_name": "workspace_gate", "target_entity_type": "episode", "target_entity_id": episode_id, "triage_red_flags": True, "actor_name": "Workspace Test"})
     client.post("/api/flow/staff-assignment-risk", json={"episode_id": episode_id, "staff_member_id": staff_id, "role_required": "clinician", "required_skills": ["Impossible Skill"], "current_load": 5, "max_cases_per_day": 5, "actor_name": "Workspace Test"})
 
-    r = client.get("/api/workspace?role=ops_manager")
+    r = client.get("/api/workspace?role=ops_manager", headers=ops_headers)
     assert r.status_code == 200, r.text
     ops = r.json()
+    assert ops["role"] == "ops_manager"
     assert ops["summary"]["handovers"] >= 1
     assert ops["summary"]["results"] >= 1
     assert ops["summary"]["discharge_blockers"] >= 1
     assert ops["summary"]["blocked_gates"] >= 1
     assert ops["summary"]["staff_risks"] >= 1
     assert ops["summary"]["occupancy"] >= 1
-    print("Ops workspace sees full command queue")
+    print("Verified ops workspace sees full command queue")
 
-    r = client.get("/api/workspace?role=clinician")
+    r = client.get("/api/workspace?role=clinician", headers=clinician_headers)
     assert r.status_code == 200, r.text
     clinician = r.json()
+    assert clinician["role"] == "clinician"
     assert clinician["summary"]["handovers"] >= 1
     assert clinician["summary"]["results"] >= 1
     assert clinician["summary"]["discharge_blockers"] >= 1
-    print("Clinician workspace sees owned clinical queue")
+    print("Verified clinician workspace sees owned clinical queue")
 
-    r = client.get(f"/api/workspace?role=clinician&staff_member_id={staff_id}")
+    r = client.get("/api/workspace?role=ops_manager", headers=clinician_headers)
+    assert r.status_code == 403, r.text
+    print("Browser role spoofing is rejected")
+
+    r = client.get(f"/api/workspace?staff_member_id={staff_id}", headers=clinician_headers)
+    assert r.status_code == 403, r.text
+    print("Non-senior cross-staff inspection is rejected")
+
+    r = client.get(f"/api/workspace?staff_member_id={staff_id}", headers=ops_headers)
     assert r.status_code == 200, r.text
     personal = r.json()
     assert personal["staff_member_id"] == staff_id
     assert "summary" in personal
     assert "queues" in personal
-    print("Personal workspace returns staff-specific shell")
+    print("Verified senior role can inspect a staff-specific workspace")
 
-print("\n--- WORKSPACE ROLE QUEUE TEST PASSED ---\n")
+print("\n--- VERIFIED WORKSPACE ROLE QUEUE TEST PASSED ---\n")

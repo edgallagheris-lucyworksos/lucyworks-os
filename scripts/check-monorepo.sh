@@ -10,6 +10,7 @@ python scripts/validate_work_visibility_layer.py
 python scripts/validate_intake_layer.py
 python scripts/validate_rota_grid_layer.py
 python scripts/validate_operating_console_layer.py
+python scripts/audit_operational_ux.py
 
 cd "$ROOT/apps/api"
 python -m pip install --upgrade pip
@@ -27,6 +28,7 @@ python input_smoke_test.py
 python operational_proof_v13_smoke_test.py
 python critical_result_deadline_v13_smoke_test.py
 python operational_workspace_v14_smoke_test.py
+python care_brief_v16_smoke_test.py
 python ops_engine_smoke_test.py
 python canonical_v3_smoke_test.py
 python canonical_modules_smoke_test.py
