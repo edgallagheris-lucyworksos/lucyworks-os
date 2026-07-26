@@ -78,17 +78,25 @@ class DeploymentProfileV10(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     profile_ref: str = Field(index=True, sa_column_kwargs={"unique": True})
     environment_name: str = Field(index=True)
+    organisation_name: Optional[str] = Field(default=None, index=True)
     target: str = Field(default="synthetic", index=True)
     data_mode: str = Field(default="synthetic", index=True)
     identity_mode: str = Field(default="reference_groups", index=True)
     vendor_mode: str = Field(default="contract_stubs", index=True)
     real_identity_confirmed: bool = False
+    identity_evidence_ref: Optional[str] = Field(default=None, index=True)
     real_data_governance_confirmed: bool = False
+    data_governance_evidence_ref: Optional[str] = Field(default=None, index=True)
     real_vendor_connections_confirmed: bool = False
+    vendor_evidence_ref: Optional[str] = Field(default=None, index=True)
     clinical_safety_officer_confirmed: bool = False
+    clinical_safety_officer_evidence_ref: Optional[str] = Field(default=None, index=True)
     dpi_a_approved: bool = False
+    dpia_evidence_ref: Optional[str] = Field(default=None, index=True)
     penetration_test_confirmed: bool = False
+    penetration_test_evidence_ref: Optional[str] = Field(default=None, index=True)
     staff_uat_confirmed: bool = False
+    staff_uat_evidence_ref: Optional[str] = Field(default=None, index=True)
     blockers_json: str = "[]"
     status: str = Field(default="synthetic_ready", index=True)
     version: int = 1
