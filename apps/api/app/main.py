@@ -72,6 +72,8 @@ from app.hospital_command_intake_routes import router as hospital_command_intake
 from app.compliance_safety_routes import router as compliance_safety_router
 from app.compliance_safety_deployment_routes import router as compliance_safety_deployment_router
 from app.hospital_master_board_v11_routes import router as hospital_master_board_v11_router
+from app.referral_identity_v12_routes import router as referral_identity_v12_router
+from app import referral_identity_v12_serialization_patch as _referral_identity_v12_serialization_patch  # noqa: F401
 from app import compliance_safety_evidence_patch as _compliance_safety_evidence_patch  # noqa: F401
 from app import hospital_command_hardening as _hospital_command_hardening  # noqa: F401
 from app import hospital_command_early_closure_patch as _hospital_command_early_closure_patch  # noqa: F401
@@ -146,3 +148,4 @@ app.include_router(hospital_command_intake_router)
 app.include_router(compliance_safety_router)
 app.include_router(compliance_safety_deployment_router)
 app.include_router(hospital_master_board_v11_router)
+app.include_router(referral_identity_v12_router)

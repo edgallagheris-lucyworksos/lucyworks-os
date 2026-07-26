@@ -1,0 +1,87 @@
+name: Referral Identity and Assurance v12 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/referral_identity_v12_*.py"
+      - "apps/api/referral_identity_v12_smoke_test.py"
+      - "apps/api/migrations/versions/0012_*.py"
+      - "apps/api/app/main.py"
+      - "apps/web/components/referral-intake-workspace.tsx"
+      - "apps/web/components/access-review-workspace-v12.tsx"
+      - "apps/web/components/assurance-control-workspace-v12.tsx"
+      - "apps/web/app/referral-intake/**"
+      - "apps/web/app/access-review/**"
+      - "apps/web/app/assurance-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/page.tsx"
+      - ".github/workflows/referral-identity-v12-ci.yml"
+      - ".github/workflows/control-spine-ci.yml"
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "apps/api/app/referral_identity_v12_*.py"
+      - "apps/api/referral_identity_v12_smoke_test.py"
+      - "apps/api/migrations/versions/0012_*.py"
+      - "apps/api/app/main.py"
+      - "apps/web/components/referral-intake-workspace.tsx"
+      - "apps/web/components/access-review-workspace-v12.tsx"
+      - "apps/web/components/assurance-control-workspace-v12.tsx"
+      - "apps/web/app/referral-intake/**"
+      - "apps/web/app/access-review/**"
+      - "apps/web/app/assurance-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/page.tsx"
+      - ".github/workflows/referral-identity-v12-ci.yml"
+      - ".github/workflows/control-spine-ci.yml"
+
+jobs:
+  api-and-sqlite:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile referral identity modules
+        run: python -m py_compile app/referral_identity_v12_models.py app/referral_identity_v12_routes.py app/main.py referral_identity_v12_smoke_test.py migrations/versions/0012_referral_identity_assurance.py
+      - name: Run atomic identity, duplicate, triage, scheduling and access journey
+        run: python referral_identity_v12_smoke_test.py
+      - name: Verify SQLite migration 0012
+        env:
+          DATABASE_URL: sqlite:////tmp/lucyworks-referral-identity-v12.db
+          AUTO_CREATE_SCHEMA: "false"
+        run: |
+          rm -f /tmp/lucyworks-referral-identity-v12.db
+          alembic upgrade head
+          python - <<'PY'
+          from sqlalchemy import inspect, text
+          from app.database import engine
+          required = {"referralidentityintakev12", "identitymatchreviewv12", "referraldocumentv12", "referraltriagev12", "accessreviewv12"}
+          tables = set(inspect(engine).get_table_names())
+          assert not (required - tables), sorted(required - tables)
+          with engine.connect() as connection:
+              version = connection.execute(text("select version_num from alembic_version")).scalar_one()
+          assert version == "0012_referral_identity", version
+          print("SQLite referral identity assurance migration verified", version)
+          PY
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - name: Build referral and assurance operator workspaces
+        run: npm run build
