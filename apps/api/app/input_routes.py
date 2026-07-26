@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlmodel import Session
 
+from app.auth import AuthContext, require_roles
 from app.database import get_session
 from app.models import AuditEvent, WorkItem
 
 router = APIRouter()
+CAPTURE_ROLES = ("ops_manager", "clinical_director", "clinician", "nurse", "admin")
+VALID_URGENCIES = {"green", "amber", "red"}
 
 
 def row_dict(obj):
@@ -16,8 +19,8 @@ def row_dict(obj):
 
 
 class CapturePayload(BaseModel):
-    title: str
-    description: str
+    title: str = Field(default="", max_length=200)
+    description: str = Field(default="", max_length=10000)
     input_type: str = "mobile_capture"
     source: str = "phone"
     category: str = "ops"
@@ -28,17 +31,27 @@ class CapturePayload(BaseModel):
     patient_location_label: str | None = None
     linked_patient_name: str | None = None
     linked_episode_ref: str | None = None
-    actor_name: str = "Mobile Capture"
 
 
 @router.post("/api/input/capture")
-def capture_work_item(payload: CapturePayload, session: Session = Depends(get_session)):
+def capture_work_item(
+    payload: CapturePayload,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*CAPTURE_ROLES)),
+):
+    title = payload.title.strip()
+    description = payload.description.strip()
+    if not title and not description:
+        raise HTTPException(status_code=422, detail="title or description is required")
+    if payload.urgency not in VALID_URGENCIES:
+        raise HTTPException(status_code=422, detail="urgency must be green, amber or red")
+
     item = WorkItem(
-        title=payload.title.strip() or "Untitled capture",
+        title=title or description[:80] or "Untitled capture",
         input_type=payload.input_type,
         source=payload.source,
         category=payload.category,
-        description=payload.description.strip(),
+        description=description,
         urgency=payload.urgency,
         owner_role=payload.owner_role,
         section_name=payload.section_name,
@@ -52,7 +65,7 @@ def capture_work_item(payload: CapturePayload, session: Session = Depends(get_se
     session.commit()
     session.refresh(item)
     session.add(AuditEvent(
-        actor_name=payload.actor_name,
+        actor_name=auth.actor_name,
         action="captured",
         entity_type="work_item",
         entity_id=item.id or 0,
