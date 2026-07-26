@@ -134,7 +134,7 @@ try:
         decision = response.json()
         assert decision["referral"]["status"] == "accepted"
         assert decision["proposedBlock"]["status"] == "proposed"
-        assert decision["proposedBlock"]["area_ref"] == "mri"
+        assert decision["proposedBlock"]["areaRef"] == "mri"
         assert decision["proposedBlock"]["gates"]["consent"] == "pending"
         print("Accepted referral converted into proposed canonical operational block OK")
 
