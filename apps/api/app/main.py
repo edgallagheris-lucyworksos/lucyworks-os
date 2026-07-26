@@ -78,6 +78,7 @@ from app import compliance_safety_evidence_patch as _compliance_safety_evidence_
 from app import hospital_command_hardening as _hospital_command_hardening  # noqa: F401
 from app import hospital_command_early_closure_patch as _hospital_command_early_closure_patch  # noqa: F401
 from app import detailed_hospital_serialization_patch as _detailed_hospital_serialization_patch  # noqa: F401
+from app import critical_result_deadline_patch as _critical_result_deadline_patch  # noqa: F401
 from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
