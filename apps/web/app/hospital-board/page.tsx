@@ -1,6 +1,10 @@
 import { AuthGuard } from "@/components/auth-guard";
-import { HospitalOperatingBoard } from "@/components/hospital-operating-board";
+import { HospitalMasterBoardV11, masterBoardRoles } from "@/components/hospital-master-board-v11";
 
 export default function HospitalBoardPage() {
-  return <AuthGuard allowedRoles={["ops_manager", "clinical_director", "hospital_director", "senior_clinician", "supervisor", "clinician", "nurse", "admin"]}><HospitalOperatingBoard /></AuthGuard>;
+  return (
+    <AuthGuard allowedRoles={masterBoardRoles}>
+      <HospitalMasterBoardV11 />
+    </AuthGuard>
+  );
 }
