@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 
 from app.auth import AuthContext, SENIOR_ROLES, require_authenticated
 from app.database import get_session
-from app.hospital_ops_models import CanonicalEpisodeState, OperationalBlock
+from app.hospital_ops_models import CanonicalEpisodeState
 from app.hospital_ops_service import board_snapshot, parse_json
 from app.models import AuditEvent, WorkItem
 
@@ -93,6 +93,11 @@ def _dedupe(values: list[str]) -> list[str]:
     return list(dict.fromkeys(value for value in values if value))
 
 
+def _block_is_current_or_future(block: dict[str, Any], now: datetime) -> bool:
+    end = _normalise_dt(datetime.fromisoformat(str(block["endsAt"])))
+    return bool(end and end >= now)
+
+
 @router.get("")
 def operational_workspace(
     premises_ref: str = "default-premises",
@@ -108,13 +113,6 @@ def operational_workspace(
             CanonicalEpisodeState.premises_ref == premises_ref,
             CanonicalEpisodeState.status == "active",
         ).order_by(CanonicalEpisodeState.updated_at.desc())
-    ).all()
-    blocks = session.exec(
-        select(OperationalBlock).where(
-            OperationalBlock.premises_ref == premises_ref,
-            OperationalBlock.operational_date == operational_date,
-            OperationalBlock.status.notin_(["cancelled"]),
-        ).order_by(OperationalBlock.starts_at, OperationalBlock.area_ref)
     ).all()
     work_items = session.exec(
         select(WorkItem).where(WorkItem.status != "done").order_by(WorkItem.created_at.desc()).limit(150)
@@ -154,7 +152,7 @@ def operational_workspace(
         ]
         current_block = next(
             (block for block in episode_blocks if block["status"] in {"started", "in_progress"}),
-            next((block for block in episode_blocks if datetime.fromisoformat(block["endsAt"]) >= now), None),
+            next((block for block in episode_blocks if _block_is_current_or_future(block, now)), None),
         )
         attention = _dedupe(
             [
