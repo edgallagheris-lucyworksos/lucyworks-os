@@ -11,9 +11,7 @@ on:
       - "docs/**"
       - ".github/workflows/**"
   push:
-    branches:
-      - main
-      - "feature/**"
+    branches: [main, "feature/**"]
     paths:
       - "apps/api/**"
       - "apps/web/**"
@@ -40,55 +38,33 @@ jobs:
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile API modules
         run: python -m compileall -q app migrations
-      - name: Run v7 consolidation and secure session test
-        id: v7_consolidation
+      - name: Run complete API regression suite
+        id: api_suite
         continue-on-error: true
-        run: python v7_consolidation_smoke_test.py > v7-consolidation.log 2>&1
-      - name: Run governed clinical execution test
-        id: clinical_execution
-        continue-on-error: true
-        run: python clinical_execution_smoke_test.py > clinical-execution.log 2>&1
-      - name: Run detailed longitudinal hospital record v8 test
-        id: detailed_v8
-        continue-on-error: true
-        run: python detailed_hospital_v8_smoke_test.py > detailed-v8.log 2>&1
-      - name: Run BVS configuration workforce referrals v6 test
-        id: bvs_v6
-        continue-on-error: true
-        run: python bvs_v6_smoke_test.py > bvs-v6.log 2>&1
-      - name: Run BVS rota safe staffing v6 test
-        id: bvs_rota_v6
-        continue-on-error: true
-        run: python bvs_v6_rota_smoke_test.py > bvs-rota-v6.log 2>&1
-      - name: Run production readiness v4 test
-        id: production_readiness
-        continue-on-error: true
-        run: python production_readiness_smoke_test.py > production-readiness.log 2>&1
-      - name: Run hospital operating system v3 test
-        id: hospital_ops_v3
-        continue-on-error: true
-        run: python hospital_ops_v3_smoke_test.py > hospital-ops-v3.log 2>&1
-      - name: Run verified identity smoke test
-        id: identity
-        continue-on-error: true
-        run: python auth_identity_smoke_test.py > identity.log 2>&1
-      - name: Run governed integration smoke test
-        id: integrations
-        continue-on-error: true
-        run: python integration_smoke_test.py > integrations.log 2>&1
-      - name: Run control spine legacy fixture
-        id: control_spine
-        continue-on-error: true
-        env:
-          LUCYWORKS_LEGACY_TEST_BYPASS: "true"
-        run: python control_spine_smoke_test.py > control-spine.log 2>&1
-      - name: Run patient-care evidence legacy fixture
-        id: patient_evidence
-        continue-on-error: true
-        env:
-          LUCYWORKS_LEGACY_TEST_BYPASS: "true"
-        run: python evidence_patient_care_smoke_test.py > patient-evidence.log 2>&1
-      - name: Run SQLite migration chain
+        shell: bash
+        run: |
+          set -o pipefail
+          run_test() {
+            local script="$1"
+            local log="$2"
+            echo "=== $script ===" | tee "$log"
+            python "$script" 2>&1 | tee -a "$log"
+          }
+          run_test v7_consolidation_smoke_test.py v7-consolidation.log
+          run_test clinical_execution_smoke_test.py clinical-execution.log
+          run_test detailed_hospital_v8_smoke_test.py detailed-v8.log
+          run_test detailed_hospital_completion_smoke_test.py detailed-completion.log
+          run_test hospital_command_v9_smoke_test.py hospital-command-v9.log
+          run_test hospital_command_v9_hardening_smoke_test.py hospital-command-v9-hardening.log
+          run_test bvs_v6_smoke_test.py bvs-v6.log
+          run_test bvs_v6_rota_smoke_test.py bvs-rota-v6.log
+          run_test production_readiness_smoke_test.py production-readiness.log
+          run_test hospital_ops_v3_smoke_test.py hospital-ops-v3.log
+          run_test auth_identity_smoke_test.py identity.log
+          run_test integration_smoke_test.py integrations.log
+          LUCYWORKS_LEGACY_TEST_BYPASS=true python control_spine_smoke_test.py 2>&1 | tee control-spine.log
+          LUCYWORKS_LEGACY_TEST_BYPASS=true python evidence_patient_care_smoke_test.py 2>&1 | tee patient-evidence.log
+      - name: Run SQLite migration chain through 0010
         id: sqlite_migration
         continue-on-error: true
         env:
@@ -96,8 +72,9 @@ jobs:
           AUTO_CREATE_SCHEMA: "false"
         run: |
           rm -f /tmp/lucyworks-migration.db
-          alembic upgrade head > migration.log 2>&1
-          alembic current >> migration.log 2>&1
+          alembic upgrade head 2>&1 | tee migration.log
+          alembic current 2>&1 | tee -a migration.log
+          grep -q "0010_hospital_command_spine" migration.log
       - name: Upload API validation logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -107,6 +84,9 @@ jobs:
             apps/api/v7-consolidation.log
             apps/api/clinical-execution.log
             apps/api/detailed-v8.log
+            apps/api/detailed-completion.log
+            apps/api/hospital-command-v9.log
+            apps/api/hospital-command-v9-hardening.log
             apps/api/bvs-v6.log
             apps/api/bvs-rota-v6.log
             apps/api/production-readiness.log
@@ -117,10 +97,10 @@ jobs:
             apps/api/patient-evidence.log
             apps/api/migration.log
           if-no-files-found: error
-      - name: Report API validation failures
-        if: steps.v7_consolidation.outcome == 'failure' || steps.clinical_execution.outcome == 'failure' || steps.detailed_v8.outcome == 'failure' || steps.bvs_v6.outcome == 'failure' || steps.bvs_rota_v6.outcome == 'failure' || steps.production_readiness.outcome == 'failure' || steps.hospital_ops_v3.outcome == 'failure' || steps.identity.outcome == 'failure' || steps.integrations.outcome == 'failure' || steps.control_spine.outcome == 'failure' || steps.patient_evidence.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
+      - name: Report API validation failure
+        if: steps.api_suite.outcome == 'failure' || steps.sqlite_migration.outcome == 'failure'
         run: |
-          for file in v7-consolidation.log clinical-execution.log detailed-v8.log bvs-v6.log bvs-rota-v6.log production-readiness.log hospital-ops-v3.log identity.log integrations.log control-spine.log patient-evidence.log migration.log; do
+          for file in *.log; do
             echo "--- $file ---"
             tail -n 300 "$file" || true
           done
@@ -158,13 +138,13 @@ jobs:
       - name: Install API dependencies
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Apply PostgreSQL migrations
-        run: alembic upgrade head | tee postgres-migration.log
-      - name: Verify PostgreSQL schema version
+        run: alembic upgrade head 2>&1 | tee postgres-migration.log
+      - name: Verify PostgreSQL schema version and critical tables
         run: |
-          python - <<'PY' | tee -a postgres-migration.log
+          python - <<'PY' 2>&1 | tee -a postgres-migration.log
           from sqlalchemy import inspect, text
           from app.database import engine
-          inspector = inspect(engine)
+
           required = {
               "evidenceevent", "approvaltask", "accountablehandover", "compliancecontrol",
               "serviceavailability", "aimodelregistration", "criticalresultacknowledgement",
@@ -172,15 +152,15 @@ jobs:
               "hospitalpremises", "operationalarea", "canonicalepisodestate", "operationalblock",
               "operationaldependency", "operationalcommand", "operationalconflict", "boardchangeevent",
               "scenariorun", "importbatch", "importreconciliationitem",
-              "readinesscontrol", "readinessevidence", "securityassessmentrun", "pilotrun",
-              "pilotobservation", "hospitalconfigurationrecord", "configurationclaim",
-              "configurationverificationtask", "workforceprofile", "workforcecompetency",
-              "coveragerequirement", "workforceshiftv6", "workforceavailabilityexceptionv6",
-              "referralintake", "referralintakeevent", "historicalreplayrun", "historicalreplayevent",
-              "authsession", "durableevent", "eventacknowledgement", "canonicalshadowcomparison",
-              "integrationretryjob", "legacywriteretirement", "medicationorder", "medicationadministration",
-              "anaesthesiarecord", "clinicalobservation", "treatmenttask", "controlleddrugledgerentry",
-              "inventoryitem", "inventorymovement", "diagnosticworkitem", "samplechainevent", "dischargeplan",
+              "readinesscontrol", "readinessevidence", "securityassessmentrun", "pilotrun", "pilotobservation",
+              "hospitalconfigurationrecord", "configurationclaim", "configurationverificationtask",
+              "workforceprofile", "workforcecompetency", "coveragerequirement", "workforceshiftv6",
+              "workforceavailabilityexceptionv6", "referralintake", "referralintakeevent",
+              "historicalreplayrun", "historicalreplayevent", "authsession", "durableevent",
+              "eventacknowledgement", "canonicalshadowcomparison", "integrationretryjob",
+              "legacywriteretirement", "medicationorder", "medicationadministration", "anaesthesiarecord",
+              "clinicalobservation", "treatmenttask", "controlleddrugledgerentry", "inventoryitem",
+              "inventorymovement", "diagnosticworkitem", "samplechainevent", "dischargeplan",
               "owneraccountv8", "patientclinicalrecordv8", "patientownerlinkv8", "patientproblemv8",
               "patientallergyv8", "patientweightv8", "clinicalencounterv8", "clinicalnotev8",
               "formularymedicinev8", "formularydoserulev8", "medicationsafetyreviewv8",
@@ -188,26 +168,28 @@ jobs:
               "fluidplanv8", "fluidbalanceentryv8", "inpatientcareplanv8", "inpatientchartentryv8",
               "procedurerecordv8", "implanttracev8", "estimatev8", "estimatelinev8",
               "insurancecasev8", "financialtransactionv8", "communicationeventv8", "clinicaldocumentv8",
-              "alembic_version",
+              "referralintakev9", "consentauthorisationv9", "episodehandoverv9",
+              "episodecheckpointv9", "episodetransitionv9", "episodeclosurev9", "alembic_version",
           }
-          missing = required - set(inspector.get_table_names())
+          tables = set(inspect(engine).get_table_names())
+          missing = required - tables
           assert not missing, f"missing PostgreSQL tables: {sorted(missing)}"
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0009_detailed_hospital", version
-          print("PostgreSQL detailed hospital record migration verified", version)
+          assert version == "0010_hospital_command_spine", version
+          print("PostgreSQL hospital command migration verified", version)
           PY
       - name: Prove operational stale-write protection
-        run: python hospital_ops_postgres_concurrency_test.py | tee -a postgres-migration.log
+        run: python hospital_ops_postgres_concurrency_test.py 2>&1 | tee -a postgres-migration.log
       - name: Prove durable event sequence concurrency
-        run: python v7_event_postgres_concurrency_test.py | tee -a postgres-migration.log
+        run: python v7_event_postgres_concurrency_test.py 2>&1 | tee -a postgres-migration.log
       - name: Upload PostgreSQL migration log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: postgres-migration-log
           path: apps/api/postgres-migration.log
-          if-no-files-found: warn
+          if-no-files-found: error
 
   web-build:
     runs-on: ubuntu-latest
@@ -243,7 +225,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Validate mapping profiles and operational scripts
+      - name: Validate mappings and operational scripts
         run: |
           python - <<'PY'
           import json
