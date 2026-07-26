@@ -4,11 +4,18 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import Column, JSON, UniqueConstraint
+from sqlalchemy.orm import reconstructor
 from sqlmodel import Field, SQLModel
 
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def ensure_utc(value: datetime | None) -> datetime | None:
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=timezone.utc)
 
 
 class ReferralIdentityIntakeV12(SQLModel, table=True):
@@ -114,6 +121,15 @@ class ReferralTriageV12(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=utc_now, index=True)
     evidence_event_ref: Optional[str] = Field(default=None, index=True)
 
+    @reconstructor
+    def _normalise_loaded_deadlines(self) -> None:
+        self.response_due_at = ensure_utc(self.response_due_at)  # type: ignore[assignment]
+        self.clinical_review_due_at = ensure_utc(self.clinical_review_due_at)  # type: ignore[assignment]
+        self.acknowledged_at = ensure_utc(self.acknowledged_at)
+        self.completed_at = ensure_utc(self.completed_at)
+        self.created_at = ensure_utc(self.created_at)  # type: ignore[assignment]
+        self.updated_at = ensure_utc(self.updated_at)  # type: ignore[assignment]
+
 
 class AccessReviewV12(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("review_ref", name="uq_accessreviewv12_ref"),)
@@ -138,3 +154,10 @@ class AccessReviewV12(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now, index=True)
     updated_at: datetime = Field(default_factory=utc_now, index=True)
     evidence_event_ref: Optional[str] = Field(default=None, index=True)
+
+    @reconstructor
+    def _normalise_loaded_deadline(self) -> None:
+        self.due_at = ensure_utc(self.due_at)  # type: ignore[assignment]
+        self.decided_at = ensure_utc(self.decided_at)
+        self.created_at = ensure_utc(self.created_at)  # type: ignore[assignment]
+        self.updated_at = ensure_utc(self.updated_at)  # type: ignore[assignment]
