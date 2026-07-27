@@ -1,0 +1,113 @@
+name: Veterinary Speech and Structured Capture v19 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/speech_capture_v19_*.py"
+      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
+      - "apps/api/speech_capture_v19_smoke_test.py"
+      - "apps/web/components/speech-**"
+      - "apps/web/app/input/page.tsx"
+      - "apps/web/app/care/layout.tsx"
+      - "apps/web/app/patient-record/layout.tsx"
+      - "apps/web/app/medications/**"
+      - "scripts/validate_speech_capture_v19.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/speech-capture-v19-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/speech_capture_v19_*.py"
+      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
+      - "apps/api/speech_capture_v19_smoke_test.py"
+      - "apps/web/components/speech-**"
+      - "apps/web/app/input/page.tsx"
+      - "apps/web/app/care/layout.tsx"
+      - "apps/web/app/patient-record/layout.tsx"
+      - "apps/web/app/medications/**"
+      - "scripts/validate_speech_capture_v19.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/speech-capture-v19-ci.yml"
+
+jobs:
+  api-and-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile veterinary speech modules
+        working-directory: apps/api
+        run: python -m py_compile app/speech_capture_v19_models.py app/speech_capture_v19_routes.py app/speech_capture_v19_serialization_patch.py speech_capture_v19_smoke_test.py migrations/versions/0014_speech_capture_v19.py
+      - name: Run authenticated transcript-to-record proof
+        working-directory: apps/api
+        run: python speech_capture_v19_smoke_test.py 2>&1 | tee speech-capture-v19.log
+      - name: Verify SQLite migration 0014 and speech evidence tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-speech-v19-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-speech-v19-ci.db alembic upgrade head 2>&1 | tee speech-migration-v19.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-speech-v19-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-speech-v19-ci.db')
+          expected = {'speechcapturev19', 'speechdraftv19', 'speechphrasepackv19'}
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          assert version == '0014_speech_capture_v19', version
+          missing = expected - set(inspect(engine).get_table_names())
+          assert not missing, missing
+          print('SPEECH_CAPTURE_MIGRATION_V19_PASSED')
+          PY
+      - name: Validate restore script syntax
+        run: bash -n scripts/restore-rehearsal.sh
+      - name: Upload API speech evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: speech-capture-v19-api-evidence
+          path: |
+            apps/api/speech-capture-v19.log
+            apps/api/speech-migration-v19.log
+          if-no-files-found: warn
+
+  web-and-usability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Run speech safety and usability audit
+        run: python scripts/validate_speech_capture_v19.py 2>&1 | tee speech-usability-v19.log
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build all patient speech integrations
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee speech-web-v19.log
+      - name: Upload web speech evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: speech-capture-v19-web-evidence
+          path: |
+            speech-usability-v19.log
+            apps/web/speech-web-v19.log
+          if-no-files-found: warn
