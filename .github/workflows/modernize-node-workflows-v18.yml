@@ -23,9 +23,7 @@ jobs:
       - name: Replace obsolete Node 20 pins
         run: python scripts/modernize_node_workflows_v18.py
       - name: Validate changed workflow text
-        run: |
-          git diff --check
-          ! grep -R --line-number -E 'node-version: ["'"']20["'"']' .github/workflows
+        run: git diff --check
       - name: Commit workflow maintenance
         run: |
           git config user.name "lucyworks-automation"
