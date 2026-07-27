@@ -5,7 +5,7 @@ on:
     paths:
       - "apps/api/app/referral_identity_v12_*.py"
       - "apps/api/referral_identity_v12_smoke_test.py"
-      - "apps/api/migrations/versions/0012_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/web/components/referral-intake-workspace.tsx"
       - "apps/web/components/access-review-workspace-v12.tsx"
@@ -13,7 +13,7 @@ on:
       - "apps/web/app/referral-intake/**"
       - "apps/web/app/access-review/**"
       - "apps/web/app/assurance-control/**"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "apps/web/app/page.tsx"
       - ".github/workflows/referral-identity-v12-ci.yml"
       - ".github/workflows/control-spine-ci.yml"
@@ -22,7 +22,7 @@ on:
     paths:
       - "apps/api/app/referral_identity_v12_*.py"
       - "apps/api/referral_identity_v12_smoke_test.py"
-      - "apps/api/migrations/versions/0012_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/web/components/referral-intake-workspace.tsx"
       - "apps/web/components/access-review-workspace-v12.tsx"
@@ -30,7 +30,7 @@ on:
       - "apps/web/app/referral-intake/**"
       - "apps/web/app/access-review/**"
       - "apps/web/app/assurance-control/**"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "apps/web/app/page.tsx"
       - ".github/workflows/referral-identity-v12-ci.yml"
       - ".github/workflows/control-spine-ci.yml"
@@ -53,7 +53,7 @@ jobs:
         run: python -m py_compile app/referral_identity_v12_models.py app/referral_identity_v12_routes.py app/main.py referral_identity_v12_smoke_test.py migrations/versions/0012_referral_identity_assurance.py
       - name: Run atomic identity, duplicate, triage, scheduling and access journey
         run: python referral_identity_v12_smoke_test.py
-      - name: Verify SQLite migration 0012
+      - name: Verify referral tables at the current migration head
         env:
           DATABASE_URL: sqlite:////tmp/lucyworks-referral-identity-v12.db
           AUTO_CREATE_SCHEMA: "false"
@@ -68,8 +68,9 @@ jobs:
           assert not (required - tables), sorted(required - tables)
           with engine.connect() as connection:
               version = connection.execute(text("select version_num from alembic_version")).scalar_one()
-          assert version == "0012_referral_identity", version
-          print("SQLite referral identity assurance migration verified", version)
+          numeric_revision = int(str(version).split("_", 1)[0])
+          assert numeric_revision >= 12, version
+          print("Referral identity assurance tables verified at current migration head", version)
           PY
 
   web:
@@ -81,7 +82,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
       - run: npm install --no-audit --no-fund
       - name: Build referral and assurance operator workspaces
         run: npm run build
