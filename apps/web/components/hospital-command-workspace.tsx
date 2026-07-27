@@ -64,11 +64,17 @@ export function HospitalCommandWorkspace() {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("control");
 
+  useEffect(() => {
+    const initial = new URLSearchParams(window.location.search).get("episode");
+    if (initial) setEpisodeRef(initial);
+  }, []);
+
   const load = useCallback(async () => {
     if (!episodeRef.trim()) return;
     try {
       const result = await apiGet<CommandView>(`/api/v9/episodes/${encodeURIComponent(episodeRef.trim())}/command-view`);
       setData(result);
+      window.history.replaceState(null, "", `/episode-command?episode=${encodeURIComponent(result.episode.episode_ref)}`);
       setError("");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to load canonical episode command view");
@@ -114,7 +120,11 @@ export function HospitalCommandWorkspace() {
             <span style={{ color: "#2dd4bf", fontSize: 11, fontWeight: 900, letterSpacing: ".13em" }}>CANONICAL COMMAND SPINE V9</span>
             <h1 style={{ fontSize: "clamp(36px,8vw,70px)", lineHeight: 0.93, margin: "6px 0" }}>Episode command</h1>
           </div>
-          <Link href="/system-control" style={{ color: "white" }}>← System control</Link>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Link href={episodeRef ? `/care?episode=${encodeURIComponent(episodeRef)}` : "/workspace"} style={{ color: "white" }}>← Care brief</Link>
+            <Link href={episodeRef ? `/patient-record?episode=${encodeURIComponent(episodeRef)}` : "/patient-record"} style={{ color: "white" }}>Patient record</Link>
+            <Link href={episodeRef ? `/clinical-execution?episode=${encodeURIComponent(episodeRef)}` : "/clinical-execution"} style={{ color: "white" }}>Patient work</Link>
+          </div>
         </div>
         <p style={{ color: "#94a3b8", maxWidth: 900 }}>
           Referral, authority, consent, accountable handover, phase transition and closure all act on the same versioned canonical episode. A transition cannot proceed while its evidence gates are open.
@@ -155,53 +165,78 @@ export function HospitalCommandWorkspace() {
 }
 
 function Control({ data, busy, act }: { data: CommandView; busy: boolean; act: Act }) {
+  const [reason, setReason] = useState("");
+  const [waiverHours, setWaiverHours] = useState("1");
+  const [actionError, setActionError] = useState("");
+
   async function decide(status: string) {
-    if (!data.referral) return;
-    const reason = window.prompt(`Reason for ${status}:`);
-    if (!reason) return;
-    await act(`/api/v9/referrals/${data.referral.referral_ref}`, { expected_version: data.referral.version, status, reason }, `Referral ${status}.`, "PATCH");
+    const value = reason.trim();
+    if (!data.referral || !value) {
+      setActionError("Record a reason before changing the referral decision.");
+      return;
+    }
+    setActionError("");
+    await act(`/api/v9/referrals/${data.referral.referral_ref}`, { expected_version: data.referral.version, status, reason: value }, `Referral ${status}.`, "PATCH");
+    setReason("");
   }
 
   async function transition(target: string) {
-    const reason = window.prompt(`Reason for transition to ${target}:`);
-    if (!reason) return;
+    const value = reason.trim();
+    if (!value) {
+      setActionError("Record a reason before moving the episode.");
+      return;
+    }
+    setActionError("");
     await act(
       `/api/v9/episodes/${data.episode.episode_ref}/transition`,
       {
         expected_version: data.episode.version,
         target_phase: target,
         idempotency_key: `ui:${data.episode.episode_ref}:${data.episode.version}:${target}:${Date.now()}`,
-        reason,
+        reason: value,
       },
       `Episode transitioned to ${target}.`,
     );
+    setReason("");
   }
 
   async function waive(code: string) {
-    const reason = window.prompt(`Senior waiver reason for ${code}:`);
-    if (!reason) return;
-    const hoursText = window.prompt("Waiver duration in hours, maximum 24:", "1");
-    if (!hoursText) return;
-    const hours = Number(hoursText);
-    if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
-      window.alert("Enter a duration greater than 0 and no more than 24 hours.");
+    const value = reason.trim();
+    const hours = Number(waiverHours);
+    if (!value) {
+      setActionError("Record the senior waiver reason.");
       return;
     }
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+      setActionError("Waiver duration must be greater than 0 and no more than 24 hours.");
+      return;
+    }
+    setActionError("");
     await act(
       `/api/v9/episodes/${data.episode.episode_ref}/checkpoints`,
       {
         checkpoint_code: code,
         status: "waived",
         detail: { source: "episode-command-ui", durationHours: hours },
-        reason,
+        reason: value,
         valid_until: new Date(Date.now() + hours * 60 * 60 * 1000).toISOString(),
       },
       `${code} recorded as a time-bounded senior waiver.`,
     );
+    setReason("");
   }
 
   return (
     <div style={{ display: "grid", gap: 9 }}>
+      <section style={{ ...panel, display: "grid", gap: 8, borderColor: actionError ? "#ef4444" : "#93c5fd" }}>
+        <label style={{ fontWeight: 850 }}>Reason for the next decision or transition
+          <textarea value={reason} onChange={event => setReason(event.target.value)} placeholder="What changed, why this action is safe, and any relevant evidence" style={{ ...field, minHeight: 82 }} />
+        </label>
+        <label style={{ fontWeight: 850 }}>Senior waiver duration, hours
+          <input type="number" min="0.25" max="24" step="0.25" value={waiverHours} onChange={event => setWaiverHours(event.target.value)} style={{ ...field, maxWidth: 220 }} />
+        </label>
+        {actionError && <strong role="alert" style={{ color: "#991b1b" }}>{actionError}</strong>}
+      </section>
       <section style={grid}>
         <article style={panel}>
           <small style={{ color: "#64748b", fontWeight: 850 }}>REFERRAL</small>
@@ -267,7 +302,8 @@ function Metric({ label, value }: { label: string; value: number }) {
 }
 
 function Consent({ data, busy, act }: { data: CommandView; busy: boolean; act: Act }) {
-  const [form, setForm] = useState({ ownerRef: "", type: "admission", decisionMaker: "", channel: "telephone", maximumPounds: "", scope: "{}" });
+  const [form, setForm] = useState({ ownerRef: "", type: "admission", decisionMaker: "", channel: "telephone", maximumPounds: "", scopeSummary: "" });
+  const [withdrawReason, setWithdrawReason] = useState("");
 
   async function create() {
     await act(
@@ -275,7 +311,7 @@ function Consent({ data, busy, act }: { data: CommandView; busy: boolean; act: A
       {
         owner_ref: form.ownerRef,
         consent_type: form.type,
-        scope: JSON.parse(form.scope || "{}"),
+        scope: { summary: form.scopeSummary.trim() },
         maximum_authorised_pence: form.maximumPounds ? Math.round(Number(form.maximumPounds) * 100) : null,
         currency: "GBP",
         decision_maker_name: form.decisionMaker,
@@ -287,8 +323,10 @@ function Consent({ data, busy, act }: { data: CommandView; busy: boolean; act: A
   }
 
   async function withdraw(row: any) {
-    const reason = window.prompt("Withdrawal reason:");
-    if (reason) await act(`/api/v9/consents/${row.consent_ref}/withdraw`, { expected_version: row.version, reason }, "Consent withdrawn.", "PATCH");
+    const reason = withdrawReason.trim();
+    if (!reason) return;
+    await act(`/api/v9/consents/${row.consent_ref}/withdraw`, { expected_version: row.version, reason }, "Consent withdrawn.", "PATCH");
+    setWithdrawReason("");
   }
 
   return (
@@ -305,16 +343,17 @@ function Consent({ data, busy, act }: { data: CommandView; busy: boolean; act: A
         </select>
         <input type="number" step="0.01" placeholder="Maximum authorised amount (£)" style={field} value={form.maximumPounds} onChange={e => setForm({ ...form, maximumPounds: e.target.value })} />
         <small>A financial limit is accepted only when this owner link also carries financial responsibility.</small>
-        <textarea aria-label="Consent scope JSON" style={{ ...field, minHeight: 95, fontFamily: "monospace" }} value={form.scope} onChange={e => setForm({ ...form, scope: e.target.value })} />
+        <textarea aria-label="Consent scope" placeholder="Agreed procedure, options discussed, material risks, limitations and owner questions" style={{ ...field, minHeight: 110 }} value={form.scopeSummary} onChange={e => setForm({ ...form, scopeSummary: e.target.value })} />
         <button disabled={busy || !form.ownerRef || !form.decisionMaker} style={button} onClick={() => void create()}>Record consent</button>
       </section>
       <section style={{ display: "grid", gap: 8 }}>
         <h2 style={{ margin: 0 }}>Consent history</h2>
+        <textarea aria-label="Consent withdrawal reason" placeholder="Reason required before withdrawing an active consent" style={{ ...field, minHeight: 72 }} value={withdrawReason} onChange={event => setWithdrawReason(event.target.value)} />
         {data.consents.map(row => (
           <article key={row.consent_ref} style={{ ...panel, borderColor: row.status === "active" ? "#86efac" : "#cbd5e1" }}>
             <strong>{row.consent_type} · {row.status}</strong>
             <p>{row.decision_maker_name} · {row.captured_channel}{row.maximum_authorised_pence != null ? ` · £${(row.maximum_authorised_pence / 100).toFixed(2)}` : ""}</p>
-            <button disabled={busy || row.status !== "active"} style={{ ...button, background: "#991b1b" }} onClick={() => void withdraw(row)}>Withdraw</button>
+            <button disabled={busy || row.status !== "active" || !withdrawReason.trim()} style={{ ...button, background: "#991b1b" }} onClick={() => void withdraw(row)}>Withdraw with recorded reason</button>
           </article>
         ))}
       </section>
@@ -323,7 +362,8 @@ function Consent({ data, busy, act }: { data: CommandView; busy: boolean; act: A
 }
 
 function Handover({ data, busy, act }: { data: CommandView; busy: boolean; act: Act }) {
-  const [form, setForm] = useState({ role: "nurse", subject: "", area: "", priority: "amber", situation: "", background: "", assessment: "", recommendation: "", risks: "[]", actions: "[]" });
+  const [form, setForm] = useState({ role: "nurse", subject: "", area: "", priority: "amber", situation: "", background: "", assessment: "", recommendation: "", risks: "", actions: "" });
+  const [acknowledgementNote, setAcknowledgementNote] = useState("");
 
   async function create() {
     await act(
@@ -337,8 +377,8 @@ function Handover({ data, busy, act }: { data: CommandView; busy: boolean; act: 
         background: form.background,
         assessment: form.assessment,
         recommendation: form.recommendation,
-        risks: JSON.parse(form.risks || "[]"),
-        pending_actions: JSON.parse(form.actions || "[]"),
+        risks: form.risks.split("\n").map(value => value.trim()).filter(Boolean),
+        pending_actions: form.actions.split("\n").map(value => value.trim()).filter(Boolean),
         reason: "Structured accountable handover offered",
       },
       "Handover offered.",
@@ -346,8 +386,10 @@ function Handover({ data, busy, act }: { data: CommandView; busy: boolean; act: 
   }
 
   async function acknowledge(row: any) {
-    const reason = window.prompt("Acknowledgement note:");
-    if (reason) await act(`/api/v9/handovers/${row.handover_ref}/acknowledge`, { expected_version: row.version, reason }, "Handover acknowledged.", "PATCH");
+    const reason = acknowledgementNote.trim();
+    if (!reason) return;
+    await act(`/api/v9/handovers/${row.handover_ref}/acknowledge`, { expected_version: row.version, reason }, "Handover acknowledged.", "PATCH");
+    setAcknowledgementNote("");
   }
 
   return (
@@ -364,18 +406,19 @@ function Handover({ data, busy, act }: { data: CommandView; busy: boolean; act: 
         <textarea placeholder="Background" style={{ ...field, minHeight: 75 }} value={form.background} onChange={e => setForm({ ...form, background: e.target.value })} />
         <textarea placeholder="Assessment" style={{ ...field, minHeight: 75 }} value={form.assessment} onChange={e => setForm({ ...form, assessment: e.target.value })} />
         <textarea placeholder="Recommendation" style={{ ...field, minHeight: 75 }} value={form.recommendation} onChange={e => setForm({ ...form, recommendation: e.target.value })} />
-        <textarea aria-label="Handover risks JSON" style={{ ...field, minHeight: 80, fontFamily: "monospace" }} value={form.risks} onChange={e => setForm({ ...form, risks: e.target.value })} />
-        <textarea aria-label="Pending actions JSON" style={{ ...field, minHeight: 80, fontFamily: "monospace" }} value={form.actions} onChange={e => setForm({ ...form, actions: e.target.value })} />
+        <textarea aria-label="Handover risks" placeholder="One risk per line" style={{ ...field, minHeight: 90 }} value={form.risks} onChange={e => setForm({ ...form, risks: e.target.value })} />
+        <textarea aria-label="Pending actions" placeholder="One pending action per line" style={{ ...field, minHeight: 90 }} value={form.actions} onChange={e => setForm({ ...form, actions: e.target.value })} />
         <button disabled={busy || !form.situation} style={button} onClick={() => void create()}>Offer handover</button>
       </section>
       <section style={{ display: "grid", gap: 8 }}>
         <h2 style={{ margin: 0 }}>Handover ledger</h2>
+        <textarea aria-label="Handover acknowledgement note" placeholder="What was received, checked and accepted" style={{ ...field, minHeight: 72 }} value={acknowledgementNote} onChange={event => setAcknowledgementNote(event.target.value)} />
         {data.handovers.map(row => (
           <article key={row.handover_ref} style={{ ...panel, borderColor: row.status === "offered" ? "#f59e0b" : "#86efac" }}>
             <strong>{row.from_role} → {row.to_role} · {row.status}</strong>
             <p>{row.situation}</p>
             <small>{row.pending_actions.length} pending actions · {row.risks.length} risks</small>
-            <div><button disabled={busy || row.status !== "offered"} style={button} onClick={() => void acknowledge(row)}>Acknowledge</button></div>
+            <div><button disabled={busy || row.status !== "offered" || !acknowledgementNote.trim()} style={button} onClick={() => void acknowledge(row)}>Acknowledge with note</button></div>
           </article>
         ))}
       </section>
@@ -392,8 +435,9 @@ function Closure({ data, busy, act }: { data: CommandView; busy: boolean; act: A
     referrerCommRef: "",
     estimateRef: "",
     financialStatus: early ? "no_charge" : "settled",
-    retainedRisks: "[]",
+    retainedRisks: "",
   });
+  const [approvalReason, setApprovalReason] = useState("");
 
   async function prepare() {
     await act(
@@ -406,7 +450,7 @@ function Closure({ data, busy, act }: { data: CommandView; busy: boolean; act: A
         final_estimate_ref: form.estimateRef || null,
         financial_status: form.financialStatus,
         outstanding_actions: [],
-        retained_risks: JSON.parse(form.retainedRisks || "[]"),
+        retained_risks: form.retainedRisks.split("\n").map(value => value.trim()).filter(Boolean),
         reason: early ? "Early referral closure prepared from decision and communication evidence" : "Episode closure record prepared from verified discharge evidence",
       },
       "Closure record prepared.",
@@ -415,8 +459,10 @@ function Closure({ data, busy, act }: { data: CommandView; busy: boolean; act: A
 
   async function approve() {
     if (!data.closure) return;
-    const reason = window.prompt("Senior approval reason:");
-    if (reason) await act(`/api/v9/closures/${data.closure.closure_ref}/approve`, { expected_version: data.closure.version, reason }, "Closure approved.", "PATCH");
+    const reason = approvalReason.trim();
+    if (!reason) return;
+    await act(`/api/v9/closures/${data.closure.closure_ref}/approve`, { expected_version: data.closure.version, reason }, "Closure approved.", "PATCH");
+    setApprovalReason("");
   }
 
   const evidenceReady = early ? Boolean(form.ownerCommRef || form.referrerCommRef) : Boolean(form.documentRef && form.ownerCommRef);
@@ -436,7 +482,7 @@ function Closure({ data, busy, act }: { data: CommandView; busy: boolean; act: A
         <select style={field} value={form.financialStatus} onChange={e => setForm({ ...form, financialStatus: e.target.value })}>
           <option value="settled">Settled</option><option value="insured_pending">Insurance pending</option><option value="transferred">Transferred</option><option value="written_off">Written off</option><option value="no_charge">No charge</option>
         </select>
-        <textarea aria-label="Retained risks JSON" style={{ ...field, minHeight: 90, fontFamily: "monospace" }} value={form.retainedRisks} onChange={e => setForm({ ...form, retainedRisks: e.target.value })} />
+        <textarea aria-label="Retained risks" placeholder="One retained risk per line" style={{ ...field, minHeight: 90 }} value={form.retainedRisks} onChange={e => setForm({ ...form, retainedRisks: e.target.value })} />
         <button disabled={busy || Boolean(data.closure) || !evidenceReady} style={button} onClick={() => void prepare()}>Prepare closure</button>
       </section>
       <section style={panel}>
@@ -445,7 +491,8 @@ function Closure({ data, busy, act }: { data: CommandView; busy: boolean; act: A
           <strong>{data.closure.status}</strong>
           <p>{data.closure.disposition} · financial status {data.closure.financial_status} · version {data.closure.version}</p>
           <p>{data.closure.outstanding_actions.length} outstanding actions · {data.closure.retained_risks.length} retained risks</p>
-          <button disabled={busy || data.closure.status !== "draft"} style={button} onClick={() => void approve()}>Senior approve</button>
+          <textarea aria-label="Senior closure approval reason" placeholder="Clinical and operational evidence reviewed" style={{ ...field, minHeight: 72 }} value={approvalReason} onChange={event => setApprovalReason(event.target.value)} />
+          <button disabled={busy || data.closure.status !== "draft" || !approvalReason.trim()} style={button} onClick={() => void approve()}>Senior approve with reason</button>
         </>}
       </section>
     </div>

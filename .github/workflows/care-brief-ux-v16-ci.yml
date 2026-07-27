@@ -1,4 +1,4 @@
-name: Care Brief and Operational UX v16 Check
+name: Care Brief and Operational UX Check
 
 on:
   pull_request:
@@ -11,11 +11,16 @@ on:
       - "apps/web/app/workspace/page.tsx"
       - "apps/web/app/system-control/page.tsx"
       - "apps/web/app/input/page.tsx"
+      - "apps/web/app/clinical-execution/page.tsx"
       - "apps/web/components/care-brief-v16.tsx"
       - "apps/web/components/operational-workspace-v16.tsx"
       - "apps/web/components/hospital-shell.tsx"
       - "apps/web/components/module-page.tsx"
+      - "apps/web/components/hospital-command-workspace.tsx"
+      - "apps/web/components/detailed-patient-record-workspace.tsx"
+      - "apps/web/components/hospital-master-board-v11.tsx"
       - "scripts/audit_operational_ux.py"
+      - "scripts/validate_operational_ux_v17.py"
       - ".github/workflows/care-brief-ux-v16-ci.yml"
   push:
     branches: [main, "feature/**", "fix/**"]
@@ -28,11 +33,16 @@ on:
       - "apps/web/app/workspace/page.tsx"
       - "apps/web/app/system-control/page.tsx"
       - "apps/web/app/input/page.tsx"
+      - "apps/web/app/clinical-execution/page.tsx"
       - "apps/web/components/care-brief-v16.tsx"
       - "apps/web/components/operational-workspace-v16.tsx"
       - "apps/web/components/hospital-shell.tsx"
       - "apps/web/components/module-page.tsx"
+      - "apps/web/components/hospital-command-workspace.tsx"
+      - "apps/web/components/detailed-patient-record-workspace.tsx"
+      - "apps/web/components/hospital-master-board-v11.tsx"
       - "scripts/audit_operational_ux.py"
+      - "scripts/validate_operational_ux_v17.py"
       - ".github/workflows/care-brief-ux-v16-ci.yml"
 
 jobs:
@@ -63,15 +73,16 @@ jobs:
           set -o pipefail
           python care_brief_v16_smoke_test.py 2>&1 | tee care-brief-v16.log
           python workspace_smoke_test.py 2>&1 | tee -a care-brief-v16.log
-      - name: Run operational UX audit
+      - name: Run operational UX audits
         shell: bash
         run: |
           set -o pipefail
           python scripts/audit_operational_ux.py 2>&1 | tee operational-ux-audit.log
+          python scripts/validate_operational_ux_v17.py 2>&1 | tee -a operational-ux-audit.log
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
-      - name: Build patient command and care brief
+      - name: Build patient command and governed patient workflows
         working-directory: apps/web
         env:
           NEXT_PUBLIC_API_BASE: http://localhost:8000
@@ -80,7 +91,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: care-brief-ux-v16-evidence
+          name: care-brief-ux-evidence
           path: |
             apps/api/care-brief-v16.log
             operational-ux-audit.log
