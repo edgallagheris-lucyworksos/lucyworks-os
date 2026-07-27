@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiJson } from "@/lib/api-client";
 
 type Tab = "overview" | "identity" | "clinical" | "medication" | "anaesthesia" | "inpatient" | "procedure" | "finance" | "communication";
@@ -35,10 +35,19 @@ export function DetailedPatientRecordWorkspace() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    const initial = new URLSearchParams(window.location.search).get("episode");
+    if (initial) setEpisodeRef(initial);
+  }, []);
+
   const load = useCallback(async () => {
     if (!episodeRef.trim()) return;
     setBusy(true); setError("");
-    try { setData(await apiGet<RecordData>(`/api/v8/episodes/${encodeURIComponent(episodeRef.trim())}/record`)); }
+    try {
+      const result = await apiGet<RecordData>(`/api/v8/episodes/${encodeURIComponent(episodeRef.trim())}/record`);
+      setData(result);
+      window.history.replaceState(null, "", `/patient-record?episode=${encodeURIComponent(result.episode?.episode_ref || episodeRef.trim())}`);
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load patient record"); }
     finally { setBusy(false); }
   }, [episodeRef]);
@@ -58,7 +67,7 @@ export function DetailedPatientRecordWorkspace() {
     <header style={{ background: "#071019", color: "white", borderRadius: 18, padding: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div><div style={{ color: "#2dd4bf", fontWeight: 900, letterSpacing: ".12em", fontSize: 11 }}>LONGITUDINAL HOSPITAL RECORD</div><h1 style={{ margin: "5px 0", fontSize: "clamp(34px,7vw,68px)", lineHeight: .95 }}>Patient record</h1></div>
-        <Link href="/system-control" style={{ color: "white" }}>← System control</Link>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}><Link href={episodeRef ? `/care?episode=${encodeURIComponent(episodeRef)}` : "/workspace"} style={{ color: "white" }}>← Care brief</Link><Link href={episodeRef ? `/episode-command?episode=${encodeURIComponent(episodeRef)}` : "/episode-command"} style={{ color: "white" }}>Episode decisions</Link><Link href={episodeRef ? `/clinical-execution?episode=${encodeURIComponent(episodeRef)}` : "/clinical-execution"} style={{ color: "white" }}>Patient work</Link></div>
       </div>
       <p style={{ color: "#94a3b8", maxWidth: 980 }}>One governed record across clinical history, medication safety, anaesthesia, inpatient care, procedures, estimates, insurance, payments, owner communication and referring-vet documents.</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input aria-label="Episode reference" value={episodeRef} onChange={event => setEpisodeRef(event.target.value)} placeholder="Canonical episode reference" style={{ ...field, maxWidth: 360 }} /><button disabled={busy || !episodeRef.trim()} style={button} onClick={() => void load()}>Load record</button></div>
@@ -66,6 +75,7 @@ export function DetailedPatientRecordWorkspace() {
     <nav aria-label="Patient record sections" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "10px 0" }}>{tabs.map(([key, label]) => <button key={key} style={{ ...button, flex: "0 0 auto", background: tab === key ? "#0f766e" : "#334155" }} onClick={() => setTab(key)}>{label}</button>)}</nav>
     {error && <div aria-live="assertive" style={{ ...panel, borderColor: "#ef4444", color: "#991b1b", marginBottom: 10 }}>{error}</div>}
     {message && <div aria-live="polite" style={{ ...panel, borderColor: "#22c55e", color: "#166534", marginBottom: 10 }}>{message}</div>}
+    {data && <section style={{ ...panel, position: "sticky", top: 6, zIndex: 20, marginBottom: 10, borderLeft: "7px solid #0f766e", display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><strong style={{ fontSize: 22 }}>{data.patient?.display_name || data.episode?.patient_name}</strong><div>{data.patient?.species || "Species not recorded"} · {data.episode?.episode_ref}</div></div><div><strong>{data.episode?.current_area_ref || "Location not recorded"}</strong><div>{data.episode?.phase} · accountable {data.episode?.owner_role}</div></div></section>}
     {!data ? <section style={panel}>Enter an episode reference to open its complete record.</section> : <>
       {tab === "overview" && <Overview data={data} />}
       {tab === "identity" && <Identity data={data} episodeRef={episodeRef} patientRef={patientRef} ownerRef={ownerRef} busy={busy} act={act} />}

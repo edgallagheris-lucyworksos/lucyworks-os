@@ -134,7 +134,9 @@ const DAY_END = 22 * 60;
 const CELL_HEIGHT = 44;
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  const value = new Date();
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
 }
 
 function localDateTime(offsetMinutes = 0) {
