@@ -4,7 +4,13 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { SpeechCaptureV19 } from "@/components/speech-capture-v19";
 
-export function SpeechShortcutV19({ mode = "clinical_dictation" }: { mode?: "clinical_dictation" | "consultation_transcription" | "voice_command" | "typed_predictive" }) {
+export function SpeechShortcutV19({
+  mode = "clinical_dictation",
+  createClinicalNote = true,
+}: {
+  mode?: "clinical_dictation" | "consultation_transcription" | "voice_command" | "typed_predictive";
+  createClinicalNote?: boolean;
+}) {
   const params = useSearchParams();
   const episode = params.get("episode") || "";
   const [open, setOpen] = useState(false);
@@ -20,7 +26,7 @@ export function SpeechShortcutV19({ mode = "clinical_dictation" }: { mode?: "cli
       </button>
     </div>
     {open ? <div style={{ pointerEvents: "auto", marginTop: 7, maxHeight: "calc(100vh - 70px)", overflow: "auto", background: "#e9eef5", border: "1px solid #94a3b8", borderRadius: 16, padding: 6, boxShadow: "0 15px 40px rgba(15,23,42,.28)" }}>
-      {episode ? <SpeechCaptureV19 episodeRef={episode} mode={mode} compact /> : <div style={{ background: "#fff7ed", color: "#9a3412", border: "1px solid #fdba74", borderRadius: 10, padding: 12, fontWeight: 800 }}>Open a patient episode first. Speech capture cannot accept patient context supplied separately from the governed episode.</div>}
+      {episode ? <SpeechCaptureV19 episodeRef={episode} mode={mode} createClinicalNote={createClinicalNote} compact /> : <div style={{ background: "#fff7ed", color: "#9a3412", border: "1px solid #fdba74", borderRadius: 10, padding: 12, fontWeight: 800 }}>Open a patient episode first. Speech capture cannot accept patient context supplied separately from the governed episode.</div>}
     </div> : null}
   </aside>;
 }
