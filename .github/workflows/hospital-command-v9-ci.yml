@@ -12,7 +12,7 @@ on:
       - "apps/web/app/referral-intake/**"
       - "apps/web/components/hospital-command-workspace.tsx"
       - "apps/web/components/referral-intake-workspace.tsx"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/HOSPITAL_COMMAND_SPINE_V9_RUNBOOK.md"
       - ".github/workflows/hospital-command-v9-ci.yml"
@@ -29,7 +29,7 @@ on:
       - "apps/web/app/referral-intake/**"
       - "apps/web/components/hospital-command-workspace.tsx"
       - "apps/web/components/referral-intake-workspace.tsx"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/HOSPITAL_COMMAND_SPINE_V9_RUNBOOK.md"
       - ".github/workflows/hospital-command-v9-ci.yml"
@@ -189,7 +189,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
       - run: npm install --no-audit --no-fund
       - name: Build hospital command and referral intake workspaces
         run: npm run build
