@@ -5,7 +5,7 @@ on:
     paths:
       - "apps/api/app/bvs_v6_*.py"
       - "apps/api/bvs_v6_*.py"
-      - "apps/api/migrations/versions/0007_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/web/app/hospital-configuration/**"
       - "apps/web/app/workforce-rota/**"
@@ -13,7 +13,7 @@ on:
       - "apps/web/components/bvs-validation-tools.tsx"
       - "apps/web/components/workforce-rota-workspace.tsx"
       - "apps/web/lib/api-client.ts"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/BVS_CONFIGURATION_WORKFORCE_REFERRAL_RUNBOOK.md"
       - ".github/workflows/bvs-v6-ci.yml"
@@ -22,7 +22,7 @@ on:
     paths:
       - "apps/api/app/bvs_v6_*.py"
       - "apps/api/bvs_v6_*.py"
-      - "apps/api/migrations/versions/0007_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/web/app/hospital-configuration/**"
       - "apps/web/app/workforce-rota/**"
@@ -30,7 +30,7 @@ on:
       - "apps/web/components/bvs-validation-tools.tsx"
       - "apps/web/components/workforce-rota-workspace.tsx"
       - "apps/web/lib/api-client.ts"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/BVS_CONFIGURATION_WORKFORCE_REFERRAL_RUNBOOK.md"
       - ".github/workflows/bvs-v6-ci.yml"
@@ -92,7 +92,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Build production web application
