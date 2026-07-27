@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
+import { SpeechCaptureV19 } from "@/components/speech-capture-v19";
 import { apiPost } from "@/lib/api";
 
 const sections = ["Reception / Intake", "Triage / Consult", "Imaging", "Surgery / Theatre", "ICU", "Ward", "Pharmacy", "Owner Comms", "Insurance"];
@@ -48,7 +49,7 @@ function InputInner() {
       setStatus(episode.trim()
         ? `Work item #${data.work_item?.id || "new"} created and linked to ${episode.trim()}. Open Patient Command to continue.`
         : `Work item #${data.work_item?.id || "new"} created as unlinked operational work. Link it to an episode before treating it as live patient care.`);
-      setTitle(""); setDescription(""); setPatient(""); setEpisode(""); setRoom("");
+      setTitle(""); setDescription(""); setPatient(""); setRoom("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Capture failed");
     } finally { setBusy(false); }
@@ -58,12 +59,13 @@ function InputInner() {
     <div style={{ display: "grid", gap: 12 }}>
       <section className="lw-command-panel">
         <div className="lw-command-header">
-          <div><div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>Operational capture</div><h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Type it once. Create owned work.</h1><p style={{ color: "#94a3b8", marginBottom: 0 }}>Record the problem, patient, place, urgency and accountable role. Clinical judgement and consent remain in the governed patient workflow.</p></div>
+          <div><div style={{ color: "#14b8a6", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>Operational capture</div><h1 style={{ margin: "6px 0 0", fontSize: 34, letterSpacing: "-0.05em" }}>Type or speak it once. Create owned work.</h1><p style={{ color: "#94a3b8", marginBottom: 0 }}>Record the facts, patient, place, urgency and accountable role. Speech proposals require review before any work is created.</p></div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link href="/workspace" className="lw-pill">Patient Command</Link><Link href="/hospital-board" className="lw-pill">Hospital Today</Link><Link href="/referral-intake" className="lw-pill">Referrals</Link></div>
         </div>
       </section>
 
       <section className="lw-command-panel" style={{ padding: 12, display: "grid", gap: 10 }}>
+        <div style={{ fontWeight: 900, color: "#14b8a6", letterSpacing: ".08em" }}>TYPED CAPTURE</div>
         <label>What needs attention<input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. MRI owner update overdue" maxLength={200} /></label>
         <label>What happened and what is needed<textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Record the facts, required action and relevant context." rows={7} maxLength={10000} /></label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
@@ -76,10 +78,12 @@ function InputInner() {
           <label>Episode reference<input value={episode} onChange={e => setEpisode(e.target.value)} placeholder="Use EP-... when known" /></label>
           <label>Exact room / location<input value={room} onChange={e => setRoom(e.target.value)} placeholder="MRI / ICU Bay 1" /></label>
         </div>
-        {!episode.trim() ? <p style={{ margin: 0, padding: 9, border: "1px solid #f59e0b", borderRadius: 9, background: "#fffbeb", color: "#92400e" }}>Without an episode reference this remains clearly separated legacy/unlinked work until reviewed.</p> : null}
+        {!episode.trim() ? <p style={{ margin: 0, padding: 9, border: "1px solid #f59e0b", borderRadius: 9, background: "#fffbeb", color: "#92400e" }}>Without an episode reference typed capture remains clearly separated unlinked work until reviewed. Voice capture below requires a governed episode.</p> : null}
         <button className="lw-pill lw-btn-primary" style={{ minHeight: 48 }} onClick={() => void submit()} disabled={busy || !hasOperationalText}>{busy ? "Creating…" : "Create owned work"}</button>
         <div aria-live="polite">{status ? <p style={{ color: "#86efac", margin: 0 }}>{status}</p> : null}{error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}</div>
       </section>
+
+      <SpeechCaptureV19 episodeRef={episode.trim()} mode="voice_command" createClinicalNote={false} />
     </div>
   </HospitalShell>;
 }

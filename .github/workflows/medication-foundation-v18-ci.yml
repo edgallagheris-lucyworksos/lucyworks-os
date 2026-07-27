@@ -7,6 +7,7 @@ on:
       - "apps/api/app/medication_foundation_v18_models.py"
       - "apps/api/app/medication_foundation_v18_routes.py"
       - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
+      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -15,6 +16,7 @@ on:
       - "apps/web/app/clinical-execution/layout.tsx"
       - "apps/web/app/system-control/layout.tsx"
       - "apps/web/components/medication-**"
+      - "apps/web/components/speech-**"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/medication-foundation-v18-ci.yml"
   push:
@@ -24,6 +26,7 @@ on:
       - "apps/api/app/medication_foundation_v18_models.py"
       - "apps/api/app/medication_foundation_v18_routes.py"
       - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
+      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -32,6 +35,7 @@ on:
       - "apps/web/app/clinical-execution/layout.tsx"
       - "apps/web/app/system-control/layout.tsx"
       - "apps/web/components/medication-**"
+      - "apps/web/components/speech-**"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/medication-foundation-v18-ci.yml"
 
@@ -62,7 +66,7 @@ jobs:
       - name: Run connected catalogue-to-administration proof
         working-directory: apps/api
         run: python medication_foundation_v18_smoke_test.py 2>&1 | tee medication-foundation-v18.log
-      - name: Verify SQLite migration head and v18 tables
+      - name: Verify current migration head and v18 tables
         working-directory: apps/api
         shell: bash
         run: |
@@ -75,10 +79,10 @@ jobs:
           expected = {'productimportbatchv18', 'veterinaryproductv18', 'medicationprotocolv18', 'dosecalculationv18', 'medicationproposalv18'}
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0013_medication_v18', version
+          assert version == '0014_speech_capture_v19', version
           missing = expected - set(inspect(engine).get_table_names())
           assert not missing, missing
-          print('MEDICATION_MIGRATION_V18_PASSED')
+          print('MEDICATION_MIGRATION_V18_PASSED_AT_0014')
           PY
       - name: Validate restore rehearsal
         run: bash -n scripts/restore-rehearsal.sh
