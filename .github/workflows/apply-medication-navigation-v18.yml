@@ -69,3 +69,5 @@ jobs:
           git diff --cached --quiet && { echo "Navigation transformation produced no changes"; exit 1; }
           git commit -m "Connect medication safety to patient workflow v18"
           git push origin HEAD:feature/medication-foundation-v18
+
+# Explicit trigger after the medication workspaces were added.
