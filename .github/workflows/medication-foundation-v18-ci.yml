@@ -8,12 +8,13 @@ on:
       - "apps/api/app/medication_foundation_v18_routes.py"
       - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
+      - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
+      - "apps/web/app/care/layout.tsx"
+      - "apps/web/app/patient-record/layout.tsx"
+      - "apps/web/app/clinical-execution/layout.tsx"
+      - "apps/web/app/system-control/layout.tsx"
       - "apps/web/components/medication-**"
-      - "apps/web/components/care-brief-v16.tsx"
-      - "apps/web/components/detailed-patient-record-workspace.tsx"
-      - "apps/web/app/clinical-execution/page.tsx"
-      - "apps/web/app/system-control/page.tsx"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/medication-foundation-v18-ci.yml"
   push:
@@ -24,12 +25,13 @@ on:
       - "apps/api/app/medication_foundation_v18_routes.py"
       - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
+      - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
+      - "apps/web/app/care/layout.tsx"
+      - "apps/web/app/patient-record/layout.tsx"
+      - "apps/web/app/clinical-execution/layout.tsx"
+      - "apps/web/app/system-control/layout.tsx"
       - "apps/web/components/medication-**"
-      - "apps/web/components/care-brief-v16.tsx"
-      - "apps/web/components/detailed-patient-record-workspace.tsx"
-      - "apps/web/app/clinical-execution/page.tsx"
-      - "apps/web/app/system-control/page.tsx"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/medication-foundation-v18-ci.yml"
 
@@ -53,7 +55,10 @@ jobs:
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile medication foundation
         working-directory: apps/api
-        run: python -m py_compile app/medication_foundation_v18_models.py app/medication_foundation_v18_routes.py medication_foundation_v18_smoke_test.py migrations/versions/0013_medication_foundation_v18.py
+        run: python -m py_compile app/medication_foundation_v18_models.py app/medication_foundation_v18_routes.py medication_foundation_v18_smoke_test.py medication_v18_vmd_parser_test.py migrations/versions/0013_medication_foundation_v18.py
+      - name: Run VMD-style parser proof
+        working-directory: apps/api
+        run: python medication_v18_vmd_parser_test.py 2>&1 | tee medication-vmd-parser-v18.log
       - name: Run connected catalogue-to-administration proof
         working-directory: apps/api
         run: python medication_foundation_v18_smoke_test.py 2>&1 | tee medication-foundation-v18.log
@@ -75,6 +80,8 @@ jobs:
           assert not missing, missing
           print('MEDICATION_MIGRATION_V18_PASSED')
           PY
+      - name: Validate restore rehearsal
+        run: bash -n scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
@@ -89,6 +96,7 @@ jobs:
         with:
           name: medication-foundation-v18-evidence
           path: |
+            apps/api/medication-vmd-parser-v18.log
             apps/api/medication-foundation-v18.log
             apps/api/medication-migration-v18.log
             apps/web/medication-web-v18.log
