@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { MedicationShortcutV18 } from "@/components/medication-shortcut-v18";
 
 export default function PatientRecordLayout({ children }: { children: ReactNode }) {
-  return <><MedicationShortcutV18 />{children}</>;
+  return <><Suspense fallback={null}><MedicationShortcutV18 /></Suspense>{children}</>;
 }
