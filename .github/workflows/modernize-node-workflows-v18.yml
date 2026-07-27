@@ -1,0 +1,36 @@
+name: Modernize Node Workflow Pins v18
+
+on:
+  pull_request:
+    paths:
+      - "scripts/modernize_node_workflows_v18.py"
+      - ".github/workflows/modernize-node-workflows-v18.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  modernize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/medication-foundation-v18
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Replace obsolete Node 20 pins
+        run: python scripts/modernize_node_workflows_v18.py
+      - name: Validate changed workflow text
+        run: |
+          git diff --check
+          ! grep -R --line-number -E 'node-version: ["'"']20["'"']' .github/workflows
+      - name: Commit workflow maintenance
+        run: |
+          git config user.name "lucyworks-automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/workflows
+          git diff --cached --quiet && { echo "No workflow changes produced"; exit 1; }
+          git commit -m "Run all web release gates on Node 22"
+          git push origin HEAD:feature/medication-foundation-v18
