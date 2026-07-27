@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { apiGet } from "@/lib/api";
 
 type MedicationProposal = {
@@ -64,6 +64,6 @@ export function SpeechMedicationProposalV19() {
   </section>;
 }
 
-function panel(border: string, background: string): React.CSSProperties {
+function panel(border: string, background: string): CSSProperties {
   return { margin: "7px 8px", border: `1px solid ${border}`, borderLeft: `7px solid ${border}`, borderRadius: 12, background, color: "#0f172a", padding: 12, fontFamily: "Inter,system-ui,sans-serif" };
 }
