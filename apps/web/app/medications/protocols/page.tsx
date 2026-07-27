@@ -1,3 +1,5 @@
+"use client";
+
 import { AuthGuard } from "@/components/auth-guard";
 import { MedicationProtocolGovernanceV18 } from "@/components/medication-protocol-governance-v18";
 
