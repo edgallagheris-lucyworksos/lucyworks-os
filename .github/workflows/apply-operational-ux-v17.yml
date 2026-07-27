@@ -52,3 +52,5 @@ jobs:
           git add apps/web scripts
           git commit -m "Fix episode context and governed mobile forms v17"
           git push origin HEAD:fix/operational-ux-p1-v17
+
+# Updated to trigger the verified transformation run.
