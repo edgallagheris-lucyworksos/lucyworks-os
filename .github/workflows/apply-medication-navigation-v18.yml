@@ -8,6 +8,7 @@ on:
       - ".github/workflows/apply-medication-navigation-v18.yml"
       - "scripts/apply_medication_navigation_v18.py"
       - "scripts/harden_medication_foundation_v18.py"
+      - "scripts/extend_restore_medication_v18.py"
 
 permissions:
   contents: write
@@ -34,6 +35,7 @@ jobs:
         run: |
           python scripts/apply_medication_navigation_v18.py
           python scripts/harden_medication_foundation_v18.py
+          python scripts/extend_restore_medication_v18.py
       - name: Install API dependencies
         working-directory: apps/api
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
@@ -56,6 +58,8 @@ jobs:
           PY
           )"
           test "$version" = "0013_medication_v18"
+      - name: Validate restore rehearsal syntax
+        run: bash -n scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
@@ -68,9 +72,9 @@ jobs:
         run: |
           git config user.name "lucyworks-automation"
           git config user.email "actions@users.noreply.github.com"
-          git add apps/api/app/medication_foundation_v18_routes.py apps/web/app/system-control/page.tsx apps/web/components/care-brief-v16.tsx apps/web/app/clinical-execution/page.tsx apps/web/components/detailed-patient-record-workspace.tsx
+          git add apps/api/app/medication_foundation_v18_routes.py apps/web/app/system-control/page.tsx apps/web/components/care-brief-v16.tsx apps/web/app/clinical-execution/page.tsx apps/web/components/detailed-patient-record-workspace.tsx scripts/restore-rehearsal.sh
           git diff --cached --quiet && { echo "Medication transformation produced no changes"; exit 1; }
           git commit -m "Harden and connect medication safety workflow v18"
           git push origin HEAD:feature/medication-foundation-v18
 
-# Explicit trigger after backend review and terminology hardening.
+# Explicit trigger after restore-chain extension.
