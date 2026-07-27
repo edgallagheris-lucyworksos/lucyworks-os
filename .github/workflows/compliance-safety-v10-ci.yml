@@ -6,11 +6,11 @@ on:
       - "config/compliance/**"
       - "apps/api/app/compliance_safety_*.py"
       - "apps/api/compliance_safety_v10_smoke_test.py"
-      - "apps/api/migrations/versions/0011_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/web/app/compliance-safety/**"
       - "apps/web/components/compliance-safety-workspace.tsx"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "docs/validation/COMPLIANCE_SAFETY_V10_RUNBOOK.md"
       - ".github/workflows/compliance-safety-v10-ci.yml"
       - ".github/workflows/control-spine-ci.yml"
@@ -21,11 +21,11 @@ on:
       - "config/compliance/**"
       - "apps/api/app/compliance_safety_*.py"
       - "apps/api/compliance_safety_v10_smoke_test.py"
-      - "apps/api/migrations/versions/0011_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/web/app/compliance-safety/**"
       - "apps/web/components/compliance-safety-workspace.tsx"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "docs/validation/COMPLIANCE_SAFETY_V10_RUNBOOK.md"
       - ".github/workflows/compliance-safety-v10-ci.yml"
       - ".github/workflows/control-spine-ci.yml"
@@ -169,7 +169,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
       - run: npm install --no-audit --no-fund
       - name: Build compliance and safety workspace
         run: npm run build
