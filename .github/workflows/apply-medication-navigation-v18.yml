@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/apply-medication-navigation-v18.yml"
       - "scripts/apply_medication_navigation_v18.py"
+      - "scripts/harden_medication_foundation_v18.py"
 
 permissions:
   contents: write
@@ -29,8 +30,10 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: apps/web/package.json
-      - name: Apply medication links without replacing whole files
-        run: python scripts/apply_medication_navigation_v18.py
+      - name: Apply deterministic medication transformations
+        run: |
+          python scripts/apply_medication_navigation_v18.py
+          python scripts/harden_medication_foundation_v18.py
       - name: Install API dependencies
         working-directory: apps/api
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
@@ -61,13 +64,13 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE: http://localhost:8000
         run: npm run build
-      - name: Commit verified navigation
+      - name: Commit verified source changes
         run: |
           git config user.name "lucyworks-automation"
           git config user.email "actions@users.noreply.github.com"
-          git add apps/web/app/system-control/page.tsx apps/web/components/care-brief-v16.tsx apps/web/app/clinical-execution/page.tsx apps/web/components/detailed-patient-record-workspace.tsx
-          git diff --cached --quiet && { echo "Navigation transformation produced no changes"; exit 1; }
-          git commit -m "Connect medication safety to patient workflow v18"
+          git add apps/api/app/medication_foundation_v18_routes.py apps/web/app/system-control/page.tsx apps/web/components/care-brief-v16.tsx apps/web/app/clinical-execution/page.tsx apps/web/components/detailed-patient-record-workspace.tsx
+          git diff --cached --quiet && { echo "Medication transformation produced no changes"; exit 1; }
+          git commit -m "Harden and connect medication safety workflow v18"
           git push origin HEAD:feature/medication-foundation-v18
 
-# Explicit trigger after the medication workspaces were added.
+# Explicit trigger after backend review and terminology hardening.
