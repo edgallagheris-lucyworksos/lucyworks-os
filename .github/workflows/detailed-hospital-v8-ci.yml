@@ -5,14 +5,13 @@ on:
     paths:
       - "apps/api/app/detailed_hospital_*.py"
       - "apps/api/detailed_hospital*_smoke_test.py"
-      - "apps/api/migrations/versions/0009_*.py"
-      - "apps/api/migrations/versions/0004_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/api/clinical_execution_smoke_test.py"
       - "apps/web/app/patient-record/**"
       - "apps/web/components/detailed-patient-record-workspace.tsx"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/DETAILED_HOSPITAL_RECORD_V8_RUNBOOK.md"
       - ".github/workflows/detailed-hospital-v8-ci.yml"
@@ -22,14 +21,13 @@ on:
     paths:
       - "apps/api/app/detailed_hospital_*.py"
       - "apps/api/detailed_hospital*_smoke_test.py"
-      - "apps/api/migrations/versions/0009_*.py"
-      - "apps/api/migrations/versions/0004_*.py"
+      - "apps/api/migrations/versions/*.py"
       - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/api/clinical_execution_smoke_test.py"
       - "apps/web/app/patient-record/**"
       - "apps/web/components/detailed-patient-record-workspace.tsx"
-      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/app/system-control/**"
       - "scripts/restore-rehearsal.sh"
       - "docs/validation/DETAILED_HOSPITAL_RECORD_V8_RUNBOOK.md"
       - ".github/workflows/detailed-hospital-v8-ci.yml"
@@ -194,7 +192,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
       - run: npm install --no-audit --no-fund
       - name: Build detailed patient record UI
         run: npm run build
