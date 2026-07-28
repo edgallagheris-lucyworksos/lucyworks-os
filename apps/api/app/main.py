@@ -80,6 +80,11 @@ from app.recorded_state_automation_v21_routes import (
     generic_guard_router as recorded_state_automation_guard_v21_router,
     recorded_router as recorded_state_automation_v21_router,
 )
+from app.event_driven_automation_v22_routes import (
+    generic_guard_router as event_driven_automation_guard_v22_router,
+    router as event_driven_automation_v22_router,
+)
+from app.event_driven_automation_v22_runtime import install_event_driven_automation_v22
 from app import speech_capture_v19_serialization_patch as _speech_capture_v19_serialization_patch  # noqa: F401
 from app import referral_identity_v12_serialization_patch as _referral_identity_v12_serialization_patch  # noqa: F401
 from app import compliance_safety_evidence_patch as _compliance_safety_evidence_patch  # noqa: F401
@@ -160,6 +165,10 @@ app.include_router(hospital_master_board_v11_router)
 app.include_router(referral_identity_v12_router)
 app.include_router(medication_foundation_v18_router)
 app.include_router(speech_capture_v19_router)
+app.include_router(event_driven_automation_guard_v22_router)
 app.include_router(recorded_state_automation_guard_v21_router)
 app.include_router(recorded_state_automation_v21_router)
+app.include_router(event_driven_automation_v22_router)
 app.include_router(operational_automation_v20_router)
+
+install_event_driven_automation_v22(app)
