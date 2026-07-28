@@ -64,6 +64,10 @@ assert not (constructed & {
 
 assert "operational_automation_v20_router" in main_text
 assert "app.include_router(operational_automation_v20_router)" in main_text
+assert "app.include_router(recorded_state_automation_guard_v21_router)" in main_text
+assert main_text.index("app.include_router(recorded_state_automation_guard_v21_router)") < main_text.index(
+    "app.include_router(operational_automation_v20_router)"
+), "v21 recorded-source guard must resolve before the generic v20 evaluator"
 assert 'revision: str = "0015_operational_automation_v20"' in migration_text
 assert 'down_revision: Union[str, None] = "0014_speech_capture_v19"' in migration_text
 assert "0015_operational_automation_v20" in restore_text
@@ -71,7 +75,10 @@ assert "automationdecisionv20" in restore_text
 
 for proof in (
     "anonymous.status_code == 401",
-    "forbidden.status_code == 403",
+    "forbidden.status_code == 409",
+    'forbidden.json()["detail"]["code"] == "recorded_source_required"',
+    "critical_forbidden.status_code == 409",
+    "gaps_forbidden.status_code == 409",
     'replayed["replayProtected"] is True',
     "notes == []",
     "medication_orders == []",
