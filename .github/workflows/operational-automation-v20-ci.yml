@@ -1,0 +1,80 @@
+name: Governed Operational Automation v20 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/operational_automation_v20_*.py"
+      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
+      - "apps/api/operational_automation_v20_smoke_test.py"
+      - "scripts/validate_operational_automation_v20.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/operational-automation-v20-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/operational_automation_v20_*.py"
+      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
+      - "apps/api/operational_automation_v20_smoke_test.py"
+      - "scripts/validate_operational_automation_v20.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/operational-automation-v20-ci.yml"
+
+jobs:
+  safety-api-and-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Run automation safety audit
+        run: python scripts/validate_operational_automation_v20.py 2>&1 | tee operational-automation-v20-safety.log
+      - name: Compile v20 modules and proof
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/operational_automation_v20_models.py
+          app/operational_automation_v20_routes.py
+          operational_automation_v20_smoke_test.py
+          migrations/versions/0015_operational_automation_v20.py
+      - name: Run connected automation-to-owned-work proof
+        working-directory: apps/api
+        run: python operational_automation_v20_smoke_test.py 2>&1 | tee operational-automation-v20.log
+      - name: Verify SQLite migration 0015 and decision evidence table
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-automation-v20-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-automation-v20-ci.db alembic upgrade head 2>&1 | tee automation-migration-v20.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-automation-v20-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-automation-v20-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          assert version == '0015_operational_automation_v20', version
+          assert 'automationdecisionv20' in inspect(engine).get_table_names()
+          print('OPERATIONAL_AUTOMATION_MIGRATION_V20_PASSED')
+          PY
+      - name: Validate restore rehearsal syntax and v20 coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0015_operational_automation_v20' scripts/restore-rehearsal.sh
+          grep -q 'automationdecisionv20' scripts/restore-rehearsal.sh
+      - name: Upload v20 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operational-automation-v20-evidence
+          path: |
+            operational-automation-v20-safety.log
+            apps/api/operational-automation-v20.log
+            apps/api/automation-migration-v20.log
+          if-no-files-found: warn
