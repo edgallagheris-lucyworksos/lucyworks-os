@@ -86,6 +86,7 @@ from app.event_driven_automation_v22_routes import (
     router as event_driven_automation_v22_router,
 )
 from app.event_driven_automation_v22_runtime import install_event_driven_automation_v22
+from app.automation_operator_control_v23_routes import router as automation_operator_control_v23_router
 from app import speech_capture_v19_serialization_patch as _speech_capture_v19_serialization_patch  # noqa: F401
 from app import referral_identity_v12_serialization_patch as _referral_identity_v12_serialization_patch  # noqa: F401
 from app import compliance_safety_evidence_patch as _compliance_safety_evidence_patch  # noqa: F401
@@ -170,6 +171,7 @@ app.include_router(event_driven_automation_guard_v22_router)
 app.include_router(recorded_state_automation_guard_v21_router)
 app.include_router(recorded_state_automation_v21_router)
 app.include_router(event_driven_automation_v22_router)
+app.include_router(automation_operator_control_v23_router)
 app.include_router(operational_automation_v20_router)
 
 install_event_driven_automation_v22(app)
