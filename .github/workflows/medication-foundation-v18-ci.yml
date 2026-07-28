@@ -8,6 +8,7 @@ on:
       - "apps/api/app/medication_foundation_v18_routes.py"
       - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
       - "apps/api/migrations/versions/0014_speech_capture_v19.py"
+      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -27,6 +28,7 @@ on:
       - "apps/api/app/medication_foundation_v18_routes.py"
       - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
       - "apps/api/migrations/versions/0014_speech_capture_v19.py"
+      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -79,10 +81,10 @@ jobs:
           expected = {'productimportbatchv18', 'veterinaryproductv18', 'medicationprotocolv18', 'dosecalculationv18', 'medicationproposalv18'}
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0014_speech_capture_v19', version
+          assert version == '0015_operational_automation_v20', version
           missing = expected - set(inspect(engine).get_table_names())
           assert not missing, missing
-          print('MEDICATION_MIGRATION_V18_PASSED_AT_0014')
+          print('MEDICATION_MIGRATION_V18_PASSED_AT_0015')
           PY
       - name: Validate restore rehearsal
         run: bash -n scripts/restore-rehearsal.sh
