@@ -52,7 +52,7 @@ constructed = {
     for node in ast.walk(tree)
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
 }
-assert "WorkItem" in constructed, "v20 must create accountable WorkItems"
+assert "WorkItem" in constructed, "v20 must retain accountable WorkItem construction for recorded-state delegates"
 assert "AutomationDecisionV20" in constructed, "v20 must persist automation decisions"
 assert not (constructed & {
     "MedicationOrder",
@@ -65,6 +65,10 @@ assert not (constructed & {
 assert "operational_automation_v20_router" in main_text
 assert "app.include_router(operational_automation_v20_router)" in main_text
 assert "app.include_router(recorded_state_automation_guard_v21_router)" in main_text
+assert "app.include_router(event_driven_automation_guard_v22_router)" in main_text
+assert main_text.index("app.include_router(event_driven_automation_guard_v22_router)") < main_text.index(
+    "app.include_router(recorded_state_automation_guard_v21_router)"
+), "v22 recorded-delay guard must resolve before the v21 and generic v20 evaluators"
 assert main_text.index("app.include_router(recorded_state_automation_guard_v21_router)") < main_text.index(
     "app.include_router(operational_automation_v20_router)"
 ), "v21 recorded-source guard must resolve before the generic v20 evaluator"
@@ -79,7 +83,10 @@ for proof in (
     'forbidden.json()["detail"]["code"] == "recorded_source_required"',
     "critical_forbidden.status_code == 409",
     "gaps_forbidden.status_code == 409",
-    'replayed["replayProtected"] is True',
+    "delay_forbidden.status_code == 409",
+    'delay_forbidden.json()["detail"]["code"] == "recorded_source_required"',
+    'delay_preview["decision"]["outcome"] == "previewed"',
+    "work == []",
     "notes == []",
     "medication_orders == []",
     "transitions == []",

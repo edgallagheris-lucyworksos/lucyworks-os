@@ -1,0 +1,85 @@
+name: Event-Driven Automation v22 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/event_driven_automation_v22_*.py"
+      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
+      - "apps/api/event_driven_automation_v22_smoke_test.py"
+      - "scripts/validate_event_driven_automation_v22.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/event-driven-automation-v22-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/event_driven_automation_v22_*.py"
+      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
+      - "apps/api/event_driven_automation_v22_smoke_test.py"
+      - "scripts/validate_event_driven_automation_v22.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/event-driven-automation-v22-ci.yml"
+
+jobs:
+  event-driven-authority-and-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Run v22 safety and authority audit
+        run: python scripts/validate_event_driven_automation_v22.py 2>&1 | tee event-driven-automation-v22-audit.log
+      - name: Compile v22 runtime, routes, migration and proof
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/event_driven_automation_v22_models.py
+          app/event_driven_automation_v22_service.py
+          app/event_driven_automation_v22_routes.py
+          app/event_driven_automation_v22_runtime.py
+          app/event_driven_automation_v22_concurrency_patch.py
+          event_driven_automation_v22_smoke_test.py
+          migrations/versions/0016_event_driven_automation_v22.py
+      - name: Run normal-write to automatic-work hospital journey
+        working-directory: apps/api
+        run: python event_driven_automation_v22_smoke_test.py 2>&1 | tee event-driven-automation-v22.log
+      - name: Verify SQLite migration 0016 and durable automation tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-automation-v22-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-automation-v22-ci.db alembic upgrade head 2>&1 | tee automation-migration-v22.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-automation-v22-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-automation-v22-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          tables = set(inspect(engine).get_table_names())
+          assert version == '0016_event_driven_automation_v22', version
+          assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationdecisionv20'} <= tables
+          print('EVENT_DRIVEN_AUTOMATION_MIGRATION_V22_PASSED')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0016_event_driven_automation_v22' scripts/restore-rehearsal.sh
+          grep -q 'automationruntimeconfigv22' scripts/restore-rehearsal.sh
+          grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
+      - name: Upload v22 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: event-driven-automation-v22-evidence
+          path: |
+            event-driven-automation-v22-audit.log
+            apps/api/event-driven-automation-v22.log
+            apps/api/automation-migration-v22.log
+          if-no-files-found: warn
