@@ -95,6 +95,8 @@ class EscalationCreate(BaseModel):
 class ClosureReviewPayload(BaseModel):
     decision: str
     reason: str
+    rootCause: str | None = None
+    recurrenceControls: list[str] = Field(default_factory=list)
 
 
 class ClosePayload(BaseModel):
