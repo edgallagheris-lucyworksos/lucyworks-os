@@ -10,10 +10,10 @@ const daily = [
 ];
 
 const advanced = [
-  ["/automation-control", "Automation authority"], ["/episode-command", "Episode decisions"], ["/patient-record", "Patient record"], ["/clinical-execution", "Patient work"],
+  ["/pilot-control", "Pilot and go-live control"], ["/automation-control", "Automation authority"], ["/episode-command", "Episode decisions"], ["/patient-record", "Patient record"], ["/clinical-execution", "Patient work"],
   ["/patient-record/controlled-actions", "Controlled clinical actions"], ["/control-plane", "Safety control"], ["/workforce-rota", "Workforce rota"],
   ["/access-review", "Access review"], ["/compliance-safety", "UK compliance and safety"], ["/assurance-control", "Deployment assurance"],
-  ["/live-control", "Live events and recovery"], ["/shadow-mode", "Shadow mode"], ["/production-readiness", "Production readiness"],
+  ["/live-control", "Live events and recovery"], ["/shadow-mode", "Legacy shadow records"], ["/production-readiness", "Production readiness evidence"],
   ["/hospital-configuration", "Hospital configuration"], ["/hospital-configuration/validation-tools", "Configuration validation"],
   ["/hospital-imports", "Import and reconciliation"], ["/integrations", "Vendor integrations"], ["/approvals", "Approval queue"],
   ["/compliance", "Compliance evidence"], ["/hospital-intelligence", "Hospital intelligence"],
