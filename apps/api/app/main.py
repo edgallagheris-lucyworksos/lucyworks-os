@@ -91,6 +91,7 @@ from app.pilot_control_v24_routes import (
     legacy_shadow_guard_router as pilot_control_legacy_shadow_guard_v24_router,
     router as pilot_control_v24_router,
 )
+from app import production_readiness_migration_head_v24_patch as _production_readiness_migration_head_v24_patch  # noqa: F401
 from app import speech_capture_v19_serialization_patch as _speech_capture_v19_serialization_patch  # noqa: F401
 from app import referral_identity_v12_serialization_patch as _referral_identity_v12_serialization_patch  # noqa: F401
 from app import compliance_safety_evidence_patch as _compliance_safety_evidence_patch  # noqa: F401
