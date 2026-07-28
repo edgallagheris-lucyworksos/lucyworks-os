@@ -76,6 +76,10 @@ from app.referral_identity_v12_routes import router as referral_identity_v12_rou
 from app.medication_foundation_v18_routes import router as medication_foundation_v18_router
 from app.speech_capture_v19_routes import router as speech_capture_v19_router
 from app.operational_automation_v20_routes import router as operational_automation_v20_router
+from app.recorded_state_automation_v21_routes import (
+    generic_guard_router as recorded_state_automation_guard_v21_router,
+    recorded_router as recorded_state_automation_v21_router,
+)
 from app import speech_capture_v19_serialization_patch as _speech_capture_v19_serialization_patch  # noqa: F401
 from app import referral_identity_v12_serialization_patch as _referral_identity_v12_serialization_patch  # noqa: F401
 from app import compliance_safety_evidence_patch as _compliance_safety_evidence_patch  # noqa: F401
@@ -156,4 +160,6 @@ app.include_router(hospital_master_board_v11_router)
 app.include_router(referral_identity_v12_router)
 app.include_router(medication_foundation_v18_router)
 app.include_router(speech_capture_v19_router)
+app.include_router(recorded_state_automation_guard_v21_router)
+app.include_router(recorded_state_automation_v21_router)
 app.include_router(operational_automation_v20_router)

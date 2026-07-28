@@ -108,7 +108,7 @@ try:
                 trigger_ref="OBS-AUTO-V20-001",
                 facts={"concernLevel": "red", "detail": "Synthetic red concern"},
                 commit=False,
-                reason="Preview recorded concern before any work is created",
+                reason="Generic observation facts are permitted for preview only",
             ),
         ), "preview red observation")
         assert preview["decision"]["outcome"] == "previewed"
@@ -119,48 +119,19 @@ try:
 
         forbidden = client.post(
             "/api/v20/automation/evaluate",
-            headers=admin,
+            headers=clinician,
             json=request(
                 trigger_type="observation",
                 trigger_ref="OBS-AUTO-V20-001",
                 facts={"concernLevel": "red", "detail": "Synthetic red concern"},
                 commit=True,
-                reason="Non-clinical role must not commit a clinical escalation",
+                reason="Generic clinical facts must not commit patient work",
             ),
         )
-        assert forbidden.status_code == 403, forbidden.text
+        assert forbidden.status_code == 409, forbidden.text
+        assert forbidden.json()["detail"]["code"] == "recorded_source_required"
 
-        observation_payload = request(
-            trigger_type="observation",
-            trigger_ref="OBS-AUTO-V20-001",
-            facts={"concernLevel": "red", "detail": "Synthetic red concern"},
-            commit=True,
-            reason="Clinician confirms that accountable review work is required",
-        )
-        committed = ok(client.post(
-            "/api/v20/automation/evaluate",
-            headers=clinician,
-            json=observation_payload,
-        ), "commit red observation")
-        assert committed["decision"]["outcome"] == "committed"
-        assert committed["decision"]["committed"] is True
-        assert committed["context"]["patientRef"] == "PAT-AUTO-V20-001"
-        assert len(committed["workItems"]) == 1
-        assert committed["workItems"][0]["urgency"] == "red"
-        assert committed["workItems"][0]["owner_role"] == "clinician"
-        assert committed["workItems"][0]["linked_episode_ref"] == "EP-AUTO-V20-001"
-        observation_work_id = committed["workItems"][0]["id"]
-
-        replayed = ok(client.post(
-            "/api/v20/automation/evaluate",
-            headers=clinician,
-            json={**observation_payload, "reason": "Repeated delivery must return existing work without duplication"},
-        ), "replay red observation")
-        assert replayed["replayProtected"] is True
-        assert replayed["decision"]["outcome"] == "replayed"
-        assert [row["id"] for row in replayed["workItems"]] == [observation_work_id]
-
-        critical = ok(client.post(
+        critical_forbidden = client.post(
             "/api/v20/automation/evaluate",
             headers=clinician,
             json=request(
@@ -170,35 +141,15 @@ try:
                     "critical": True,
                     "acknowledged": False,
                     "overdue": True,
-                    "summary": "Synthetic critical potassium result",
+                    "summary": "Synthetic browser-supplied critical result",
                 },
                 commit=True,
-                reason="Clinician confirms overdue critical-result review work",
+                reason="Generic result facts must not commit patient work",
             ),
-        ), "commit critical result")
-        assert len(critical["workItems"]) == 1
-        assert critical["workItems"][0]["category"] == "critical_result_review"
-        assert "acknowledge" in critical["workItems"][0]["description"].lower()
+        )
+        assert critical_forbidden.status_code == 409, critical_forbidden.text
 
-        delay = ok(client.post(
-            "/api/v20/automation/evaluate",
-            headers=admin,
-            json=request(
-                trigger_type="operational_delay",
-                trigger_ref="BLOCK-AUTO-V20-001",
-                facts={
-                    "delayMinutes": 65,
-                    "detail": "MRI overrun with downstream theatre dependency",
-                },
-                commit=True,
-                reason="Operations confirms coordination and communication review are required",
-            ),
-        ), "commit operational delay")
-        assert len(delay["workItems"]) == 2
-        assert {row["owner_role"] for row in delay["workItems"]} == {"ops_manager", "clinician"}
-        assert any("No schedule" in row["description"] for row in delay["workItems"])
-
-        gaps = ok(client.post(
+        gaps_forbidden = client.post(
             "/api/v20/automation/evaluate",
             headers=admin,
             json=request(
@@ -206,19 +157,40 @@ try:
                 trigger_ref="GATES-AUTO-V20-001",
                 facts={"gaps": ["consent", "handover", "discharge"]},
                 commit=True,
-                reason="Recorded evidence gaps require accountable completion work",
+                reason="Generic gate facts must not commit patient work",
             ),
-        ), "commit evidence gaps")
-        assert len(gaps["workItems"]) == 3
-        assert {row["category"] for row in gaps["workItems"]} == {
-            "consent_evidence",
-            "handover",
-            "discharge_evidence",
-        }
-        assert all(
-            "cannot mark" in row["description"].lower() or "authorised" in row["description"].lower()
-            for row in gaps["workItems"]
         )
+        assert gaps_forbidden.status_code == 409, gaps_forbidden.text
+
+        delay_payload = request(
+            trigger_type="operational_delay",
+            trigger_ref="BLOCK-AUTO-V20-001",
+            facts={
+                "delayMinutes": 65,
+                "detail": "MRI overrun with downstream theatre dependency",
+            },
+            commit=True,
+            reason="Operations confirms coordination and communication review are required",
+        )
+        delay = ok(client.post(
+            "/api/v20/automation/evaluate",
+            headers=admin,
+            json=delay_payload,
+        ), "commit operational delay")
+        assert len(delay["workItems"]) == 2
+        assert {row["owner_role"] for row in delay["workItems"]} == {"ops_manager", "clinician"}
+        assert all(row["linked_episode_ref"] == "EP-AUTO-V20-001" for row in delay["workItems"])
+        assert any("No schedule" in row["description"] for row in delay["workItems"])
+        delay_work_ids = sorted(row["id"] for row in delay["workItems"])
+
+        replayed = ok(client.post(
+            "/api/v20/automation/evaluate",
+            headers=admin,
+            json={**delay_payload, "reason": "Repeated delay delivery must not duplicate work"},
+        ), "replay operational delay")
+        assert replayed["replayProtected"] is True
+        assert replayed["decision"]["outcome"] == "replayed"
+        assert sorted(row["id"] for row in replayed["workItems"]) == delay_work_ids
 
         green = ok(client.post(
             "/api/v20/automation/evaluate",
@@ -227,10 +199,10 @@ try:
                 trigger_type="observation",
                 trigger_ref="OBS-AUTO-V20-002",
                 facts={"concernLevel": "green", "detail": "Synthetic observation within recorded limits"},
-                commit=True,
-                reason="Green recorded observation requires no generated review work",
+                commit=False,
+                reason="Green generic observation preview requires no generated review work",
             ),
-        ), "green observation")
+        ), "green observation preview")
         assert green["decision"]["outcome"] == "no_action"
         assert green["decision"]["committed"] is False
         assert green["workItems"] == []
@@ -240,8 +212,8 @@ try:
             headers=clinician,
         ), "automation history")
         assert history["context"]["patientRef"] == "PAT-AUTO-V20-001"
-        assert len(history["decisions"]) == 7
-        assert len(history["workItems"]) == 7
+        assert len(history["decisions"]) == 4
+        assert len(history["workItems"]) == 2
 
         integrity = ok(client.get("/api/evidence/integrity", headers=admin), "evidence integrity")
         assert integrity["ok"] is True, integrity
@@ -260,9 +232,9 @@ try:
         medication_orders = session.exec(select(MedicationOrder)).all()
         transitions = session.exec(select(EpisodeTransitionV9)).all()
 
-        assert len(decisions) == 7
-        assert len(work) == 7
-        assert len({row.source for row in work}) == 7
+        assert len(decisions) == 4
+        assert len(work) == 2
+        assert len({row.source for row in work}) == 2
         assert all(row.source.startswith("automation-v20:") for row in work)
         assert episode.patient_ref == "PAT-AUTO-V20-001"
         assert episode.phase == "consult"
@@ -271,8 +243,8 @@ try:
         assert medication_orders == []
         assert transitions == []
 
-        print("Operational automation v20 preview, authority, idempotency and evidence proof OK")
-        print("Observation, critical result, delay and evidence-gap work creation OK")
+        print("Operational automation v20 preview, delay commit and replay proof OK")
+        print("Generic observation, critical-result and evidence-gap commits are blocked by v21")
         print("No diagnosis, medication order, clinical note or episode transition was created")
 
 finally:
