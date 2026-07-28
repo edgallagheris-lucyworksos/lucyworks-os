@@ -80,6 +80,7 @@ from app.recorded_state_automation_v21_routes import (
     generic_guard_router as recorded_state_automation_guard_v21_router,
     recorded_router as recorded_state_automation_v21_router,
 )
+from app import event_driven_automation_v22_concurrency_patch as _event_driven_automation_v22_concurrency_patch  # noqa: F401
 from app.event_driven_automation_v22_routes import (
     generic_guard_router as event_driven_automation_guard_v22_router,
     router as event_driven_automation_v22_router,
