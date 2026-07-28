@@ -40,6 +40,7 @@ class PilotAuthorityV24(SQLModel, table=True):
     stopped_at: Optional[datetime] = Field(default=None, index=True)
     rollback_at: Optional[datetime] = Field(default=None, index=True)
     completed_at: Optional[datetime] = Field(default=None, index=True)
+    plan_version: int = 1
     version: int = 1
     evidence_event_ref: Optional[str] = Field(default=None, index=True)
     created_by_subject: str = Field(index=True)
