@@ -57,8 +57,7 @@ type Control = {
   governedAcknowledgement: string;
 };
 type Overview = { summary: { count: number; failed: number; active: number; workItems: number }; triggers: Trigger[] };
-
-type FormState = Omit<Configuration, "configRef" | "premisesRef" | "persisted">;
+type FormState = Omit<Configuration, "configRef" | "premisesRef" | "persisted" | "version">;
 
 function label(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, letter => letter.toUpperCase());
@@ -105,7 +104,6 @@ export function AutomationOperatorControlV23() {
         serviceRole: controlData.configuration.serviceRole,
         backgroundScanEnabled: controlData.configuration.backgroundScanEnabled,
         scanIntervalSeconds: controlData.configuration.scanIntervalSeconds,
-        version: controlData.configuration.version,
       });
       setStatus(`Live · ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`);
     } catch (error) {
@@ -172,7 +170,6 @@ export function AutomationOperatorControlV23() {
         serviceRole: result.configuration.serviceRole,
         backgroundScanEnabled: result.configuration.backgroundScanEnabled,
         scanIntervalSeconds: result.configuration.scanIntervalSeconds,
-        version: result.configuration.version,
       });
       setReason("");
       setAcknowledgement("");
@@ -209,7 +206,7 @@ export function AutomationOperatorControlV23() {
     try {
       const result = await apiPost<Record<string, unknown>>(`/api/v23/automation/episodes/${encodeURIComponent(episodeRef.trim())}/dry-run`, { reason });
       setDryRun(result);
-      setStatus(`Dry run completed without creating work`);
+      setStatus("Dry run completed without creating work");
       setReason("");
       await refresh();
     } catch (error) {
@@ -234,34 +231,15 @@ export function AutomationOperatorControlV23() {
 
   return <main className="ac"><style>{css}</style>
     <header className="hero"><div><span>LUCYWORKS OS · AUTOMATION CONTROL V23</span><h1>Automation authority</h1><p>Control what recorded hospital changes may propose, what may create owned work, and who remains responsible.</p></div><nav><Link href="/workspace">Patient command</Link><Link href="/hospital-board">Hospital today</Link><Link href="/system-control">All tools</Link></nav></header>
-
     <section className="statusbar"><strong aria-live="polite">{status}</strong><button onClick={() => void refresh()}>Refresh</button></section>
-
     <section className="kpis"><article className={tone(form.mode)}><b>{label(form.mode)}</b><small>current operating mode</small></article><article className={control.summary.failed ? "red" : "green"}><b>{control.summary.failed}</b><small>failed triggers</small></article><article className={control.summary.queued ? "amber" : "green"}><b>{control.summary.queued}</b><small>queued or processing</small></article><article><b>{control.summary.workItems}</b><small>accountable work items</small></article><article><b>v{control.configuration.version}</b><small>configuration version</small></article></section>
-
     <section className="boundary"><b>Authority boundary</b><span>LucyWorks may create review and coordination work. It does not diagnose, prescribe, administer, acknowledge results, complete evidence, reschedule care, admit, discharge or change a clinical phase.</span></section>
-
-    <section className="panel modes"><div className="head"><div><span>1 · OPERATING MODE</span><h2>Choose the permitted effect</h2></div><small>Default remains disabled</small></div><div className="modegrid">
-      <label className={form.mode === "disabled" ? "selected" : ""}><input type="radio" name="mode" checked={form.mode === "disabled"} onChange={() => updateForm("mode", "disabled")} /><b>Disabled</b><span>Record triggers as skipped. No decision and no work.</span></label>
-      <label className={form.mode === "preview_only" ? "selected" : ""}><input type="radio" name="mode" checked={form.mode === "preview_only"} onChange={() => updateForm("mode", "preview_only")} /><b>Preview only</b><span>Evaluate recorded facts and show proposals. Create no work.</span></label>
-      <label className={form.mode === "governed_commit" ? "selected danger" : "danger"}><input type="radio" name="mode" checked={form.mode === "governed_commit"} onChange={() => updateForm("mode", "governed_commit")} /><b>Governed commit</b><span>Create accountable human-owned review or coordination work only.</span></label>
-    </div></section>
-
-    <section className="panel config"><div className="head"><div><span>2 · RECORDED SOURCES AND SERVICE IDENTITY</span><h2>Who may request evaluation</h2></div><button disabled={busy === "validate"} onClick={() => void validateService()}>Validate configuration</button></div>
-      <fieldset><legend>Recorded trigger types</legend><div className="checks">{SOURCE_TYPES.map(source => <label key={source}><input type="checkbox" checked={form.enabledTriggerTypes.includes(source)} onChange={() => toggleSource(source)} />{label(source)}</label>)}</div></fieldset>
-      <div className="fields"><label>Service subject<input value={form.serviceSubject} onChange={event => updateForm("serviceSubject", event.target.value)} /></label><label>Visible service name<input value={form.serviceName} onChange={event => updateForm("serviceName", event.target.value)} /></label><label>Mapped service role<select value={form.serviceRole} onChange={event => updateForm("serviceRole", event.target.value)}><option value="senior_clinician">Senior clinician</option><option value="clinical_director">Clinical director</option><option value="supervisor">Supervisor</option><option value="ops_manager">Operations manager</option><option value="governance_lead">Governance lead</option><option value="hospital_director">Hospital director</option><option value="admin">Administrator</option></select></label><label>Scan interval seconds<input type="number" min={30} max={3600} value={form.scanIntervalSeconds} onChange={event => updateForm("scanIntervalSeconds", Number(event.target.value))} /></label></div>
-      <label className="toggle"><input type="checkbox" checked={form.backgroundScanEnabled} onChange={event => updateForm("backgroundScanEnabled", event.target.checked)} />Enable scheduled reconciliation scan</label>
-      <div className={`validation ${validation?.valid ? "valid" : "invalid"}`}><header><b>{validation?.valid ? "Configuration checks pass" : "Configuration blocked"}</b><span>{validation?.authorityBoundary}</span></header>{validation?.checks.map(check => <div key={check.code}><strong>{check.passed ? "PASS" : "BLOCK"}</strong><span>{check.detail}</span></div>)}</div>
-    </section>
-
+    <section className="panel modes"><div className="head"><div><span>1 · OPERATING MODE</span><h2>Choose the permitted effect</h2></div><small>Default remains disabled</small></div><div className="modegrid"><label className={form.mode === "disabled" ? "selected" : ""}><input type="radio" name="mode" checked={form.mode === "disabled"} onChange={() => updateForm("mode", "disabled")} /><b>Disabled</b><span>Record triggers as skipped. No decision and no work.</span></label><label className={form.mode === "preview_only" ? "selected" : ""}><input type="radio" name="mode" checked={form.mode === "preview_only"} onChange={() => updateForm("mode", "preview_only")} /><b>Preview only</b><span>Evaluate recorded facts and show proposals. Create no work.</span></label><label className={form.mode === "governed_commit" ? "selected danger" : "danger"}><input type="radio" name="mode" checked={form.mode === "governed_commit"} onChange={() => updateForm("mode", "governed_commit")} /><b>Governed commit</b><span>Create accountable human-owned review or coordination work only.</span></label></div></section>
+    <section className="panel config"><div className="head"><div><span>2 · RECORDED SOURCES AND SERVICE IDENTITY</span><h2>Who may request evaluation</h2></div><button disabled={busy === "validate"} onClick={() => void validateService()}>Validate configuration</button></div><fieldset><legend>Recorded trigger types</legend><div className="checks">{SOURCE_TYPES.map(source => <label key={source}><input type="checkbox" checked={form.enabledTriggerTypes.includes(source)} onChange={() => toggleSource(source)} />{label(source)}</label>)}</div></fieldset><div className="fields"><label>Service subject<input value={form.serviceSubject} onChange={event => updateForm("serviceSubject", event.target.value)} /></label><label>Visible service name<input value={form.serviceName} onChange={event => updateForm("serviceName", event.target.value)} /></label><label>Mapped service role<select value={form.serviceRole} onChange={event => updateForm("serviceRole", event.target.value)}><option value="senior_clinician">Senior clinician</option><option value="clinical_director">Clinical director</option><option value="supervisor">Supervisor</option><option value="ops_manager">Operations manager</option><option value="governance_lead">Governance lead</option><option value="hospital_director">Hospital director</option><option value="admin">Administrator</option></select></label><label>Scan interval seconds<input type="number" min={30} max={3600} value={form.scanIntervalSeconds} onChange={event => updateForm("scanIntervalSeconds", Number(event.target.value))} /></label></div><label className="toggle"><input type="checkbox" checked={form.backgroundScanEnabled} onChange={event => updateForm("backgroundScanEnabled", event.target.checked)} />Enable scheduled reconciliation scan</label><div className={`validation ${validation?.valid ? "valid" : "invalid"}`}><header><b>{validation?.valid ? "Configuration checks pass" : "Configuration blocked"}</b><span>{validation?.authorityBoundary}</span></header>{validation?.checks.map(check => <div key={check.code}><strong>{check.passed ? "PASS" : "BLOCK"}</strong><span>{check.detail}</span></div>)}</div></section>
     <section className="panel authorise"><div className="head"><div><span>3 · AUTHORISE CHANGE</span><h2>Record why this control is changing</h2></div><small>Optimistic version {control.configuration.version}</small></div><label>Reason<textarea value={reason} onChange={event => setReason(event.target.value)} placeholder="Explain the operational or governance reason. This becomes immutable evidence." /></label>{form.mode === "governed_commit" ? <label className="ack">Typed acknowledgement<input value={acknowledgement} onChange={event => setAcknowledgement(event.target.value)} placeholder={control.governedAcknowledgement} /><small>Type exactly: {control.governedAcknowledgement}</small></label> : null}<button className="primary" disabled={busy === "save" || !validation?.valid} onClick={() => void saveControl()}>Save audited control</button></section>
-
     <section className="panel operations"><div className="head"><div><span>4 · DRY RUN AND RECONCILIATION</span><h2>Test or recover recorded state</h2></div><small>No browser-supplied clinical facts</small></div><div className="fields"><label>Operating date<input type="date" value={operationalDate} onChange={event => setOperationalDate(event.target.value)} /></label><label>Episode reference<input value={episodeRef} onChange={event => setEpisodeRef(event.target.value)} placeholder="EP-..." /></label></div><div className="buttons"><button disabled={busy === "dry-run"} onClick={() => void runDryRun()}>Run episode dry run</button><button disabled={busy === "reconcile"} onClick={() => void reconcile()}>Reconcile recorded sources</button></div>{dryRun ? <pre>{JSON.stringify(dryRun, null, 2)}</pre> : null}</section>
-
     {failures.length ? <section className="panel failures"><div className="head"><div><span>FAILED TRIGGERS</span><h2>Visible recovery queue</h2></div><small>{failures.length}</small></div>{failures.map(trigger => <article key={trigger.triggerRef}><div><b>{label(trigger.sourceType)} · {trigger.sourceRef}</b><span>{trigger.errorCode || "Unknown failure"}</span><small>{trigger.errorDetail || "No failure detail recorded"}</small></div><button disabled={busy === trigger.triggerRef} onClick={() => void retry(trigger)}>Retry with reason</button></article>)}</section> : null}
-
     <section className="panel history"><div className="head"><div><span>RECORDED AUTOMATION HISTORY</span><h2>Source → decision → accountable work</h2></div><small>{recent.length} shown</small></div>{recent.length ? recent.map(trigger => <details key={trigger.triggerRef} className={tone(trigger.status)}><summary><span><b>{label(trigger.sourceType)}</b><small>{trigger.episodeRef || "No episode"} · {when(trigger.createdAt)}</small></span><strong>{label(trigger.status)}</strong></summary><div className="triggergrid"><div><dt>Source</dt><dd>{trigger.sourceRef}</dd></div><div><dt>Version / hash</dt><dd>{trigger.sourceVersion ?? "n/a"} · {trigger.sourceStateHash.slice(0, 12)}…</dd></div><div><dt>Mode</dt><dd>{label(trigger.mode)}</dd></div><div><dt>Initiated by</dt><dd>{trigger.initiatedBy.name} · {label(trigger.initiatedBy.role)}</dd></div><div><dt>Decision</dt><dd>{label(trigger.decisionOutcome || "none")}</dd></div><div><dt>Attempts</dt><dd>{trigger.attempts}</dd></div></div>{trigger.workItems.length ? <div className="work"><b>Generated accountable work</b>{trigger.workItems.map(item => <article key={item.id}><span>{item.title}</span><small>{label(item.ownerRole)} · {item.urgency.toUpperCase()} · {label(item.status)} · due {when(item.dueAt)}</small></article>)}</div> : <p>No work item was created from this recorded state.</p>}</details>) : <div className="empty">No automation triggers recorded for this premises.</div>}</section>
-
     <section className="panel actions"><div className="head"><div><span>OPERATOR EVIDENCE</span><h2>Recent control actions</h2></div><small>{control.recentActions.length}</small></div>{control.recentActions.map(action => <article key={action.actionRef}><b>{label(action.actionType)}</b><span>{action.reason}</span><small>{action.actor.name} · {label(action.actor.role)} · {when(action.createdAt)}</small></article>)}</section>
   </main>;
 }
