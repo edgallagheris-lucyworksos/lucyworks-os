@@ -6,6 +6,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/operational_automation_v20_*.py"
       - "apps/api/migrations/versions/0015_operational_automation_v20.py"
+      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
@@ -16,6 +17,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/operational_automation_v20_*.py"
       - "apps/api/migrations/versions/0015_operational_automation_v20.py"
+      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
@@ -44,10 +46,11 @@ jobs:
           app/operational_automation_v20_routes.py
           operational_automation_v20_smoke_test.py
           migrations/versions/0015_operational_automation_v20.py
+          migrations/versions/0016_event_driven_automation_v22.py
       - name: Run connected automation-to-owned-work proof
         working-directory: apps/api
         run: python operational_automation_v20_smoke_test.py 2>&1 | tee operational-automation-v20.log
-      - name: Verify SQLite migration 0015 and decision evidence table
+      - name: Verify current migration head and automation evidence tables
         working-directory: apps/api
         shell: bash
         run: |
@@ -59,15 +62,17 @@ jobs:
           engine = create_engine('sqlite:////tmp/lucyworks-automation-v20-ci.db')
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0015_operational_automation_v20', version
-          assert 'automationdecisionv20' in inspect(engine).get_table_names()
-          print('OPERATIONAL_AUTOMATION_MIGRATION_V20_PASSED')
+          tables = set(inspect(engine).get_table_names())
+          assert version == '0016_event_driven_automation_v22', version
+          assert {'automationdecisionv20', 'automationruntimeconfigv22', 'automationtriggerv22'} <= tables
+          print('OPERATIONAL_AUTOMATION_V20_PASSED_AT_0016')
           PY
-      - name: Validate restore rehearsal syntax and v20 coverage
+      - name: Validate restore rehearsal syntax and automation coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0015_operational_automation_v20' scripts/restore-rehearsal.sh
+          grep -q '0016_event_driven_automation_v22' scripts/restore-rehearsal.sh
           grep -q 'automationdecisionv20' scripts/restore-rehearsal.sh
+          grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
       - name: Upload v20 evidence
         if: always()
         uses: actions/upload-artifact@v4
