@@ -17,6 +17,8 @@ os.environ.update({
     "AUTH_ISSUER": "lucyworks-automation-v20-smoke",
     "AUTH_AUDIENCE": "lucyworks-automation-v20-api",
     "LEGACY_WRITE_MODE": "block",
+    "AUTOMATION_V22_DEFAULT_MODE": "disabled",
+    "AUTOMATION_V22_BACKGROUND_ENABLED": "false",
 })
 
 from fastapi.testclient import TestClient
@@ -148,6 +150,7 @@ try:
             ),
         )
         assert critical_forbidden.status_code == 409, critical_forbidden.text
+        assert critical_forbidden.json()["detail"]["code"] == "recorded_source_required"
 
         gaps_forbidden = client.post(
             "/api/v20/automation/evaluate",
@@ -161,36 +164,43 @@ try:
             ),
         )
         assert gaps_forbidden.status_code == 409, gaps_forbidden.text
+        assert gaps_forbidden.json()["detail"]["code"] == "recorded_source_required"
 
-        delay_payload = request(
-            trigger_type="operational_delay",
-            trigger_ref="BLOCK-AUTO-V20-001",
-            facts={
-                "delayMinutes": 65,
-                "detail": "MRI overrun with downstream theatre dependency",
-            },
-            commit=True,
-            reason="Operations confirms coordination and communication review are required",
+        delay_preview = ok(client.post(
+            "/api/v20/automation/evaluate",
+            headers=admin,
+            json=request(
+                trigger_type="operational_delay",
+                trigger_ref="BLOCK-AUTO-V20-001",
+                facts={
+                    "delayMinutes": 65,
+                    "detail": "MRI overrun with downstream theatre dependency",
+                },
+                commit=False,
+                reason="Generic delay facts remain available for deterministic preview only",
+            ),
+        ), "preview operational delay")
+        assert delay_preview["decision"]["outcome"] == "previewed"
+        assert len(delay_preview["proposals"]) == 2
+        assert delay_preview["workItems"] == []
+        assert {row["ownerRole"] for row in delay_preview["proposals"]} == {"ops_manager", "clinician"}
+
+        delay_forbidden = client.post(
+            "/api/v20/automation/evaluate",
+            headers=admin,
+            json=request(
+                trigger_type="operational_delay",
+                trigger_ref="BLOCK-AUTO-V20-001",
+                facts={
+                    "delayMinutes": 65,
+                    "detail": "Browser-supplied operational delay",
+                },
+                commit=True,
+                reason="Generic delay facts must not commit work after v22",
+            ),
         )
-        delay = ok(client.post(
-            "/api/v20/automation/evaluate",
-            headers=admin,
-            json=delay_payload,
-        ), "commit operational delay")
-        assert len(delay["workItems"]) == 2
-        assert {row["owner_role"] for row in delay["workItems"]} == {"ops_manager", "clinician"}
-        assert all(row["linked_episode_ref"] == "EP-AUTO-V20-001" for row in delay["workItems"])
-        assert any("No schedule" in row["description"] for row in delay["workItems"])
-        delay_work_ids = sorted(row["id"] for row in delay["workItems"])
-
-        replayed = ok(client.post(
-            "/api/v20/automation/evaluate",
-            headers=admin,
-            json={**delay_payload, "reason": "Repeated delay delivery must not duplicate work"},
-        ), "replay operational delay")
-        assert replayed["replayProtected"] is True
-        assert replayed["decision"]["outcome"] == "replayed"
-        assert sorted(row["id"] for row in replayed["workItems"]) == delay_work_ids
+        assert delay_forbidden.status_code == 409, delay_forbidden.text
+        assert delay_forbidden.json()["detail"]["code"] == "recorded_source_required"
 
         green = ok(client.post(
             "/api/v20/automation/evaluate",
@@ -212,8 +222,8 @@ try:
             headers=clinician,
         ), "automation history")
         assert history["context"]["patientRef"] == "PAT-AUTO-V20-001"
-        assert len(history["decisions"]) == 4
-        assert len(history["workItems"]) == 2
+        assert len(history["decisions"]) == 3
+        assert history["workItems"] == []
 
         integrity = ok(client.get("/api/evidence/integrity", headers=admin), "evidence integrity")
         assert integrity["ok"] is True, integrity
@@ -232,10 +242,8 @@ try:
         medication_orders = session.exec(select(MedicationOrder)).all()
         transitions = session.exec(select(EpisodeTransitionV9)).all()
 
-        assert len(decisions) == 4
-        assert len(work) == 2
-        assert len({row.source for row in work}) == 2
-        assert all(row.source.startswith("automation-v20:") for row in work)
+        assert len(decisions) == 3
+        assert work == []
         assert episode.patient_ref == "PAT-AUTO-V20-001"
         assert episode.phase == "consult"
         assert episode.version == 1
@@ -243,10 +251,9 @@ try:
         assert medication_orders == []
         assert transitions == []
 
-        print("Operational automation v20 preview, delay commit and replay proof OK")
-        print("Generic observation, critical-result and evidence-gap commits are blocked by v21")
-        print("No diagnosis, medication order, clinical note or episode transition was created")
-
+        print("Operational automation v20 preview-only compatibility proof OK")
+        print("Generic observation, result, evidence-gap and operational-delay commits are blocked by v21/v22")
+        print("No diagnosis, medication order, clinical note, WorkItem or episode transition was created")
 finally:
     if TEST_DB.exists():
         TEST_DB.unlink()
