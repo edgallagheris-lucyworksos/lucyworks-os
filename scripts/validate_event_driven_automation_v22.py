@@ -11,10 +11,11 @@ RUNTIME = ROOT / "apps/api/app/event_driven_automation_v22_runtime.py"
 CONCURRENCY = ROOT / "apps/api/app/event_driven_automation_v22_concurrency_patch.py"
 MAIN = ROOT / "apps/api/app/main.py"
 MIGRATION = ROOT / "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
+CURRENT_MIGRATION = ROOT / "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
 SMOKE = ROOT / "apps/api/event_driven_automation_v22_smoke_test.py"
 RESTORE = ROOT / "scripts/restore-rehearsal.sh"
 
-for path in (MODELS, SERVICE, ROUTES, RUNTIME, CONCURRENCY, MAIN, MIGRATION, SMOKE, RESTORE):
+for path in (MODELS, SERVICE, ROUTES, RUNTIME, CONCURRENCY, MAIN, MIGRATION, CURRENT_MIGRATION, SMOKE, RESTORE):
     assert path.exists(), f"missing v22 artifact: {path}"
 
 models_text = MODELS.read_text()
@@ -24,6 +25,7 @@ runtime_text = RUNTIME.read_text()
 concurrency_text = CONCURRENCY.read_text()
 main_text = MAIN.read_text()
 migration_text = MIGRATION.read_text()
+current_migration_text = CURRENT_MIGRATION.read_text()
 smoke_text = SMOKE.read_text()
 restore_text = RESTORE.read_text()
 
@@ -100,7 +102,8 @@ assert 'revision: str = "0016_event_driven_automation_v22"' in migration_text
 assert 'down_revision: Union[str, None] = "0015_operational_automation_v20"' in migration_text
 assert "AutomationRuntimeConfigV22.__table__.create" in migration_text
 assert "AutomationTriggerV22.__table__.create" in migration_text
-assert "0016_event_driven_automation_v22" in restore_text
+assert 'down_revision: Union[str, None] = "0016_event_driven_automation_v22"' in current_migration_text
+assert "0017_automation_operator_control_v23" in restore_text
 assert "automationruntimeconfigv22" in restore_text
 assert "automationtriggerv22" in restore_text
 

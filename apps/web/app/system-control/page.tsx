@@ -10,7 +10,7 @@ const daily = [
 ];
 
 const advanced = [
-  ["/episode-command", "Episode decisions"], ["/patient-record", "Patient record"], ["/clinical-execution", "Patient work"],
+  ["/automation-control", "Automation authority"], ["/episode-command", "Episode decisions"], ["/patient-record", "Patient record"], ["/clinical-execution", "Patient work"],
   ["/patient-record/controlled-actions", "Controlled clinical actions"], ["/control-plane", "Safety control"], ["/workforce-rota", "Workforce rota"],
   ["/access-review", "Access review"], ["/compliance-safety", "UK compliance and safety"], ["/assurance-control", "Deployment assurance"],
   ["/live-control", "Live events and recovery"], ["/shadow-mode", "Shadow mode"], ["/production-readiness", "Production readiness"],

@@ -38,7 +38,7 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0016_event_driven_automation_v22" ]] || { echo "restored migration version is $version, expected 0016_event_driven_automation_v22" >&2; exit 1; }
+[[ "$version" == "0017_automation_operator_control_v23" ]] || { echo "restored migration version is $version, expected 0017_automation_operator_control_v23" >&2; exit 1; }
 
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
@@ -57,7 +57,7 @@ for table in \
   referralidentityintakev12 identitymatchreviewv12 referraldocumentv12 referraltriagev12 accessreviewv12 \
   productimportbatchv18 veterinaryproductv18 medicationprotocolv18 dosecalculationv18 medicationproposalv18 \
   speechcapturev19 speechdraftv19 speechphrasepackv19 automationdecisionv20 \
-  automationruntimeconfigv22 automationtriggerv22; do
+  automationruntimeconfigv22 automationtriggerv22 automationoperatoractionv23; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
@@ -100,7 +100,8 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'speechPhrasePacks'"'"', (select count(*) from speechphrasepackv19),
   '"'"'automationDecisions'"'"', (select count(*) from automationdecisionv20),
   '"'"'automationConfigs'"'"', (select count(*) from automationruntimeconfigv22),
-  '"'"'automationTriggers'"'"', (select count(*) from automationtriggerv22)
+  '"'"'automationTriggers'"'"', (select count(*) from automationtriggerv22),
+  '"'"'automationOperatorActions'"'"', (select count(*) from automationoperatoractionv23)
 )')"
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"

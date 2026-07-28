@@ -1,0 +1,107 @@
+name: Automation Operator Control v23 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/automation_operator_control_v23_*.py"
+      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
+      - "apps/api/automation_operator_control_v23_smoke_test.py"
+      - "apps/web/app/automation-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/automation-operator-control-v23.tsx"
+      - "apps/web/components/automation-board-dock-v23.tsx"
+      - "apps/web/components/operational-workspace-v16.tsx"
+      - "apps/web/components/responsive-hospital-board-v15.tsx"
+      - "scripts/validate_automation_operator_control_v23.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/automation-operator-control-v23-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/automation_operator_control_v23_*.py"
+      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
+      - "apps/api/automation_operator_control_v23_smoke_test.py"
+      - "apps/web/app/automation-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/automation-operator-control-v23.tsx"
+      - "apps/web/components/automation-board-dock-v23.tsx"
+      - "apps/web/components/operational-workspace-v16.tsx"
+      - "apps/web/components/responsive-hospital-board-v15.tsx"
+      - "scripts/validate_automation_operator_control_v23.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/automation-operator-control-v23-ci.yml"
+
+jobs:
+  operator-authority-api-web-and-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Run v23 authority and usability audit
+        run: python scripts/validate_automation_operator_control_v23.py 2>&1 | tee automation-operator-control-v23-audit.log
+      - name: Compile v23 API, migration and proof
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/automation_operator_control_v23_models.py
+          app/automation_operator_control_v23_routes.py
+          automation_operator_control_v23_smoke_test.py
+          migrations/versions/0017_automation_operator_control_v23.py
+      - name: Run authenticated operator-control hospital journey
+        working-directory: apps/api
+        run: python automation_operator_control_v23_smoke_test.py 2>&1 | tee automation-operator-control-v23.log
+      - name: Verify SQLite migration 0017 and operator evidence table
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-automation-v23-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-automation-v23-ci.db alembic upgrade head 2>&1 | tee automation-migration-v23.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-automation-v23-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-automation-v23-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          tables = set(inspect(engine).get_table_names())
+          assert version == '0017_automation_operator_control_v23', version
+          assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23'} <= tables
+          print('AUTOMATION_OPERATOR_MIGRATION_V23_PASSED')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0017_automation_operator_control_v23' scripts/restore-rehearsal.sh
+          grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build operator, Patient Command and master-board surfaces
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee automation-operator-web-v23.log
+      - name: Upload v23 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-operator-control-v23-evidence
+          path: |
+            automation-operator-control-v23-audit.log
+            apps/api/automation-operator-control-v23.log
+            apps/api/automation-migration-v23.log
+            apps/web/automation-operator-web-v23.log
+          if-no-files-found: warn
