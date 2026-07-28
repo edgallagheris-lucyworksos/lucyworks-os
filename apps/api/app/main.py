@@ -87,6 +87,10 @@ from app.event_driven_automation_v22_routes import (
 )
 from app.event_driven_automation_v22_runtime import install_event_driven_automation_v22
 from app.automation_operator_control_v23_routes import router as automation_operator_control_v23_router
+from app.pilot_control_v24_routes import (
+    legacy_shadow_guard_router as pilot_control_legacy_shadow_guard_v24_router,
+    router as pilot_control_v24_router,
+)
 from app import speech_capture_v19_serialization_patch as _speech_capture_v19_serialization_patch  # noqa: F401
 from app import referral_identity_v12_serialization_patch as _referral_identity_v12_serialization_patch  # noqa: F401
 from app import compliance_safety_evidence_patch as _compliance_safety_evidence_patch  # noqa: F401
@@ -129,6 +133,7 @@ app.include_router(workflow_action_router)
 app.include_router(scheduler_router)
 app.include_router(conflict_engine_router)
 app.include_router(role_queue_router)
+app.include_router(pilot_control_legacy_shadow_guard_v24_router)
 app.include_router(shadow_mode_router)
 app.include_router(access_control_router)
 app.include_router(realtime_router)
@@ -147,6 +152,7 @@ app.include_router(integration_router)
 app.include_router(hospital_ops_router)
 app.include_router(hospital_ops_extension_router)
 app.include_router(production_readiness_router)
+app.include_router(pilot_control_v24_router)
 app.include_router(observability_router)
 app.include_router(hospital_intelligence_router)
 app.include_router(bvs_v6_router)
