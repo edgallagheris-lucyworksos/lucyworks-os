@@ -6,6 +6,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/automation_operator_control_v23_*.py"
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
+      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/automation_operator_control_v23_smoke_test.py"
       - "apps/web/app/automation-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -22,6 +23,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/automation_operator_control_v23_*.py"
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
+      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/automation_operator_control_v23_smoke_test.py"
       - "apps/web/app/automation-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -61,10 +63,11 @@ jobs:
           app/automation_operator_control_v23_routes.py
           automation_operator_control_v23_smoke_test.py
           migrations/versions/0017_automation_operator_control_v23.py
+          migrations/versions/0018_bounded_pilot_control_v24.py
       - name: Run authenticated operator-control hospital journey
         working-directory: apps/api
         run: python automation_operator_control_v23_smoke_test.py 2>&1 | tee automation-operator-control-v23.log
-      - name: Verify SQLite migration 0017 and operator evidence table
+      - name: Verify current migration head and operator evidence table
         working-directory: apps/api
         shell: bash
         run: |
@@ -77,15 +80,16 @@ jobs:
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0017_automation_operator_control_v23', version
-          assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23'} <= tables
-          print('AUTOMATION_OPERATOR_MIGRATION_V23_PASSED')
+          assert version == '0018_bounded_pilot_control_v24', version
+          assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24'} <= tables
+          print('AUTOMATION_OPERATOR_V23_PASSED_AT_0018')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0017_automation_operator_control_v23' scripts/restore-rehearsal.sh
+          grep -q '0018_bounded_pilot_control_v24' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
+          grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
