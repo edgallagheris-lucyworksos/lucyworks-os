@@ -38,7 +38,7 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0018_bounded_pilot_control_v24" ]] || { echo "restored migration version is $version, expected 0018_bounded_pilot_control_v24" >&2; exit 1; }
+[[ "$version" == "0019_cross_system_safety_control_v25" ]] || { echo "restored migration version is $version, expected 0019_cross_system_safety_control_v25" >&2; exit 1; }
 
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
@@ -58,7 +58,8 @@ for table in \
   productimportbatchv18 veterinaryproductv18 medicationprotocolv18 dosecalculationv18 medicationproposalv18 \
   speechcapturev19 speechdraftv19 speechphrasepackv19 automationdecisionv20 \
   automationruntimeconfigv22 automationtriggerv22 automationoperatoractionv23 \
-  pilotauthorityv24 pilotapprovalv24 pilotcontrolactionv24 pilotshadowcomparisonv24 pilotuatscenariov24; do
+  pilotauthorityv24 pilotapprovalv24 pilotcontrolactionv24 pilotshadowcomparisonv24 pilotuatscenariov24 \
+  safetyrecordv25 safetyactionv25 safetydecisionv25 safetylinkv25 safetyescalationv25 safetyaccesseventv25; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
@@ -107,7 +108,13 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'pilotApprovals'"'"', (select count(*) from pilotapprovalv24),
   '"'"'pilotActions'"'"', (select count(*) from pilotcontrolactionv24),
   '"'"'pilotShadowComparisons'"'"', (select count(*) from pilotshadowcomparisonv24),
-  '"'"'pilotUatScenarios'"'"', (select count(*) from pilotuatscenariov24)
+  '"'"'pilotUatScenarios'"'"', (select count(*) from pilotuatscenariov24),
+  '"'"'safetyRecords'"'"', (select count(*) from safetyrecordv25),
+  '"'"'safetyActions'"'"', (select count(*) from safetyactionv25),
+  '"'"'safetyDecisions'"'"', (select count(*) from safetydecisionv25),
+  '"'"'safetyLinks'"'"', (select count(*) from safetylinkv25),
+  '"'"'safetyEscalations'"'"', (select count(*) from safetyescalationv25),
+  '"'"'safetyAccessEvents'"'"', (select count(*) from safetyaccesseventv25)
 )')"
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"
