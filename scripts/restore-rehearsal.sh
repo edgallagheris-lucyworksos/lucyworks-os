@@ -38,7 +38,7 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0019_cross_system_safety_control_v25" ]] || { echo "restored migration version is $version, expected 0019_cross_system_safety_control_v25" >&2; exit 1; }
+[[ "$version" == "0020_operational_convergence_v26" ]] || { echo "restored migration version is $version, expected 0020_operational_convergence_v26" >&2; exit 1; }
 
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
@@ -59,7 +59,9 @@ for table in \
   speechcapturev19 speechdraftv19 speechphrasepackv19 automationdecisionv20 \
   automationruntimeconfigv22 automationtriggerv22 automationoperatoractionv23 \
   pilotauthorityv24 pilotapprovalv24 pilotcontrolactionv24 pilotshadowcomparisonv24 pilotuatscenariov24 \
-  safetyrecordv25 safetyactionv25 safetydecisionv25 safetylinkv25 safetyescalationv25 safetyaccesseventv25; do
+  safetyrecordv25 safetyactionv25 safetydecisionv25 safetylinkv25 safetyescalationv25 safetyaccesseventv25 \
+  organisationv26 sitev26 sitemembershipv26 activeoperatingcontextv26 contextswitchevidencev26 \
+  canonicalcommandv26 legacyrouteconvergencev26 operationalimpactv26; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
@@ -114,7 +116,15 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'safetyDecisions'"'"', (select count(*) from safetydecisionv25),
   '"'"'safetyLinks'"'"', (select count(*) from safetylinkv25),
   '"'"'safetyEscalations'"'"', (select count(*) from safetyescalationv25),
-  '"'"'safetyAccessEvents'"'"', (select count(*) from safetyaccesseventv25)
+  '"'"'safetyAccessEvents'"'"', (select count(*) from safetyaccesseventv25),
+  '"'"'organisations'"'"', (select count(*) from organisationv26),
+  '"'"'sites'"'"', (select count(*) from sitev26),
+  '"'"'siteMemberships'"'"', (select count(*) from sitemembershipv26),
+  '"'"'activeContexts'"'"', (select count(*) from activeoperatingcontextv26),
+  '"'"'contextSwitches'"'"', (select count(*) from contextswitchevidencev26),
+  '"'"'canonicalCommands'"'"', (select count(*) from canonicalcommandv26),
+  '"'"'routeConvergence'"'"', (select count(*) from legacyrouteconvergencev26),
+  '"'"'operationalImpacts'"'"', (select count(*) from operationalimpactv26)
 )')"
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"
