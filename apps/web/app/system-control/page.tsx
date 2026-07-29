@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AuthGuard } from "@/components/auth-guard";
 
 const daily = [
+  { href: "/operating-context", title: "Hospital Context", description: "Confirm the active organisation, site and premises; see live impacts and use one governed command path." },
   { href: "/workspace", title: "Patient Command", description: "Start here. Every active patient, owner, location, time, next action and control gap." },
   { href: "/hospital-board", title: "Hospital Today", description: "Rooms, theatres, imaging, wards, staff, times, conflicts and emergency changes." },
   { href: "/referral-intake", title: "Referrals", description: "Create, identify, triage and accept incoming referrals without duplicate-patient ambiguity." },
@@ -28,7 +29,7 @@ export default function SystemControlPage() {
       <header style={{ background: "#071019", color: "white", borderRadius: 18, padding: 18 }}>
         <span style={{ color: "#2dd4bf", fontSize: 11, fontWeight: 900, letterSpacing: ".13em" }}>LUCYWORKS OS</span>
         <h1 style={{ fontSize: "clamp(38px,8vw,72px)", lineHeight: .93, margin: "7px 0" }}>Choose the job, not the module</h1>
-        <p style={{ color: "#b6c2d1", maxWidth: 850 }}>Daily staff should normally use Patient Command, Hospital Today, Referrals, Quick Input, Safety and Staff Concerns, and Care Brief. Technical, governance and deployment controls are kept below.</p>
+        <p style={{ color: "#b6c2d1", maxWidth: 850 }}>Daily staff should confirm Hospital Context, then use Patient Command, Hospital Today, Referrals, Quick Input, Safety and Staff Concerns, and Care Brief. Technical, governance and deployment controls are kept below.</p>
       </header>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 9, marginTop: 9 }}>

@@ -10,6 +10,7 @@ on:
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
@@ -24,6 +25,7 @@ on:
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
@@ -56,6 +58,7 @@ jobs:
           migrations/versions/0017_automation_operator_control_v23.py
           migrations/versions/0018_bounded_pilot_control_v24.py
           migrations/versions/0019_cross_system_safety_control_v25.py
+          migrations/versions/0020_operational_convergence_v26.py
       - name: Run connected automation-to-owned-work proof
         working-directory: apps/api
         run: python operational_automation_v20_smoke_test.py 2>&1 | tee operational-automation-v20.log
@@ -72,19 +75,20 @@ jobs:
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0019_cross_system_safety_control_v25', version
-          assert {'automationdecisionv20', 'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25'} <= tables
-          print('OPERATIONAL_AUTOMATION_V20_PASSED_AT_0019')
+          assert version == '0020_operational_convergence_v26', version
+          assert {'automationdecisionv20', 'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
+          print('OPERATIONAL_AUTOMATION_V20_PASSED_AT_0020')
           PY
       - name: Validate restore rehearsal syntax and automation coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
+          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
           grep -q 'automationdecisionv20' scripts/restore-rehearsal.sh
           grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
+          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Upload v20 evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -9,6 +9,7 @@ on:
       - "apps/api/app/safety_control_v25_*.py"
       - "apps/api/app/safety_bridge_v25_routes.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/cross_system_safety_control_v25_smoke_test.py"
       - "apps/web/app/safety-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -26,6 +27,7 @@ on:
       - "apps/api/app/safety_control_v25_*.py"
       - "apps/api/app/safety_bridge_v25_routes.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/cross_system_safety_control_v25_smoke_test.py"
       - "apps/web/app/safety-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -70,10 +72,11 @@ jobs:
           app/safety_bridge_v25_routes.py
           cross_system_safety_control_v25_smoke_test.py
           migrations/versions/0019_cross_system_safety_control_v25.py
+          migrations/versions/0020_operational_convergence_v26.py
       - name: Run confidential staff and patient crossover journey
         working-directory: apps/api
         run: python cross_system_safety_control_v25_smoke_test.py 2>&1 | tee cross-system-safety-v25.log
-      - name: Verify SQLite migration 0019 and safety evidence tables
+      - name: Verify current migration head and safety evidence tables
         working-directory: apps/api
         shell: bash
         run: |
@@ -89,18 +92,20 @@ jobs:
           expected = {
               'safetyrecordv25', 'safetyactionv25', 'safetydecisionv25',
               'safetylinkv25', 'safetyescalationv25', 'safetyaccesseventv25',
+              'canonicalcommandv26', 'operationalimpactv26',
           }
-          assert version == '0019_cross_system_safety_control_v25', version
+          assert version == '0020_operational_convergence_v26', version
           assert expected <= tables, expected - tables
-          print('CROSS_SYSTEM_SAFETY_MIGRATION_V25_PASSED')
+          print('CROSS_SYSTEM_SAFETY_V25_PASSED_AT_0020')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
+          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
           grep -q 'safetyactionv25' scripts/restore-rehearsal.sh
           grep -q 'safetyaccesseventv25' scripts/restore-rehearsal.sh
+          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund

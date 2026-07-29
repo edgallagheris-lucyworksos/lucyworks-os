@@ -8,6 +8,7 @@ on:
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/pilot_control_v24_smoke_*.py"
       - "apps/web/app/pilot-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -23,6 +24,7 @@ on:
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/pilot_control_v24_smoke_*.py"
       - "apps/web/app/pilot-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -63,6 +65,7 @@ jobs:
           pilot_control_v24_smoke_runner.py
           migrations/versions/0018_bounded_pilot_control_v24.py
           migrations/versions/0019_cross_system_safety_control_v25.py
+          migrations/versions/0020_operational_convergence_v26.py
       - name: Run connected shadow-to-bounded-live recovery journey
         working-directory: apps/api
         run: python pilot_control_v24_smoke_runner.py 2>&1 | tee bounded-pilot-control-v24.log
@@ -82,19 +85,21 @@ jobs:
           expected = {
               'pilotauthorityv24', 'pilotapprovalv24', 'pilotcontrolactionv24',
               'pilotshadowcomparisonv24', 'pilotuatscenariov24', 'safetyrecordv25',
+              'canonicalcommandv26', 'activeoperatingcontextv26',
           }
-          assert version == '0019_cross_system_safety_control_v25', version
+          assert version == '0020_operational_convergence_v26', version
           assert expected <= tables, expected - tables
-          print('BOUNDED_PILOT_V24_PASSED_AT_0019')
+          print('BOUNDED_PILOT_V24_PASSED_AT_0020')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
+          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'pilotshadowcomparisonv24' scripts/restore-rehearsal.sh
           grep -q 'pilotuatscenariov24' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
+          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund

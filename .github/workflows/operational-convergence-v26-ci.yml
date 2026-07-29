@@ -1,0 +1,120 @@
+name: Operational Convergence v26 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/operational_context_v26_models.py"
+      - "apps/api/app/operating_context_v26_service.py"
+      - "apps/api/app/operational_command_v26_service.py"
+      - "apps/api/app/operational_context_v26_routes.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/operational_convergence_v26_smoke_test.py"
+      - "apps/web/app/layout.tsx"
+      - "apps/web/app/operating-context/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/operating-context-v26-bar.tsx"
+      - "docs/OPERATIONAL_CONVERGENCE_V26.md"
+      - "scripts/validate_operational_convergence_v26.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/operational-convergence-v26-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/operational_context_v26_models.py"
+      - "apps/api/app/operating_context_v26_service.py"
+      - "apps/api/app/operational_command_v26_service.py"
+      - "apps/api/app/operational_context_v26_routes.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/operational_convergence_v26_smoke_test.py"
+      - "apps/web/app/layout.tsx"
+      - "apps/web/app/operating-context/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/operating-context-v26-bar.tsx"
+      - "docs/OPERATIONAL_CONVERGENCE_V26.md"
+      - "scripts/validate_operational_convergence_v26.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/operational-convergence-v26-ci.yml"
+
+jobs:
+  authorised-context-and-canonical-command:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Validate context, convergence, atomicity and clinical boundary
+        run: python scripts/validate_operational_convergence_v26.py 2>&1 | tee operational-convergence-v26-audit.log
+      - name: Compile v26 API, migration and connected proof
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/operational_context_v26_models.py
+          app/operating_context_v26_service.py
+          app/operational_command_v26_service.py
+          app/operational_context_v26_routes.py
+          operational_convergence_v26_smoke_test.py
+          migrations/versions/0020_operational_convergence_v26.py
+      - name: Run authorised multi-site and legacy convergence journey
+        working-directory: apps/api
+        run: python operational_convergence_v26_smoke_test.py 2>&1 | tee operational-convergence-v26.log
+      - name: Verify SQLite migration 0020 and context evidence tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-v26-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-v26-ci.db alembic upgrade head 2>&1 | tee operational-convergence-migration-v26.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-v26-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-v26-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          tables = set(inspect(engine).get_table_names())
+          expected = {
+              'organisationv26', 'sitev26', 'sitemembershipv26',
+              'activeoperatingcontextv26', 'contextswitchevidencev26',
+              'canonicalcommandv26', 'legacyrouteconvergencev26', 'operationalimpactv26',
+          }
+          assert version == '0020_operational_convergence_v26', version
+          assert expected <= tables, expected - tables
+          print('OPERATIONAL_CONVERGENCE_MIGRATION_V26_PASSED')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
+          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
+          grep -q 'activeoperatingcontextv26' scripts/restore-rehearsal.sh
+          grep -q 'operationalimpactv26' scripts/restore-rehearsal.sh
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build global context and operator surfaces
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee operational-convergence-web-v26.log
+      - name: Upload v26 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operational-convergence-v26-evidence
+          path: |
+            operational-convergence-v26-audit.log
+            apps/api/operational-convergence-v26.log
+            apps/api/operational-convergence-migration-v26.log
+            apps/web/operational-convergence-web-v26.log
+          if-no-files-found: warn
