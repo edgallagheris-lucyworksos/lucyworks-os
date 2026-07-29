@@ -8,6 +8,7 @@ on:
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/automation_operator_control_v23_smoke_test.py"
       - "apps/web/app/automation-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -26,6 +27,7 @@ on:
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
       - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
       - "apps/api/automation_operator_control_v23_smoke_test.py"
       - "apps/web/app/automation-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -67,6 +69,7 @@ jobs:
           migrations/versions/0017_automation_operator_control_v23.py
           migrations/versions/0018_bounded_pilot_control_v24.py
           migrations/versions/0019_cross_system_safety_control_v25.py
+          migrations/versions/0020_operational_convergence_v26.py
       - name: Run authenticated operator-control hospital journey
         working-directory: apps/api
         run: python automation_operator_control_v23_smoke_test.py 2>&1 | tee automation-operator-control-v23.log
@@ -83,17 +86,18 @@ jobs:
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0019_cross_system_safety_control_v25', version
-          assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25'} <= tables
-          print('AUTOMATION_OPERATOR_V23_PASSED_AT_0019')
+          assert version == '0020_operational_convergence_v26', version
+          assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
+          print('AUTOMATION_OPERATOR_V23_PASSED_AT_0020')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
+          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
+          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
