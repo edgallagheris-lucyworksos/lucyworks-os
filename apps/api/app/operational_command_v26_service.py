@@ -113,9 +113,6 @@ def _safety_data(
     patient_ref = payload.get("patientRef") or payload.get("patientCaseId")
     episode_ref = payload.get("episodeRef") or payload.get("referralEpisodeId")
     summary = str(payload.get("summary") or payload.get("note") or payload.get("reason") or command_type.replace("_", " "))
-    assigned_subject = str(payload.get("assignedTo") or payload.get("toActor") or auth.subject)
-    assigned_name = str(payload.get("assignedName") or payload.get("assignedTo") or payload.get("toActor") or auth.actor_name)
-    assigned_role = str(payload.get("assignedRole") or payload.get("toRole") or auth.role)
     severity = str(payload.get("severity") or ("red" if command_type in {"critical_result_received", "patient_blocker", "equipment_downtime"} else "amber")).lower()
     title = {
         "patient_blocker": "Patient workflow blocker",
@@ -161,11 +158,13 @@ def _safety_data(
             "sourceRoute": payload.get("_sourceRoute"),
         },
         "protectiveSummary": str(payload.get("boardSummary") or f"{title} — named human review remains required."),
+        # The person creating the record retains accountable responsibility until
+        # the target human explicitly accepts or completes the assigned action.
         "owners": {
             "clinical" if domain == "patient" else "accountable": {
-                "subject": assigned_subject,
-                "name": assigned_name,
-                "role": assigned_role,
+                "subject": auth.subject,
+                "name": auth.actor_name,
+                "role": auth.role,
             }
         },
         "links": [{
@@ -175,6 +174,25 @@ def _safety_data(
             "visibility": "standard",
         }],
     }
+
+
+def _action_owner(payload: dict[str, Any], auth: AuthContext) -> dict[str, str]:
+    subject = str(
+        payload.get("assignedSubject")
+        or payload.get("assignedTo")
+        or payload.get("toSubject")
+        or payload.get("toActor")
+        or auth.subject
+    )
+    name = str(
+        payload.get("assignedName")
+        or payload.get("assignedToName")
+        or payload.get("toActor")
+        or payload.get("assignedTo")
+        or auth.actor_name
+    )
+    role = str(payload.get("assignedRole") or payload.get("toRole") or auth.role)
+    return {"subject": subject, "name": name, "role": role}
 
 
 def record_command(
@@ -225,7 +243,8 @@ def record_command(
     else:
         safety_record, _ = create_record(session, auth, safety_data)
 
-    assigned = (
+    action_owner = _action_owner(safe_payload, auth)
+    record_owner = (
         safety_data.get("owners", {}).get("clinical")
         or safety_data.get("owners", {}).get("accountable")
         or {"subject": auth.subject, "name": auth.actor_name, "role": auth.role}
@@ -246,7 +265,7 @@ def record_command(
         "actionType": "clinical_review" if command_type in CLINICAL_COMMANDS else "operational",
         "title": action_title,
         "description": str(safe_payload.get("summary") or safe_payload.get("reason") or action_title),
-        "owner": assigned,
+        "owner": action_owner,
         "dueAt": safe_payload.get("dueAt"),
         "requiresIndependentVerification": command_type in {
             "critical_result_received",
@@ -301,8 +320,8 @@ def record_command(
         affected_patient_count=len(patient_refs),
         board_summary=str(safety_data.get("protectiveSummary") or safety_data["title"]),
         restricted_detail_ref=safety_record.record_ref if safety_record.confidentiality != "standard" else None,
-        owner_subject=str(assigned.get("subject") or auth.subject),
-        owner_role=str(assigned.get("role") or auth.role),
+        owner_subject=str(record_owner.get("subject") or auth.subject),
+        owner_role=str(record_owner.get("role") or auth.role),
         due_at=safe_payload.get("dueAt"),
     )
     session.add(impact)
