@@ -47,7 +47,7 @@ def governed_memberships_for(session: Session, auth: AuthContext) -> list[SiteMe
         configured_site = session.exec(select(OnboardingSiteV27).where(
             OnboardingSiteV27.site_ref == approval.site_ref,
             OnboardingSiteV27.active_release_ref != None,  # noqa: E711
-            OnboardingSiteV27.status == "approved",
+            OnboardingSiteV27.status.in_(["approved", "changes_pending"]),
         )).first()
         runtime_site = session.exec(select(SiteV26).where(
             SiteV26.site_ref == approval.site_ref,
