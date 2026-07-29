@@ -68,12 +68,13 @@ export function OperatingContextV26Bar() {
   }
 
   async function switchSite(siteRef: string) {
-    if (!siteRef || siteRef === data.context.siteRef) return;
+    if (!data || !siteRef || siteRef === data.context.siteRef) return;
+    const expectedVersion = data.context.version;
     setSwitching(true);
     try {
       await apiPost("/api/v26/context/switch", {
         siteRef,
-        expectedVersion: data.context.version,
+        expectedVersion,
         reason: "User selected a different authorised hospital site.",
       });
       await load();
