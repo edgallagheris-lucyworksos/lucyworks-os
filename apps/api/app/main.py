@@ -93,6 +93,7 @@ from app.pilot_control_v24_routes import (
     legacy_shadow_guard_router as pilot_control_legacy_shadow_guard_v24_router,
     router as pilot_control_v24_router,
 )
+from app.operational_context_v26_routes import router as operational_context_v26_router
 from app.safety_bridge_v25_routes import router as safety_bridge_v25_router
 from app.safety_control_v25_routes import router as safety_control_v25_router
 from app import production_readiness_migration_head_v24_patch as _production_readiness_migration_head_v24_patch  # noqa: F401
@@ -121,9 +122,11 @@ app.include_router(input_router)
 app.include_router(department_router)
 app.include_router(forecast_router)
 app.include_router(readiness_router)
-# Production and authenticated tests use the hardened exact bridges. The explicit
-# legacy smoke bypass exercises retained pre-auth contracts without route shadowing.
+# Production and authenticated tests use v26 first so existing URLs are bound to
+# one authorised organisation/site context and one canonical command path.
+# The explicit legacy smoke bypass continues to exercise retained pre-auth contracts.
 if not LEGACY_TEST_BYPASS:
+    app.include_router(operational_context_v26_router)
     app.include_router(safety_bridge_v25_router)
 app.include_router(hr_router)
 app.include_router(catalogue_router)
