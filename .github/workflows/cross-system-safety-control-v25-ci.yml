@@ -1,0 +1,122 @@
+name: Cross-System Safety Control v25 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/auth_scope_v25_patch.py"
+      - "apps/api/app/verified_actor_attribution_v25.py"
+      - "apps/api/app/safety_control_v25_*.py"
+      - "apps/api/app/safety_bridge_v25_routes.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/cross_system_safety_control_v25_smoke_test.py"
+      - "apps/web/app/safety-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/cross-system-safety-control-v25*.tsx"
+      - "docs/CROSS_SYSTEM_SAFETY_AUDIT_V25.md"
+      - "scripts/validate_cross_system_safety_control_v25.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/cross-system-safety-control-v25-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/auth_scope_v25_patch.py"
+      - "apps/api/app/verified_actor_attribution_v25.py"
+      - "apps/api/app/safety_control_v25_*.py"
+      - "apps/api/app/safety_bridge_v25_routes.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
+      - "apps/api/cross_system_safety_control_v25_smoke_test.py"
+      - "apps/web/app/safety-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/cross-system-safety-control-v25*.tsx"
+      - "docs/CROSS_SYSTEM_SAFETY_AUDIT_V25.md"
+      - "scripts/validate_cross_system_safety_control_v25.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/cross-system-safety-control-v25-ci.yml"
+
+jobs:
+  confidential-staff-patient-and-closure-control:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Run section-wide safety and authority audit
+        run: python scripts/validate_cross_system_safety_control_v25.py 2>&1 | tee cross-system-safety-v25-audit.log
+      - name: Compile safety API, bridges, migration and proof
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/auth_scope_v25_patch.py
+          app/verified_actor_attribution_v25.py
+          app/safety_control_v25_models.py
+          app/safety_control_v25_schemas.py
+          app/safety_control_v25_service.py
+          app/safety_control_v25_closure_patch.py
+          app/safety_control_v25_routes.py
+          app/safety_control_v25_routes_core.py
+          app/safety_bridge_v25_routes.py
+          cross_system_safety_control_v25_smoke_test.py
+          migrations/versions/0019_cross_system_safety_control_v25.py
+      - name: Run confidential staff and patient crossover journey
+        working-directory: apps/api
+        run: python cross_system_safety_control_v25_smoke_test.py 2>&1 | tee cross-system-safety-v25.log
+      - name: Verify SQLite migration 0019 and safety evidence tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-safety-v25-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-safety-v25-ci.db alembic upgrade head 2>&1 | tee safety-migration-v25.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-safety-v25-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-safety-v25-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          tables = set(inspect(engine).get_table_names())
+          expected = {
+              'safetyrecordv25', 'safetyactionv25', 'safetydecisionv25',
+              'safetylinkv25', 'safetyescalationv25', 'safetyaccesseventv25',
+          }
+          assert version == '0019_cross_system_safety_control_v25', version
+          assert expected <= tables, expected - tables
+          print('CROSS_SYSTEM_SAFETY_MIGRATION_V25_PASSED')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
+          grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
+          grep -q 'safetyactionv25' scripts/restore-rehearsal.sh
+          grep -q 'safetyaccesseventv25' scripts/restore-rehearsal.sh
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build safety and system-control surfaces
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee cross-system-safety-web-v25.log
+      - name: Upload v25 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-system-safety-control-v25-evidence
+          path: |
+            cross-system-safety-v25-audit.log
+            apps/api/cross-system-safety-v25.log
+            apps/api/safety-migration-v25.log
+            apps/web/cross-system-safety-web-v25.log
+          if-no-files-found: warn
