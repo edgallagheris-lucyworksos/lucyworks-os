@@ -5,13 +5,7 @@ on:
     paths:
       - "apps/api/app/main.py"
       - "apps/api/app/speech_capture_v19_*.py"
-      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
-      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/speech_capture_v19_smoke_test.py"
       - "apps/web/components/speech-**"
       - "apps/web/app/input/page.tsx"
@@ -26,13 +20,7 @@ on:
     paths:
       - "apps/api/app/main.py"
       - "apps/api/app/speech_capture_v19_*.py"
-      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
-      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/speech_capture_v19_smoke_test.py"
       - "apps/web/components/speech-**"
       - "apps/web/app/input/page.tsx"
@@ -75,15 +63,15 @@ jobs:
           expected = {'speechcapturev19', 'speechdraftv19', 'speechphrasepackv19', 'safetyrecordv25', 'canonicalcommandv26'}
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0020_operational_convergence_v26', version
+          assert version == '0021_organisation_onboarding_v27', version
           missing = expected - set(inspect(engine).get_table_names())
           assert not missing, missing
-          print('SPEECH_CAPTURE_MIGRATION_V19_PASSED_AT_0020')
+          print('SPEECH_CAPTURE_MIGRATION_V19_PASSED_AT_0021')
           PY
       - name: Validate restore script syntax
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
+          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
           grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Upload API speech evidence
         if: always()
