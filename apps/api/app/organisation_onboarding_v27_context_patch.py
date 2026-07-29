@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
 from app import operating_context_v26_service as context_service
-from app.auth import AuthContext, auth_mode
+from app.auth import CLINICAL_ROLES, AuthContext, auth_mode
 from app.operational_context_v26_models import SiteMembershipV26, SiteV26
-from app.organisation_onboarding_v27_models import OnboardingSiteV27, StaffAccessApprovalV27
+from app.organisation_onboarding_v27_models import (
+    OnboardingSiteV27,
+    OnboardingStaffV27,
+    StaffAccessApprovalV27,
+    StaffCompetencyV27,
+    StaffCredentialV27,
+)
 
 _original_memberships_for = context_service.memberships_for
 
@@ -18,6 +25,10 @@ def configuration_required() -> bool:
     if configured:
         return configured in {"1", "true", "yes", "on"}
     return auth_mode() != "local"
+
+
+def _active_today(valid_until) -> bool:
+    return valid_until is None or valid_until >= datetime.now(timezone.utc).date()
 
 
 def governed_memberships_for(session: Session, auth: AuthContext) -> list[SiteMembershipV26]:
@@ -44,6 +55,47 @@ def governed_memberships_for(session: Session, auth: AuthContext) -> list[SiteMe
                 "approvedRole": approval.approved_role,
                 "tokenRole": auth.role,
             })
+        staff = session.exec(select(OnboardingStaffV27).where(
+            OnboardingStaffV27.site_ref == approval.site_ref,
+            OnboardingStaffV27.staff_ref == approval.staff_ref,
+            OnboardingStaffV27.auth_subject == auth.subject,
+        )).first()
+        if not staff or staff.employment_status != "active" or staff.identity_status != "verified" or staff.access_status != "approved":
+            raise HTTPException(status_code=403, detail={
+                "code": "staff_access_no_longer_valid",
+                "siteRef": approval.site_ref,
+                "staffRef": approval.staff_ref,
+            })
+        if staff.requested_role != approval.approved_role:
+            raise HTTPException(status_code=403, detail={
+                "code": "staff_role_changed_since_approval",
+                "siteRef": approval.site_ref,
+                "staffRef": approval.staff_ref,
+            })
+        if approval.approved_role in CLINICAL_ROLES:
+            credentials = session.exec(select(StaffCredentialV27).where(
+                StaffCredentialV27.site_ref == approval.site_ref,
+                StaffCredentialV27.staff_ref == approval.staff_ref,
+                StaffCredentialV27.verification_status == "verified",
+            )).all()
+            competencies = session.exec(select(StaffCompetencyV27).where(
+                StaffCompetencyV27.site_ref == approval.site_ref,
+                StaffCompetencyV27.staff_ref == approval.staff_ref,
+                StaffCompetencyV27.verification_status == "verified",
+            )).all()
+            if approval.clinical_authority_status != "verified" or not any(_active_today(row.valid_until) for row in credentials):
+                raise HTTPException(status_code=403, detail={
+                    "code": "clinical_credential_expired_or_unverified",
+                    "siteRef": approval.site_ref,
+                    "staffRef": approval.staff_ref,
+                })
+            if not any(_active_today(row.valid_until) for row in competencies):
+                raise HTTPException(status_code=403, detail={
+                    "code": "clinical_competency_expired_or_unverified",
+                    "siteRef": approval.site_ref,
+                    "staffRef": approval.staff_ref,
+                })
+
         configured_site = session.exec(select(OnboardingSiteV27).where(
             OnboardingSiteV27.site_ref == approval.site_ref,
             OnboardingSiteV27.active_release_ref != None,  # noqa: E711
