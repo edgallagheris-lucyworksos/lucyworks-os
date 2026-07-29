@@ -7,6 +7,7 @@ from app import hospital_ops_runtime_patch as _hospital_ops_runtime_patch  # noq
 from app import production_readiness_runtime_patch as _production_readiness_runtime_patch  # noqa: F401
 from app import compliance_safety_readiness_patch as _compliance_safety_readiness_patch  # noqa: F401
 from app import bvs_v6_runtime_patch as _bvs_v6_runtime_patch  # noqa: F401
+from app import auth_roles_v27_patch as _auth_roles_v27_patch  # noqa: F401
 from app import integration_retry_runtime as _integration_retry_runtime  # noqa: F401
 from app import auth_scope_v25_patch as _auth_scope_v25_patch  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
@@ -93,6 +94,8 @@ from app.pilot_control_v24_routes import (
     legacy_shadow_guard_router as pilot_control_legacy_shadow_guard_v24_router,
     router as pilot_control_v24_router,
 )
+from app import organisation_onboarding_v27_context_patch as _organisation_onboarding_v27_context_patch  # noqa: F401
+from app.organisation_onboarding_v27_routes import router as organisation_onboarding_v27_router
 from app.operational_context_v26_routes import router as operational_context_v26_router
 from app.safety_bridge_v25_routes import router as safety_bridge_v25_router
 from app.safety_control_v25_routes import router as safety_control_v25_router
@@ -122,10 +125,11 @@ app.include_router(input_router)
 app.include_router(department_router)
 app.include_router(forecast_router)
 app.include_router(readiness_router)
-# Production and authenticated tests use v26 first so existing URLs are bound to
-# one authorised organisation/site context and one canonical command path.
+# Production and authenticated tests use v27/v26 first so organisation onboarding,
+# approved site access and canonical hospital commands share one authority chain.
 # The explicit legacy smoke bypass continues to exercise retained pre-auth contracts.
 if not LEGACY_TEST_BYPASS:
+    app.include_router(organisation_onboarding_v27_router)
     app.include_router(operational_context_v26_router)
     app.include_router(safety_bridge_v25_router)
 app.include_router(hr_router)
