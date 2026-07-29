@@ -7,6 +7,7 @@ on:
       - "apps/api/app/pilot_control_v24_*.py"
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
       - "apps/api/pilot_control_v24_smoke_*.py"
       - "apps/web/app/pilot-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -21,6 +22,7 @@ on:
       - "apps/api/app/pilot_control_v24_*.py"
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
       - "apps/api/pilot_control_v24_smoke_*.py"
       - "apps/web/app/pilot-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -60,10 +62,11 @@ jobs:
           pilot_control_v24_smoke_test.py
           pilot_control_v24_smoke_runner.py
           migrations/versions/0018_bounded_pilot_control_v24.py
+          migrations/versions/0019_cross_system_safety_control_v25.py
       - name: Run connected shadow-to-bounded-live recovery journey
         working-directory: apps/api
         run: python pilot_control_v24_smoke_runner.py 2>&1 | tee bounded-pilot-control-v24.log
-      - name: Verify SQLite migration 0018 and pilot authority evidence tables
+      - name: Verify current migration head and pilot authority evidence tables
         working-directory: apps/api
         shell: bash
         run: |
@@ -76,18 +79,22 @@ jobs:
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
           tables = set(inspect(engine).get_table_names())
-          expected = {'pilotauthorityv24', 'pilotapprovalv24', 'pilotcontrolactionv24', 'pilotshadowcomparisonv24', 'pilotuatscenariov24'}
-          assert version == '0018_bounded_pilot_control_v24', version
+          expected = {
+              'pilotauthorityv24', 'pilotapprovalv24', 'pilotcontrolactionv24',
+              'pilotshadowcomparisonv24', 'pilotuatscenariov24', 'safetyrecordv25',
+          }
+          assert version == '0019_cross_system_safety_control_v25', version
           assert expected <= tables, expected - tables
-          print('BOUNDED_PILOT_MIGRATION_V24_PASSED')
+          print('BOUNDED_PILOT_V24_PASSED_AT_0019')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0018_bounded_pilot_control_v24' scripts/restore-rehearsal.sh
+          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'pilotshadowcomparisonv24' scripts/restore-rehearsal.sh
           grep -q 'pilotuatscenariov24' scripts/restore-rehearsal.sh
+          grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
