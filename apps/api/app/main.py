@@ -95,7 +95,9 @@ from app.pilot_control_v24_routes import (
     router as pilot_control_v24_router,
 )
 from app import organisation_onboarding_v27_context_patch as _organisation_onboarding_v27_context_patch  # noqa: F401
+from app import organisation_onboarding_v27_hardening as _organisation_onboarding_v27_hardening  # noqa: F401
 from app.organisation_onboarding_v27_routes import router as organisation_onboarding_v27_router
+from app.organisation_onboarding_v27_hardening_routes import router as organisation_onboarding_v27_hardening_router
 from app.operational_context_v26_routes import router as operational_context_v26_router
 from app.safety_bridge_v25_routes import router as safety_bridge_v25_router
 from app.safety_control_v25_routes import router as safety_control_v25_router
@@ -130,6 +132,7 @@ app.include_router(readiness_router)
 # The explicit legacy smoke bypass continues to exercise retained pre-auth contracts.
 if not LEGACY_TEST_BYPASS:
     app.include_router(organisation_onboarding_v27_router)
+    app.include_router(organisation_onboarding_v27_hardening_router)
     app.include_router(operational_context_v26_router)
     app.include_router(safety_bridge_v25_router)
 app.include_router(hr_router)
