@@ -6,9 +6,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/pilot_control_v24_*.py"
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/pilot_control_v24_smoke_*.py"
       - "apps/web/app/pilot-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -22,9 +20,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/pilot_control_v24_*.py"
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/pilot_control_v24_smoke_*.py"
       - "apps/web/app/pilot-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -87,14 +83,14 @@ jobs:
               'pilotshadowcomparisonv24', 'pilotuatscenariov24', 'safetyrecordv25',
               'canonicalcommandv26', 'activeoperatingcontextv26',
           }
-          assert version == '0020_operational_convergence_v26', version
+          assert version == '0021_organisation_onboarding_v27', version
           assert expected <= tables, expected - tables
-          print('BOUNDED_PILOT_V24_PASSED_AT_0020')
+          print('BOUNDED_PILOT_V24_PASSED_AT_0021')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
+          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'pilotshadowcomparisonv24' scripts/restore-rehearsal.sh
           grep -q 'pilotuatscenariov24' scripts/restore-rehearsal.sh
