@@ -38,7 +38,7 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0020_operational_convergence_v26" ]] || { echo "restored migration version is $version, expected 0020_operational_convergence_v26" >&2; exit 1; }
+[[ "$version" == "0021_organisation_onboarding_v27" ]] || { echo "restored migration version is $version, expected 0021_organisation_onboarding_v27" >&2; exit 1; }
 
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
@@ -61,7 +61,11 @@ for table in \
   pilotauthorityv24 pilotapprovalv24 pilotcontrolactionv24 pilotshadowcomparisonv24 pilotuatscenariov24 \
   safetyrecordv25 safetyactionv25 safetydecisionv25 safetylinkv25 safetyescalationv25 safetyaccesseventv25 \
   organisationv26 sitev26 sitemembershipv26 activeoperatingcontextv26 contextswitchevidencev26 \
-  canonicalcommandv26 legacyrouteconvergencev26 operationalimpactv26; do
+  canonicalcommandv26 legacyrouteconvergencev26 operationalimpactv26 \
+  onboardingorganisationv27 onboardingsitev27 onboardingdepartmentv27 onboardingservicev27 \
+  onboardingroomv27 onboardingequipmentv27 staffimportbatchv27 onboardingstaffv27 \
+  staffcredentialv27 staffcompetencyv27 staffaccessapprovalv27 sitepolicyv27 \
+  configurationreleasev27 configurationchangev27; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
@@ -124,7 +128,21 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'contextSwitches'"'"', (select count(*) from contextswitchevidencev26),
   '"'"'canonicalCommands'"'"', (select count(*) from canonicalcommandv26),
   '"'"'routeConvergence'"'"', (select count(*) from legacyrouteconvergencev26),
-  '"'"'operationalImpacts'"'"', (select count(*) from operationalimpactv26)
+  '"'"'operationalImpacts'"'"', (select count(*) from operationalimpactv26),
+  '"'"'onboardingOrganisations'"'"', (select count(*) from onboardingorganisationv27),
+  '"'"'onboardingSites'"'"', (select count(*) from onboardingsitev27),
+  '"'"'onboardingDepartments'"'"', (select count(*) from onboardingdepartmentv27),
+  '"'"'onboardingServices'"'"', (select count(*) from onboardingservicev27),
+  '"'"'onboardingRooms'"'"', (select count(*) from onboardingroomv27),
+  '"'"'onboardingEquipment'"'"', (select count(*) from onboardingequipmentv27),
+  '"'"'staffImports'"'"', (select count(*) from staffimportbatchv27),
+  '"'"'onboardingStaff'"'"', (select count(*) from onboardingstaffv27),
+  '"'"'staffCredentials'"'"', (select count(*) from staffcredentialv27),
+  '"'"'staffCompetencies'"'"', (select count(*) from staffcompetencyv27),
+  '"'"'staffAccessApprovals'"'"', (select count(*) from staffaccessapprovalv27),
+  '"'"'sitePolicies'"'"', (select count(*) from sitepolicyv27),
+  '"'"'configurationReleases'"'"', (select count(*) from configurationreleasev27),
+  '"'"'configurationChanges'"'"', (select count(*) from configurationchangev27)
 )')"
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"

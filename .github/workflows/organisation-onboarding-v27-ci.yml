@@ -1,0 +1,130 @@
+name: Organisation Onboarding v27 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/auth_roles_v27_patch.py"
+      - "apps/api/app/organisation_onboarding_v27_*.py"
+      - "apps/api/app/production_readiness_v27_patch.py"
+      - "apps/api/app/production_readiness_migration_head_v24_patch.py"
+      - "apps/api/migrations/versions/0021_organisation_onboarding_v27.py"
+      - "apps/api/organisation_onboarding_v27_*.py"
+      - "apps/web/app/onboarding/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/organisation-onboarding-v27.tsx"
+      - "docs/ORGANISATION_ONBOARDING_V27.md"
+      - "scripts/validate_organisation_onboarding_v27.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/organisation-onboarding-v27-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/auth_roles_v27_patch.py"
+      - "apps/api/app/organisation_onboarding_v27_*.py"
+      - "apps/api/app/production_readiness_v27_patch.py"
+      - "apps/api/app/production_readiness_migration_head_v24_patch.py"
+      - "apps/api/migrations/versions/0021_organisation_onboarding_v27.py"
+      - "apps/api/organisation_onboarding_v27_*.py"
+      - "apps/web/app/onboarding/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/organisation-onboarding-v27.tsx"
+      - "docs/ORGANISATION_ONBOARDING_V27.md"
+      - "scripts/validate_organisation_onboarding_v27.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/organisation-onboarding-v27-ci.yml"
+
+jobs:
+  governed-organisation-hospital-and-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Validate onboarding, releases, access and clinical boundary
+        run: python scripts/validate_organisation_onboarding_v27.py 2>&1 | tee organisation-onboarding-v27-audit.log
+      - name: Compile v27 API, migration and connected proofs
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/auth_roles_v27_patch.py
+          app/organisation_onboarding_v27_models.py
+          app/organisation_onboarding_v27_service.py
+          app/organisation_onboarding_v27_hardening.py
+          app/organisation_onboarding_v27_context_patch.py
+          app/organisation_onboarding_v27_routes.py
+          app/organisation_onboarding_v27_hardening_routes.py
+          app/production_readiness_v27_patch.py
+          organisation_onboarding_v27_smoke_test.py
+          organisation_onboarding_v27_authority_test.py
+          migrations/versions/0021_organisation_onboarding_v27.py
+      - name: Run organisation, hospital, release and staff onboarding journey
+        working-directory: apps/api
+        run: python organisation_onboarding_v27_smoke_test.py 2>&1 | tee organisation-onboarding-v27.log
+      - name: Run live employment, credential and competency authority proof
+        working-directory: apps/api
+        run: python organisation_onboarding_v27_authority_test.py 2>&1 | tee organisation-onboarding-v27-authority.log
+      - name: Verify SQLite migration 0021 and onboarding evidence tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-v27-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-v27-ci.db alembic upgrade head 2>&1 | tee organisation-onboarding-migration-v27.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-v27-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-v27-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          tables = set(inspect(engine).get_table_names())
+          expected = {
+              'onboardingorganisationv27', 'onboardingsitev27', 'onboardingdepartmentv27',
+              'onboardingservicev27', 'onboardingroomv27', 'onboardingequipmentv27',
+              'staffimportbatchv27', 'onboardingstaffv27', 'staffcredentialv27',
+              'staffcompetencyv27', 'staffaccessapprovalv27', 'sitepolicyv27',
+              'configurationreleasev27', 'configurationchangev27',
+          }
+          assert version == '0021_organisation_onboarding_v27', version
+          assert expected <= tables, expected - tables
+          print('ORGANISATION_ONBOARDING_MIGRATION_V27_PASSED')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
+          grep -q 'onboardingorganisationv27' scripts/restore-rehearsal.sh
+          grep -q 'staffaccessapprovalv27' scripts/restore-rehearsal.sh
+          grep -q 'configurationreleasev27' scripts/restore-rehearsal.sh
+          grep -q 'configurationchangev27' scripts/restore-rehearsal.sh
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build onboarding, system-control and global context surfaces
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee organisation-onboarding-web-v27.log
+      - name: Upload v27 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: organisation-onboarding-v27-evidence
+          path: |
+            organisation-onboarding-v27-audit.log
+            apps/api/organisation-onboarding-v27.log
+            apps/api/organisation-onboarding-v27-authority.log
+            apps/api/organisation-onboarding-migration-v27.log
+            apps/web/organisation-onboarding-web-v27.log
+          if-no-files-found: warn

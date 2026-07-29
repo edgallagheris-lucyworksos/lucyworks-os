@@ -6,14 +6,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/medication_foundation_v18_models.py"
       - "apps/api/app/medication_foundation_v18_routes.py"
-      - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
-      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
-      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -31,14 +24,7 @@ on:
       - "apps/api/app/main.py"
       - "apps/api/app/medication_foundation_v18_models.py"
       - "apps/api/app/medication_foundation_v18_routes.py"
-      - "apps/api/migrations/versions/0013_medication_foundation_v18.py"
-      - "apps/api/migrations/versions/0014_speech_capture_v19.py"
-      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -91,15 +77,15 @@ jobs:
           expected = {'productimportbatchv18', 'veterinaryproductv18', 'medicationprotocolv18', 'dosecalculationv18', 'medicationproposalv18', 'safetyrecordv25', 'canonicalcommandv26'}
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0020_operational_convergence_v26', version
+          assert version == '0021_organisation_onboarding_v27', version
           missing = expected - set(inspect(engine).get_table_names())
           assert not missing, missing
-          print('MEDICATION_MIGRATION_V18_PASSED_AT_0020')
+          print('MEDICATION_MIGRATION_V18_PASSED_AT_0021')
           PY
       - name: Validate restore rehearsal
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
+          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
           grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web

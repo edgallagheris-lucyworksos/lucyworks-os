@@ -5,11 +5,7 @@ on:
     paths:
       - "apps/api/app/main.py"
       - "apps/api/app/event_driven_automation_v22_*.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/event_driven_automation_v22_smoke_test.py"
       - "scripts/validate_event_driven_automation_v22.py"
       - "scripts/restore-rehearsal.sh"
@@ -19,11 +15,7 @@ on:
     paths:
       - "apps/api/app/main.py"
       - "apps/api/app/event_driven_automation_v22_*.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/event_driven_automation_v22_smoke_test.py"
       - "scripts/validate_event_driven_automation_v22.py"
       - "scripts/restore-rehearsal.sh"
@@ -75,14 +67,14 @@ jobs:
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0020_operational_convergence_v26', version
+          assert version == '0021_organisation_onboarding_v27', version
           assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationdecisionv20', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
-          print('EVENT_DRIVEN_AUTOMATION_V22_PASSED_AT_0020')
+          print('EVENT_DRIVEN_AUTOMATION_V22_PASSED_AT_0021')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
+          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
           grep -q 'automationruntimeconfigv22' scripts/restore-rehearsal.sh
           grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
