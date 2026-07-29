@@ -106,9 +106,10 @@ from app import critical_result_deadline_patch as _critical_result_deadline_patc
 from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
+LEGACY_TEST_BYPASS = os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() in {"1", "true", "yes"}
 
 app.add_middleware(VerifiedActorAttributionMiddlewareV25)
-if os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() not in {"1", "true", "yes"}:
+if not LEGACY_TEST_BYPASS:
     app.add_middleware(VerifiedIdentityMiddleware)
 app.add_middleware(LegacyWriteRetirementMiddleware)
 app.add_middleware(ProductionProtectionMiddleware)
@@ -120,8 +121,10 @@ app.include_router(input_router)
 app.include_router(department_router)
 app.include_router(forecast_router)
 app.include_router(readiness_router)
-# Exact authenticated bridges must be registered before their legacy route modules.
-app.include_router(safety_bridge_v25_router)
+# Production and authenticated tests use the hardened exact bridges. The explicit
+# legacy smoke bypass exercises retained pre-auth contracts without route shadowing.
+if not LEGACY_TEST_BYPASS:
+    app.include_router(safety_bridge_v25_router)
 app.include_router(hr_router)
 app.include_router(catalogue_router)
 app.include_router(workspace_router)
