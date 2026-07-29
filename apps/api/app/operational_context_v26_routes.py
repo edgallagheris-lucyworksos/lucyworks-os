@@ -33,6 +33,28 @@ from app.safety_bridge_v25_routes import (
 router = APIRouter(tags=["operational-convergence-v26"])
 
 
+class _DeferredCommitSession:
+    """Delegate a session while turning nested commits into flushes.
+
+    V25 handlers are reused as domain operations. V26 owns the outer transaction so
+    the legacy outcome, canonical command, safety link and evidence either all commit
+    together or all roll back.
+    """
+
+    def __init__(self, session: Session):
+        self._session = session
+
+    def commit(self) -> None:
+        self._session.flush()
+
+    def __getattr__(self, name: str):
+        return getattr(self._session, name)
+
+
+def _deferred(session: Session) -> _DeferredCommitSession:
+    return _DeferredCommitSession(session)
+
+
 class ContextSwitchRequest(BaseModel):
     siteRef: str
     expectedVersion: int
@@ -242,7 +264,7 @@ def converged_update_episode_state(
     if auth.role not in CLINICAL_ROLES | SENIOR_ROLES:
         raise HTTPException(status_code=403, detail="clinical or senior role required")
     context = resolve_context(session, auth)
-    result = v25_update_episode_state(episode_id, payload, session, auth)
+    result = v25_update_episode_state(episode_id, payload, _deferred(session), auth)
     episode = result.get("episode") or {}
     blocker = str(episode.get("blocker") or "none")
     if blocker != "none" or episode.get("status") == "blocked":
@@ -285,7 +307,7 @@ def converged_create_handover(
     if auth.role not in CLINICAL_ROLES | SENIOR_ROLES:
         raise HTTPException(status_code=403, detail="clinical or senior role required")
     context = resolve_context(session, auth)
-    result = v25_create_handover(payload, session, auth)
+    result = v25_create_handover(payload, _deferred(session), auth)
     handover = result["handover"]
     safety = result.get("safetyRecord") or {}
     row, _, _ = record_command(
@@ -327,7 +349,7 @@ def converged_decide_handover(
     auth: AuthContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     context = resolve_context(session, auth)
-    result = v25_decide_handover(handover_id, payload, session, auth)
+    result = v25_decide_handover(handover_id, payload, _deferred(session), auth)
     handover = result["handover"]
     row = update_linked_command(
         session,
@@ -354,7 +376,7 @@ def converged_create_critical_result(
     if auth.role not in CLINICAL_ROLES | SENIOR_ROLES:
         raise HTTPException(status_code=403, detail="clinical or senior role required")
     context = resolve_context(session, auth)
-    result = v25_create_critical_result(payload, session, auth)
+    result = v25_create_critical_result(payload, _deferred(session), auth)
     critical = result["result"]
     safety = result.get("safetyRecord") or {}
     row, _, _ = record_command(
@@ -395,7 +417,7 @@ def converged_acknowledge_critical_result(
     auth: AuthContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     context = resolve_context(session, auth)
-    result = v25_acknowledge_critical_result(result_id, payload, session, auth)
+    result = v25_acknowledge_critical_result(result_id, payload, _deferred(session), auth)
     critical = result["result"]
     row = update_linked_command(
         session,
