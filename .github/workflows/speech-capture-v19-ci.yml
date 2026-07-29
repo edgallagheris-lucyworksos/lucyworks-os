@@ -10,6 +10,7 @@ on:
       - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
       - "apps/api/speech_capture_v19_smoke_test.py"
       - "apps/web/components/speech-**"
       - "apps/web/app/input/page.tsx"
@@ -29,6 +30,7 @@ on:
       - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
       - "apps/api/speech_capture_v19_smoke_test.py"
       - "apps/web/components/speech-**"
       - "apps/web/app/input/page.tsx"
@@ -54,7 +56,7 @@ jobs:
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile veterinary speech modules
         working-directory: apps/api
-        run: python -m py_compile app/speech_capture_v19_models.py app/speech_capture_v19_routes.py app/speech_capture_v19_serialization_patch.py speech_capture_v19_smoke_test.py migrations/versions/0014_speech_capture_v19.py migrations/versions/0018_bounded_pilot_control_v24.py
+        run: python -m py_compile app/speech_capture_v19_models.py app/speech_capture_v19_routes.py app/speech_capture_v19_serialization_patch.py speech_capture_v19_smoke_test.py migrations/versions/0014_speech_capture_v19.py migrations/versions/0018_bounded_pilot_control_v24.py migrations/versions/0019_cross_system_safety_control_v25.py
       - name: Run authenticated transcript-to-record proof
         working-directory: apps/api
         run: python speech_capture_v19_smoke_test.py 2>&1 | tee speech-capture-v19.log
@@ -68,16 +70,18 @@ jobs:
           DATABASE_URL=sqlite:////tmp/lucyworks-speech-v19-ci.db python - <<'PY'
           from sqlalchemy import create_engine, inspect, text
           engine = create_engine('sqlite:////tmp/lucyworks-speech-v19-ci.db')
-          expected = {'speechcapturev19', 'speechdraftv19', 'speechphrasepackv19'}
+          expected = {'speechcapturev19', 'speechdraftv19', 'speechphrasepackv19', 'safetyrecordv25'}
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0018_bounded_pilot_control_v24', version
+          assert version == '0019_cross_system_safety_control_v25', version
           missing = expected - set(inspect(engine).get_table_names())
           assert not missing, missing
-          print('SPEECH_CAPTURE_MIGRATION_V19_PASSED_AT_0018')
+          print('SPEECH_CAPTURE_MIGRATION_V19_PASSED_AT_0019')
           PY
       - name: Validate restore script syntax
-        run: bash -n scripts/restore-rehearsal.sh
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
       - name: Upload API speech evidence
         if: always()
         uses: actions/upload-artifact@v4

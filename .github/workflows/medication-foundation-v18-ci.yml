@@ -12,6 +12,7 @@ on:
       - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -35,6 +36,7 @@ on:
       - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
       - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
       - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
+      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
       - "apps/api/medication_foundation_v18_smoke_test.py"
       - "apps/api/medication_v18_vmd_parser_test.py"
       - "apps/web/app/medications/**"
@@ -67,7 +69,7 @@ jobs:
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile medication foundation
         working-directory: apps/api
-        run: python -m py_compile app/medication_foundation_v18_models.py app/medication_foundation_v18_routes.py medication_foundation_v18_smoke_test.py medication_v18_vmd_parser_test.py migrations/versions/0013_medication_foundation_v18.py migrations/versions/0018_bounded_pilot_control_v24.py
+        run: python -m py_compile app/medication_foundation_v18_models.py app/medication_foundation_v18_routes.py medication_foundation_v18_smoke_test.py medication_v18_vmd_parser_test.py migrations/versions/0013_medication_foundation_v18.py migrations/versions/0018_bounded_pilot_control_v24.py migrations/versions/0019_cross_system_safety_control_v25.py
       - name: Run VMD-style parser proof
         working-directory: apps/api
         run: python medication_v18_vmd_parser_test.py 2>&1 | tee medication-vmd-parser-v18.log
@@ -84,16 +86,18 @@ jobs:
           DATABASE_URL=sqlite:////tmp/lucyworks-medication-v18-ci.db python - <<'PY'
           from sqlalchemy import create_engine, inspect, text
           engine = create_engine('sqlite:////tmp/lucyworks-medication-v18-ci.db')
-          expected = {'productimportbatchv18', 'veterinaryproductv18', 'medicationprotocolv18', 'dosecalculationv18', 'medicationproposalv18'}
+          expected = {'productimportbatchv18', 'veterinaryproductv18', 'medicationprotocolv18', 'dosecalculationv18', 'medicationproposalv18', 'safetyrecordv25'}
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0018_bounded_pilot_control_v24', version
+          assert version == '0019_cross_system_safety_control_v25', version
           missing = expected - set(inspect(engine).get_table_names())
           assert not missing, missing
-          print('MEDICATION_MIGRATION_V18_PASSED_AT_0018')
+          print('MEDICATION_MIGRATION_V18_PASSED_AT_0019')
           PY
       - name: Validate restore rehearsal
-        run: bash -n scripts/restore-rehearsal.sh
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0019_cross_system_safety_control_v25' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund

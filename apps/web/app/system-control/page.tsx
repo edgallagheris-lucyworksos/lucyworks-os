@@ -6,12 +6,13 @@ const daily = [
   { href: "/hospital-board", title: "Hospital Today", description: "Rooms, theatres, imaging, wards, staff, times, conflicts and emergency changes." },
   { href: "/referral-intake", title: "Referrals", description: "Create, identify, triage and accept incoming referrals without duplicate-patient ambiguity." },
   { href: "/input", title: "Quick Input", description: "Record an operational problem once and give it an owner, urgency, patient and place." },
+  { href: "/safety-control", title: "Safety and Staff Concerns", description: "Report patient incidents, staff welfare, conduct, safeguarding or mixed concerns; protect first and prove the fix." },
   { href: "/care", title: "Care Brief", description: "Open an episode and answer who, what, where, when and how on one screen." },
 ];
 
 const advanced = [
   ["/pilot-control", "Pilot and go-live control"], ["/automation-control", "Automation authority"], ["/episode-command", "Episode decisions"], ["/patient-record", "Patient record"], ["/clinical-execution", "Patient work"],
-  ["/patient-record/controlled-actions", "Controlled clinical actions"], ["/control-plane", "Safety control"], ["/workforce-rota", "Workforce rota"],
+  ["/patient-record/controlled-actions", "Controlled clinical actions"], ["/control-plane", "Legacy governance controls"], ["/workforce-rota", "Workforce rota"],
   ["/access-review", "Access review"], ["/compliance-safety", "UK compliance and safety"], ["/assurance-control", "Deployment assurance"],
   ["/live-control", "Live events and recovery"], ["/shadow-mode", "Legacy shadow records"], ["/production-readiness", "Production readiness evidence"],
   ["/hospital-configuration", "Hospital configuration"], ["/hospital-configuration/validation-tools", "Configuration validation"],
@@ -27,7 +28,7 @@ export default function SystemControlPage() {
       <header style={{ background: "#071019", color: "white", borderRadius: 18, padding: 18 }}>
         <span style={{ color: "#2dd4bf", fontSize: 11, fontWeight: 900, letterSpacing: ".13em" }}>LUCYWORKS OS</span>
         <h1 style={{ fontSize: "clamp(38px,8vw,72px)", lineHeight: .93, margin: "7px 0" }}>Choose the job, not the module</h1>
-        <p style={{ color: "#b6c2d1", maxWidth: 850 }}>Daily staff should normally use Patient Command, Hospital Today, Referrals, Quick Input and Care Brief. Technical, governance and deployment controls are kept below.</p>
+        <p style={{ color: "#b6c2d1", maxWidth: 850 }}>Daily staff should normally use Patient Command, Hospital Today, Referrals, Quick Input, Safety and Staff Concerns, and Care Brief. Technical, governance and deployment controls are kept below.</p>
       </header>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 9, marginTop: 9 }}>

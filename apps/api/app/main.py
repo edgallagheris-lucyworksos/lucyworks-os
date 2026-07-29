@@ -8,7 +8,9 @@ from app import production_readiness_runtime_patch as _production_readiness_runt
 from app import compliance_safety_readiness_patch as _compliance_safety_readiness_patch  # noqa: F401
 from app import bvs_v6_runtime_patch as _bvs_v6_runtime_patch  # noqa: F401
 from app import integration_retry_runtime as _integration_retry_runtime  # noqa: F401
+from app import auth_scope_v25_patch as _auth_scope_v25_patch  # noqa: F401
 from app.auth import VerifiedIdentityMiddleware
+from app.verified_actor_attribution_v25 import VerifiedActorAttributionMiddlewareV25
 from app.production_middleware import ProductionProtectionMiddleware
 from app.legacy_write_retirement import LegacyWriteRetirementMiddleware
 from app.auth_routes import router as auth_router
@@ -91,6 +93,8 @@ from app.pilot_control_v24_routes import (
     legacy_shadow_guard_router as pilot_control_legacy_shadow_guard_v24_router,
     router as pilot_control_v24_router,
 )
+from app.safety_bridge_v25_routes import router as safety_bridge_v25_router
+from app.safety_control_v25_routes import router as safety_control_v25_router
 from app import production_readiness_migration_head_v24_patch as _production_readiness_migration_head_v24_patch  # noqa: F401
 from app import speech_capture_v19_serialization_patch as _speech_capture_v19_serialization_patch  # noqa: F401
 from app import referral_identity_v12_serialization_patch as _referral_identity_v12_serialization_patch  # noqa: F401
@@ -102,8 +106,10 @@ from app import critical_result_deadline_patch as _critical_result_deadline_patc
 from app import auth as auth_module
 
 auth_module.PUBLIC_PATHS.add("/api/metrics")
+LEGACY_TEST_BYPASS = os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() in {"1", "true", "yes"}
 
-if os.getenv("LUCYWORKS_LEGACY_TEST_BYPASS", "false").lower() not in {"1", "true", "yes"}:
+app.add_middleware(VerifiedActorAttributionMiddlewareV25)
+if not LEGACY_TEST_BYPASS:
     app.add_middleware(VerifiedIdentityMiddleware)
 app.add_middleware(LegacyWriteRetirementMiddleware)
 app.add_middleware(ProductionProtectionMiddleware)
@@ -115,6 +121,10 @@ app.include_router(input_router)
 app.include_router(department_router)
 app.include_router(forecast_router)
 app.include_router(readiness_router)
+# Production and authenticated tests use the hardened exact bridges. The explicit
+# legacy smoke bypass exercises retained pre-auth contracts without route shadowing.
+if not LEGACY_TEST_BYPASS:
+    app.include_router(safety_bridge_v25_router)
 app.include_router(hr_router)
 app.include_router(catalogue_router)
 app.include_router(workspace_router)
@@ -154,6 +164,7 @@ app.include_router(hospital_ops_router)
 app.include_router(hospital_ops_extension_router)
 app.include_router(production_readiness_router)
 app.include_router(pilot_control_v24_router)
+app.include_router(safety_control_v25_router)
 app.include_router(observability_router)
 app.include_router(hospital_intelligence_router)
 app.include_router(bvs_v6_router)
