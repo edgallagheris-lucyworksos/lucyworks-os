@@ -5,12 +5,7 @@ on:
     paths:
       - "apps/api/app/main.py"
       - "apps/api/app/operational_automation_v20_*.py"
-      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
@@ -20,12 +15,7 @@ on:
     paths:
       - "apps/api/app/main.py"
       - "apps/api/app/operational_automation_v20_*.py"
-      - "apps/api/migrations/versions/0015_operational_automation_v20.py"
-      - "apps/api/migrations/versions/0016_event_driven_automation_v22.py"
-      - "apps/api/migrations/versions/0017_automation_operator_control_v23.py"
-      - "apps/api/migrations/versions/0018_bounded_pilot_control_v24.py"
-      - "apps/api/migrations/versions/0019_cross_system_safety_control_v25.py"
-      - "apps/api/migrations/versions/0020_operational_convergence_v26.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
@@ -75,14 +65,14 @@ jobs:
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0020_operational_convergence_v26', version
+          assert version == '0021_organisation_onboarding_v27', version
           assert {'automationdecisionv20', 'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
-          print('OPERATIONAL_AUTOMATION_V20_PASSED_AT_0020')
+          print('OPERATIONAL_AUTOMATION_V20_PASSED_AT_0021')
           PY
       - name: Validate restore rehearsal syntax and automation coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0020_operational_convergence_v26' scripts/restore-rehearsal.sh
+          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
           grep -q 'automationdecisionv20' scripts/restore-rehearsal.sh
           grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
