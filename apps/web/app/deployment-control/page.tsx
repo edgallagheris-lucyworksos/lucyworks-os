@@ -7,5 +7,9 @@ const roles = [
 ];
 
 export default function DeploymentControlPage() {
-  return <AuthGuard allowedRoles={roles}>{() => <DeploymentControlV28 />}</AuthGuard>;
+  return (
+    <AuthGuard allowedRoles={roles}>
+      <DeploymentControlV28 />
+    </AuthGuard>
+  );
 }
