@@ -12,7 +12,7 @@ const daily = [
 ];
 
 const advanced = [
-  ["/onboarding", "Organisation and hospital onboarding"], ["/pilot-control", "Pilot and go-live control"], ["/automation-control", "Automation authority"], ["/episode-command", "Episode decisions"], ["/patient-record", "Patient record"], ["/clinical-execution", "Patient work"],
+  ["/onboarding", "Organisation and hospital onboarding"], ["/deployment-control", "Real hospital connections and speech"], ["/pilot-control", "Pilot and go-live control"], ["/automation-control", "Automation authority"], ["/episode-command", "Episode decisions"], ["/patient-record", "Patient record"], ["/clinical-execution", "Patient work"],
   ["/patient-record/controlled-actions", "Controlled clinical actions"], ["/control-plane", "Legacy governance controls"], ["/workforce-rota", "Workforce rota"],
   ["/access-review", "Access review"], ["/compliance-safety", "UK compliance and safety"], ["/assurance-control", "Deployment assurance"],
   ["/live-control", "Live events and recovery"], ["/shadow-mode", "Legacy shadow records"], ["/production-readiness", "Production readiness evidence"],
@@ -41,7 +41,7 @@ export default function SystemControlPage() {
 
       <details style={{ marginTop: 12, background: "white", border: "1px solid #cbd5e1", borderRadius: 15, padding: 13 }}>
         <summary style={{ cursor: "pointer", fontSize: 21, fontWeight: 900 }}>Advanced, governance and configuration tools</summary>
-        <p style={{ color: "#64748b" }}>These are not the normal route for day-to-day patient care. Start a new organisation or hospital at Organisation and hospital onboarding; published runtime records remain visible in Hospital configuration.</p>
+        <p style={{ color: "#64748b" }}>Start a new organisation or hospital in Onboarding. Use Real hospital connections and speech to test devices and stage shadow/read-only vendor links. Published runtime records remain visible in Hospital configuration.</p>
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 7 }}>
           {advanced.map(([href, title]) => <Link key={href} href={href} style={{ padding: 11, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, color: "#0f172a", textDecoration: "none", fontWeight: 850 }}>{title} →</Link>)}
         </section>
