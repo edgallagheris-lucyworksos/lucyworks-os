@@ -98,6 +98,7 @@ from app import organisation_onboarding_v27_context_patch as _organisation_onboa
 from app import organisation_onboarding_v27_hardening as _organisation_onboarding_v27_hardening  # noqa: F401
 from app.organisation_onboarding_v27_routes import router as organisation_onboarding_v27_router
 from app.organisation_onboarding_v27_hardening_routes import router as organisation_onboarding_v27_hardening_router
+from app.real_hospital_connection_v28_routes import router as real_hospital_connection_v28_router
 from app.operational_context_v26_routes import router as operational_context_v26_router
 from app.safety_bridge_v25_routes import router as safety_bridge_v25_router
 from app.safety_control_v25_routes import router as safety_control_v25_router
@@ -127,12 +128,13 @@ app.include_router(input_router)
 app.include_router(department_router)
 app.include_router(forecast_router)
 app.include_router(readiness_router)
-# Production and authenticated tests use v27/v26 first so organisation onboarding,
+# Production and authenticated tests use v28/v27/v26 first so deployment controls,
 # approved site access and canonical hospital commands share one authority chain.
 # The explicit legacy smoke bypass continues to exercise retained pre-auth contracts.
 if not LEGACY_TEST_BYPASS:
     app.include_router(organisation_onboarding_v27_router)
     app.include_router(organisation_onboarding_v27_hardening_router)
+    app.include_router(real_hospital_connection_v28_router)
     app.include_router(operational_context_v26_router)
     app.include_router(safety_bridge_v25_router)
 app.include_router(hr_router)
