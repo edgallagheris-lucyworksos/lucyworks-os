@@ -8,9 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTHON_FILES = [
     ROOT / "apps/api/app/real_hospital_connection_v28_models.py",
     ROOT / "apps/api/app/real_hospital_connection_v28_routes.py",
+    ROOT / "apps/api/app/real_hospital_connection_v28_hardening_routes.py",
     ROOT / "apps/api/app/production_readiness_v28_patch.py",
     ROOT / "apps/api/migrations/versions/0022_real_hospital_connection_v28.py",
     ROOT / "apps/api/real_hospital_connection_v28_smoke_test.py",
+    ROOT / "apps/api/real_hospital_connection_v28_authority_test.py",
 ]
 
 for path in PYTHON_FILES:
@@ -51,6 +53,17 @@ assert "create_capture(CaptureCreate(" in routes
 assert "raw-audio retention is disabled" in routes
 assert "sequence already exists with different content" in routes
 
+hardening = (ROOT / "apps/api/app/real_hospital_connection_v28_hardening_routes.py").read_text()
+for marker in (
+    'ConfigDict(extra="forbid")',
+    "speech_segment_sequence_gap",
+    "expectedSequence",
+    "append_speech_segment_original",
+    '@router.post("/speech/sessions")',
+    '@router.post("/speech/sessions/{session_ref}/segments")',
+):
+    assert marker in hardening, marker
+
 migration = (ROOT / "apps/api/migrations/versions/0022_real_hospital_connection_v28.py").read_text()
 assert 'revision: str = "0022_real_hospital_connection_v28"' in migration
 assert 'down_revision: Union[str, None] = "0021_organisation_onboarding_v27"' in migration
@@ -58,7 +71,10 @@ assert "Destructive removal" in migration
 
 main = (ROOT / "apps/api/app/main.py").read_text()
 assert "real_hospital_connection_v28_router" in main
-assert "app.include_router(real_hospital_connection_v28_router)" in main
+assert "real_hospital_connection_v28_hardening_router" in main
+assert "app.include_router(real_hospital_connection_v28_hardening_router)" in main
+assert main.index("app.include_router(real_hospital_connection_v28_hardening_router)") < main.index("app.include_router(real_hospital_connection_v28_router)")
+assert "production_readiness_v28_patch" in main
 
 readiness = (ROOT / "apps/api/app/production_readiness_v28_patch.py").read_text()
 for marker in (
@@ -91,5 +107,16 @@ for marker in (
     "speech_session_v28",
 ):
     assert marker in smoke, marker
+
+authority = (ROOT / "apps/api/real_hospital_connection_v28_authority_test.py").read_text()
+for marker in (
+    "hiddenAudioUpload",
+    "speech_segment_sequence_gap",
+    "initial_gap.status_code == 409",
+    "later_gap.status_code == 409",
+    "idempotent retry",
+    "raw_audio.status_code == 409",
+):
+    assert marker in authority, marker
 
 print("REAL_HOSPITAL_CONNECTION_V28_STATIC_VALIDATION_PASSED")
