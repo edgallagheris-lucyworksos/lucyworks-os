@@ -149,6 +149,6 @@ def security_self_test_v24(session: Session, auth: AuthContext) -> SecurityAsses
 readiness_service.security_self_test = security_self_test_v24
 readiness_routes.security_self_test = security_self_test_v24
 
-# v27 extends the current migration-aware self-test with governed organisation,
-# hospital-release and staff-access controls after the v24 implementation is installed.
-from app import production_readiness_v27_patch as _production_readiness_v27_patch  # noqa: E402,F401
+# v28 composes v27 organisation authority with governed speech providers,
+# shadow/read-only connectors, two-person promotion and reconciliation controls.
+from app import production_readiness_v28_patch as _production_readiness_v28_patch  # noqa: E402,F401
