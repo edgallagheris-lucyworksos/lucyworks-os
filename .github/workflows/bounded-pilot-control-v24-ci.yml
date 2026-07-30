@@ -83,14 +83,14 @@ jobs:
               'pilotshadowcomparisonv24', 'pilotuatscenariov24', 'safetyrecordv25',
               'canonicalcommandv26', 'activeoperatingcontextv26',
           }
-          assert version == '0021_organisation_onboarding_v27', version
+          assert version == '0022_real_hospital_connection_v28', version
           assert expected <= tables, expected - tables
-          print('BOUNDED_PILOT_V24_PASSED_AT_0021')
+          print('BOUNDED_PILOT_V24_PASSED_AT_0022')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
+          grep -q '0022_real_hospital_connection_v28' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'pilotshadowcomparisonv24' scripts/restore-rehearsal.sh
           grep -q 'pilotuatscenariov24' scripts/restore-rehearsal.sh
