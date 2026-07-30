@@ -120,7 +120,7 @@ def security_self_test_v28(session: Session, auth: AuthContext) -> SecurityAsses
 
     failed = len([item for item in checks if not item["passed"] and item["severity"] == "failure"])
     warnings = len([item for item in checks if not item["passed"] and item["severity"] == "warning"])
-    passed = len([item for item in checks if item["passed"])
+    passed = len([item for item in checks if item["passed"]])
     total = max(1, len(checks))
     run.status = "passed" if failed == 0 else "failed"
     run.score = round((passed / total) * 100)
