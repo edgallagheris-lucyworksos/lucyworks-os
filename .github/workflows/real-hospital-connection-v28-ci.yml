@@ -7,7 +7,7 @@ on:
       - "apps/api/app/real_hospital_connection_v28_*.py"
       - "apps/api/app/production_readiness_v28_patch.py"
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
-      - "apps/api/migrations/versions/0022_real_hospital_connection_v28.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/real_hospital_connection_v28_*.py"
       - "apps/web/app/deployment-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -23,7 +23,7 @@ on:
       - "apps/api/app/real_hospital_connection_v28_*.py"
       - "apps/api/app/production_readiness_v28_patch.py"
       - "apps/api/app/production_readiness_migration_head_v24_patch.py"
-      - "apps/api/migrations/versions/0022_real_hospital_connection_v28.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/real_hospital_connection_v28_*.py"
       - "apps/web/app/deployment-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -71,7 +71,7 @@ jobs:
       - name: Run strict request and contiguous sequence authority proof
         working-directory: apps/api
         run: python real_hospital_connection_v28_authority_test.py 2>&1 | tee real-hospital-connection-v28-authority.log
-      - name: Verify SQLite migration 0022 and v28 evidence tables
+      - name: Verify current migration head and v28 evidence tables
         working-directory: apps/api
         shell: bash
         run: |
@@ -89,14 +89,14 @@ jobs:
               'integrationconnectorv28', 'integrationpromotionv28',
               'integrationeventv28', 'reconciliationitemv28',
           }
-          assert version == '0022_real_hospital_connection_v28', version
+          assert version == '0023_hospital_pilot_v29', version
           assert expected <= tables, expected - tables
-          print('REAL_HOSPITAL_CONNECTION_MIGRATION_V28_PASSED')
+          print('REAL_HOSPITAL_CONNECTION_MIGRATION_V28_PASSED_AT_0023')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0022_real_hospital_connection_v28' scripts/restore-rehearsal.sh
+          grep -q '0023_hospital_pilot_v29' scripts/restore-rehearsal.sh
           grep -q 'speechsessionv28' scripts/restore-rehearsal.sh
           grep -q 'integrationpromotionv28' scripts/restore-rehearsal.sh
           grep -q 'reconciliationitemv28' scripts/restore-rehearsal.sh
