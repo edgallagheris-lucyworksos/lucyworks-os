@@ -1,0 +1,122 @@
+name: Real Hospital Connection v28 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/real_hospital_connection_v28_*.py"
+      - "apps/api/app/production_readiness_v28_patch.py"
+      - "apps/api/app/production_readiness_migration_head_v24_patch.py"
+      - "apps/api/migrations/versions/0022_real_hospital_connection_v28.py"
+      - "apps/api/real_hospital_connection_v28_*.py"
+      - "apps/web/app/deployment-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/deployment-control-v28.tsx"
+      - "docs/REAL_HOSPITAL_CONNECTION_V28.md"
+      - "scripts/validate_real_hospital_connection_v28.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/real-hospital-connection-v28-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/real_hospital_connection_v28_*.py"
+      - "apps/api/app/production_readiness_v28_patch.py"
+      - "apps/api/app/production_readiness_migration_head_v24_patch.py"
+      - "apps/api/migrations/versions/0022_real_hospital_connection_v28.py"
+      - "apps/api/real_hospital_connection_v28_*.py"
+      - "apps/web/app/deployment-control/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/deployment-control-v28.tsx"
+      - "docs/REAL_HOSPITAL_CONNECTION_V28.md"
+      - "scripts/validate_real_hospital_connection_v28.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/real-hospital-connection-v28-ci.yml"
+
+jobs:
+  governed-speech-and-shadow-connections:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Validate v28 architecture and safety boundaries
+        run: python scripts/validate_real_hospital_connection_v28.py 2>&1 | tee real-hospital-connection-v28-audit.log
+      - name: Compile v28 API, hardening, readiness, migration and proofs
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/real_hospital_connection_v28_models.py
+          app/real_hospital_connection_v28_routes.py
+          app/real_hospital_connection_v28_hardening_routes.py
+          app/production_readiness_v28_patch.py
+          app/production_readiness_migration_head_v24_patch.py
+          real_hospital_connection_v28_smoke_test.py
+          real_hospital_connection_v28_authority_test.py
+          migrations/versions/0022_real_hospital_connection_v28.py
+      - name: Run resumable speech, two-person promotion and reconciliation journey
+        working-directory: apps/api
+        run: python real_hospital_connection_v28_smoke_test.py 2>&1 | tee real-hospital-connection-v28.log
+      - name: Run strict request and contiguous sequence authority proof
+        working-directory: apps/api
+        run: python real_hospital_connection_v28_authority_test.py 2>&1 | tee real-hospital-connection-v28-authority.log
+      - name: Verify SQLite migration 0022 and v28 evidence tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-v28-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-v28-ci.db alembic upgrade head 2>&1 | tee real-hospital-connection-migration-v28.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-v28-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-v28-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          tables = set(inspect(engine).get_table_names())
+          expected = {
+              'speechproviderv28', 'speechsessionv28', 'speechsegmentv28',
+              'integrationconnectorv28', 'integrationpromotionv28',
+              'integrationeventv28', 'reconciliationitemv28',
+          }
+          assert version == '0022_real_hospital_connection_v28', version
+          assert expected <= tables, expected - tables
+          print('REAL_HOSPITAL_CONNECTION_MIGRATION_V28_PASSED')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0022_real_hospital_connection_v28' scripts/restore-rehearsal.sh
+          grep -q 'speechsessionv28' scripts/restore-rehearsal.sh
+          grep -q 'integrationpromotionv28' scripts/restore-rehearsal.sh
+          grep -q 'reconciliationitemv28' scripts/restore-rehearsal.sh
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build deployment control, speech device test and system control
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee real-hospital-connection-web-v28.log
+      - name: Upload v28 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-hospital-connection-v28-evidence
+          path: |
+            real-hospital-connection-v28-audit.log
+            apps/api/real-hospital-connection-v28.log
+            apps/api/real-hospital-connection-v28-authority.log
+            apps/api/real-hospital-connection-migration-v28.log
+            apps/web/real-hospital-connection-web-v28.log
+          if-no-files-found: warn

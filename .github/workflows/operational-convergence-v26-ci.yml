@@ -88,14 +88,14 @@ jobs:
               'activeoperatingcontextv26', 'contextswitchevidencev26',
               'canonicalcommandv26', 'legacyrouteconvergencev26', 'operationalimpactv26',
           }
-          assert version == '0021_organisation_onboarding_v27', version
+          assert version == '0022_real_hospital_connection_v28', version
           assert expected <= tables, expected - tables
-          print('OPERATIONAL_CONVERGENCE_MIGRATION_V26_PASSED_AT_0021')
+          print('OPERATIONAL_CONVERGENCE_MIGRATION_V26_PASSED_AT_0022')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
+          grep -q '0022_real_hospital_connection_v28' scripts/restore-rehearsal.sh
           grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
           grep -q 'activeoperatingcontextv26' scripts/restore-rehearsal.sh
           grep -q 'operationalimpactv26' scripts/restore-rehearsal.sh

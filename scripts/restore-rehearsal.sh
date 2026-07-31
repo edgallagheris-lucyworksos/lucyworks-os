@@ -38,7 +38,7 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0021_organisation_onboarding_v27" ]] || { echo "restored migration version is $version, expected 0021_organisation_onboarding_v27" >&2; exit 1; }
+[[ "$version" == "0022_real_hospital_connection_v28" ]] || { echo "restored migration version is $version, expected 0022_real_hospital_connection_v28" >&2; exit 1; }
 
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
@@ -65,7 +65,9 @@ for table in \
   onboardingorganisationv27 onboardingsitev27 onboardingdepartmentv27 onboardingservicev27 \
   onboardingroomv27 onboardingequipmentv27 staffimportbatchv27 onboardingstaffv27 \
   staffcredentialv27 staffcompetencyv27 staffaccessapprovalv27 sitepolicyv27 \
-  configurationreleasev27 configurationchangev27; do
+  configurationreleasev27 configurationchangev27 \
+  speechproviderv28 speechsessionv28 speechsegmentv28 integrationconnectorv28 \
+  integrationpromotionv28 integrationeventv28 reconciliationitemv28; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
@@ -142,7 +144,14 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'staffAccessApprovals'"'"', (select count(*) from staffaccessapprovalv27),
   '"'"'sitePolicies'"'"', (select count(*) from sitepolicyv27),
   '"'"'configurationReleases'"'"', (select count(*) from configurationreleasev27),
-  '"'"'configurationChanges'"'"', (select count(*) from configurationchangev27)
+  '"'"'configurationChanges'"'"', (select count(*) from configurationchangev27),
+  '"'"'speechProvidersV28'"'"', (select count(*) from speechproviderv28),
+  '"'"'speechSessionsV28'"'"', (select count(*) from speechsessionv28),
+  '"'"'speechSegmentsV28'"'"', (select count(*) from speechsegmentv28),
+  '"'"'integrationConnectorsV28'"'"', (select count(*) from integrationconnectorv28),
+  '"'"'integrationPromotionsV28'"'"', (select count(*) from integrationpromotionv28),
+  '"'"'integrationEventsV28'"'"', (select count(*) from integrationeventv28),
+  '"'"'reconciliationItemsV28'"'"', (select count(*) from reconciliationitemv28)
 )')"
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"

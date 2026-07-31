@@ -92,14 +92,14 @@ jobs:
               'safetylinkv25', 'safetyescalationv25', 'safetyaccesseventv25',
               'canonicalcommandv26', 'operationalimpactv26',
           }
-          assert version == '0021_organisation_onboarding_v27', version
+          assert version == '0022_real_hospital_connection_v28', version
           assert expected <= tables, expected - tables
-          print('CROSS_SYSTEM_SAFETY_V25_PASSED_AT_0021')
+          print('CROSS_SYSTEM_SAFETY_V25_PASSED_AT_0022')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0021_organisation_onboarding_v27' scripts/restore-rehearsal.sh
+          grep -q '0022_real_hospital_connection_v28' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
           grep -q 'safetyactionv25' scripts/restore-rehearsal.sh
           grep -q 'safetyaccesseventv25' scripts/restore-rehearsal.sh
