@@ -1,0 +1,123 @@
+name: Hospital Pilot and Integration Simulator v29 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/hospital_pilot_v29_*.py"
+      - "apps/api/app/production_readiness_v29_patch.py"
+      - "apps/api/app/production_readiness_v28_patch.py"
+      - "apps/api/migrations/versions/0023_hospital_pilot_v29.py"
+      - "apps/api/hospital_pilot_v29_*.py"
+      - "apps/web/app/pilot-lab/**"
+      - "apps/web/components/hospital-pilot-lab-v29.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "docs/HOSPITAL_PILOT_INTEGRATION_SIMULATOR_V29.md"
+      - "scripts/validate_hospital_pilot_v29.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/hospital-pilot-v29-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/hospital_pilot_v29_*.py"
+      - "apps/api/app/production_readiness_v29_patch.py"
+      - "apps/api/app/production_readiness_v28_patch.py"
+      - "apps/api/migrations/versions/0023_hospital_pilot_v29.py"
+      - "apps/api/hospital_pilot_v29_*.py"
+      - "apps/web/app/pilot-lab/**"
+      - "apps/web/components/hospital-pilot-lab-v29.tsx"
+      - "apps/web/app/system-control/page.tsx"
+      - "docs/HOSPITAL_PILOT_INTEGRATION_SIMULATOR_V29.md"
+      - "scripts/validate_hospital_pilot_v29.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/hospital-pilot-v29-ci.yml"
+
+jobs:
+  governed-hospital-pilot-laboratory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Validate v29 architecture and safety boundaries
+        run: python scripts/validate_hospital_pilot_v29.py 2>&1 | tee hospital-pilot-v29-audit.log
+      - name: Compile v29 models, routes, readiness, migration and proofs
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/hospital_pilot_v29_models.py
+          app/hospital_pilot_v29_routes.py
+          app/production_readiness_v29_patch.py
+          app/production_readiness_v28_patch.py
+          hospital_pilot_v29_smoke_test.py
+          hospital_pilot_v29_authority_test.py
+          migrations/versions/0023_hospital_pilot_v29.py
+      - name: Run complete hospital pilot lifecycle proof
+        working-directory: apps/api
+        run: python hospital_pilot_v29_smoke_test.py 2>&1 | tee hospital-pilot-v29.log
+      - name: Run strict authority, failure and urgent-access proof
+        working-directory: apps/api
+        run: python hospital_pilot_v29_authority_test.py 2>&1 | tee hospital-pilot-v29-authority.log
+      - name: Verify SQLite migration 0023 and v29 evidence tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-v29-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-v29-ci.db alembic upgrade head 2>&1 | tee hospital-pilot-migration-v29.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-v29-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-v29-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          tables = set(inspect(engine).get_table_names())
+          expected = {
+              'speechadapterv29', 'veterinaryterminologypackv29', 'integrationsimulatorv29',
+              'simulatorscenariov29', 'simulatorrunv29', 'readinessassessmentv29',
+              'hospitalpilotv29', 'pilotapprovalv29', 'pilotincidentv29',
+              'pilotmeasurementv29', 'exportartifactv29',
+          }
+          assert version == '0023_hospital_pilot_v29', version
+          assert expected <= tables, expected - tables
+          print('HOSPITAL_PILOT_MIGRATION_V29_PASSED')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0023_hospital_pilot_v29' scripts/restore-rehearsal.sh
+          grep -q 'speechadapterv29' scripts/restore-rehearsal.sh
+          grep -q 'integrationsimulatorv29' scripts/restore-rehearsal.sh
+          grep -q 'readinessassessmentv29' scripts/restore-rehearsal.sh
+          grep -q 'hospitalpilotv29' scripts/restore-rehearsal.sh
+          grep -q 'pilotincidentv29' scripts/restore-rehearsal.sh
+          grep -q 'exportartifactv29' scripts/restore-rehearsal.sh
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build pilot laboratory and complete web application
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee hospital-pilot-web-v29.log
+      - name: Upload v29 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hospital-pilot-v29-evidence
+          path: |
+            hospital-pilot-v29-audit.log
+            apps/api/hospital-pilot-v29.log
+            apps/api/hospital-pilot-v29-authority.log
+            apps/api/hospital-pilot-migration-v29.log
+            apps/web/hospital-pilot-web-v29.log
+          if-no-files-found: warn
