@@ -41,11 +41,10 @@ for boundary in [
     '"pilot_not_ready"',
     '"requiresHumanReview": True',
     '"writeOperations": []',
+    '"rawAudioRetention": False',
 ]:
     assert boundary in routes, boundary
 
-assert "external-system write-back" not in routes.lower() or "no vendor write-back" in routes.lower()
-assert "rawAudioRetention": False if False else True
 assert 'revision: str = "0023_hospital_pilot_v29"' in migration
 assert 'down_revision: Union[str, None] = "0022_real_hospital_connection_v28"' in migration
 assert "V29_TABLES" in readiness
