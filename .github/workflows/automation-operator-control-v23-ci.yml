@@ -80,14 +80,14 @@ jobs:
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0022_real_hospital_connection_v28', version
+          assert version == '0023_hospital_pilot_v29', version
           assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
-          print('AUTOMATION_OPERATOR_V23_PASSED_AT_0022')
+          print('AUTOMATION_OPERATOR_V23_PASSED_AT_0023')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0022_real_hospital_connection_v28' scripts/restore-rehearsal.sh
+          grep -q '0023_hospital_pilot_v29' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
