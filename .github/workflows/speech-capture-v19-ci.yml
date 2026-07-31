@@ -63,15 +63,15 @@ jobs:
           expected = {'speechcapturev19', 'speechdraftv19', 'speechphrasepackv19', 'safetyrecordv25', 'canonicalcommandv26'}
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0022_real_hospital_connection_v28', version
+          assert version == '0023_hospital_pilot_v29', version
           missing = expected - set(inspect(engine).get_table_names())
           assert not missing, missing
-          print('SPEECH_CAPTURE_MIGRATION_V19_PASSED_AT_0022')
+          print('SPEECH_CAPTURE_MIGRATION_V19_PASSED_AT_0023')
           PY
       - name: Validate restore script syntax
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0022_real_hospital_connection_v28' scripts/restore-rehearsal.sh
+          grep -q '0023_hospital_pilot_v29' scripts/restore-rehearsal.sh
           grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Upload API speech evidence
         if: always()
