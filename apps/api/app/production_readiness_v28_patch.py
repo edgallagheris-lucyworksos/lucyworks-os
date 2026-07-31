@@ -179,3 +179,5 @@ def security_self_test_v28(session: Session, auth: AuthContext) -> SecurityAsses
 
 readiness_service.security_self_test = security_self_test_v28
 readiness_routes.security_self_test = security_self_test_v28
+
+from app import production_readiness_v29_patch as _production_readiness_v29_patch  # noqa: E402,F401
