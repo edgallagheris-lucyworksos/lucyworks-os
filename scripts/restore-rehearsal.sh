@@ -38,8 +38,10 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0022_real_hospital_connection_v28" ]] || { echo "restored migration version is $version, expected 0022_real_hospital_connection_v28" >&2; exit 1; }
+[[ "$version" == "0023_hospital_pilot_v29" ]] || { echo "restored migration version is $version, expected 0023_hospital_pilot_v29" >&2; exit 1; }
 
+# Every governed table remains explicit here so a restore cannot pass merely
+# because the database starts. This is the durable evidence surface through v29.
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
   hospitalconfigurationrecord configurationverificationtask workforceprofile workforcecompetency \
@@ -67,91 +69,30 @@ for table in \
   staffcredentialv27 staffcompetencyv27 staffaccessapprovalv27 sitepolicyv27 \
   configurationreleasev27 configurationchangev27 \
   speechproviderv28 speechsessionv28 speechsegmentv28 integrationconnectorv28 \
-  integrationpromotionv28 integrationeventv28 reconciliationitemv28; do
+  integrationpromotionv28 integrationeventv28 reconciliationitemv28 \
+  speechadapterv29 veterinaryterminologypackv29 integrationsimulatorv29 \
+  simulatorscenariov29 simulatorrunv29 readinessassessmentv29 hospitalpilotv29 \
+  pilotapprovalv29 pilotincidentv29 pilotmeasurementv29 exportartifactv29; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
 
 counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select json_build_object(
   '"'"'evidence'"'"', (select count(*) from evidenceevent),
-  '"'"'configuration'"'"', (select count(*) from hospitalconfigurationrecord),
-  '"'"'workforce'"'"', (select count(*) from workforceprofile),
-  '"'"'referrals'"'"', (select count(*) from referralintake),
-  '"'"'durableEvents'"'"', (select count(*) from durableevent),
-  '"'"'medicationOrders'"'"', (select count(*) from medicationorder),
   '"'"'patients'"'"', (select count(*) from patientclinicalrecordv8),
-  '"'"'encounters'"'"', (select count(*) from clinicalencounterv8),
-  '"'"'anaesthesiaCharts'"'"', (select count(*) from anaesthesiachartv8),
-  '"'"'procedures'"'"', (select count(*) from procedurerecordv8),
-  '"'"'estimates'"'"', (select count(*) from estimatev8),
-  '"'"'communications'"'"', (select count(*) from communicationeventv8),
-  '"'"'documents'"'"', (select count(*) from clinicaldocumentv8),
-  '"'"'commandReferrals'"'"', (select count(*) from referralintakev9),
-  '"'"'consents'"'"', (select count(*) from consentauthorisationv9),
-  '"'"'handovers'"'"', (select count(*) from episodehandoverv9),
-  '"'"'transitions'"'"', (select count(*) from episodetransitionv9),
-  '"'"'closures'"'"', (select count(*) from episodeclosurev9),
-  '"'"'safetyCases'"'"', (select count(*) from safetycasev10),
-  '"'"'hazards'"'"', (select count(*) from safetyhazardv10),
-  '"'"'safetyReviews'"'"', (select count(*) from safetyreviewv10),
-  '"'"'deploymentProfiles'"'"', (select count(*) from deploymentprofilev10),
-  '"'"'identityIntakes'"'"', (select count(*) from referralidentityintakev12),
-  '"'"'identityReviews'"'"', (select count(*) from identitymatchreviewv12),
-  '"'"'referralDocuments'"'"', (select count(*) from referraldocumentv12),
-  '"'"'triageRecords'"'"', (select count(*) from referraltriagev12),
-  '"'"'accessReviews'"'"', (select count(*) from accessreviewv12),
-  '"'"'productImports'"'"', (select count(*) from productimportbatchv18),
-  '"'"'veterinaryProducts'"'"', (select count(*) from veterinaryproductv18),
-  '"'"'medicationProtocols'"'"', (select count(*) from medicationprotocolv18),
-  '"'"'doseCalculations'"'"', (select count(*) from dosecalculationv18),
-  '"'"'medicationProposals'"'"', (select count(*) from medicationproposalv18),
-  '"'"'speechCaptures'"'"', (select count(*) from speechcapturev19),
-  '"'"'speechDrafts'"'"', (select count(*) from speechdraftv19),
-  '"'"'speechPhrasePacks'"'"', (select count(*) from speechphrasepackv19),
-  '"'"'automationDecisions'"'"', (select count(*) from automationdecisionv20),
-  '"'"'automationConfigs'"'"', (select count(*) from automationruntimeconfigv22),
-  '"'"'automationTriggers'"'"', (select count(*) from automationtriggerv22),
-  '"'"'automationOperatorActions'"'"', (select count(*) from automationoperatoractionv23),
-  '"'"'pilotAuthorities'"'"', (select count(*) from pilotauthorityv24),
-  '"'"'pilotApprovals'"'"', (select count(*) from pilotapprovalv24),
-  '"'"'pilotActions'"'"', (select count(*) from pilotcontrolactionv24),
-  '"'"'pilotShadowComparisons'"'"', (select count(*) from pilotshadowcomparisonv24),
-  '"'"'pilotUatScenarios'"'"', (select count(*) from pilotuatscenariov24),
-  '"'"'safetyRecords'"'"', (select count(*) from safetyrecordv25),
-  '"'"'safetyActions'"'"', (select count(*) from safetyactionv25),
-  '"'"'safetyDecisions'"'"', (select count(*) from safetydecisionv25),
-  '"'"'safetyLinks'"'"', (select count(*) from safetylinkv25),
-  '"'"'safetyEscalations'"'"', (select count(*) from safetyescalationv25),
-  '"'"'safetyAccessEvents'"'"', (select count(*) from safetyaccesseventv25),
-  '"'"'organisations'"'"', (select count(*) from organisationv26),
-  '"'"'sites'"'"', (select count(*) from sitev26),
-  '"'"'siteMemberships'"'"', (select count(*) from sitemembershipv26),
-  '"'"'activeContexts'"'"', (select count(*) from activeoperatingcontextv26),
-  '"'"'contextSwitches'"'"', (select count(*) from contextswitchevidencev26),
-  '"'"'canonicalCommands'"'"', (select count(*) from canonicalcommandv26),
-  '"'"'routeConvergence'"'"', (select count(*) from legacyrouteconvergencev26),
-  '"'"'operationalImpacts'"'"', (select count(*) from operationalimpactv26),
-  '"'"'onboardingOrganisations'"'"', (select count(*) from onboardingorganisationv27),
-  '"'"'onboardingSites'"'"', (select count(*) from onboardingsitev27),
-  '"'"'onboardingDepartments'"'"', (select count(*) from onboardingdepartmentv27),
-  '"'"'onboardingServices'"'"', (select count(*) from onboardingservicev27),
-  '"'"'onboardingRooms'"'"', (select count(*) from onboardingroomv27),
-  '"'"'onboardingEquipment'"'"', (select count(*) from onboardingequipmentv27),
-  '"'"'staffImports'"'"', (select count(*) from staffimportbatchv27),
-  '"'"'onboardingStaff'"'"', (select count(*) from onboardingstaffv27),
-  '"'"'staffCredentials'"'"', (select count(*) from staffcredentialv27),
-  '"'"'staffCompetencies'"'"', (select count(*) from staffcompetencyv27),
-  '"'"'staffAccessApprovals'"'"', (select count(*) from staffaccessapprovalv27),
-  '"'"'sitePolicies'"'"', (select count(*) from sitepolicyv27),
+  '"'"'canonicalEpisodes'"'"', (select count(*) from canonicalepisodestate),
   '"'"'configurationReleases'"'"', (select count(*) from configurationreleasev27),
-  '"'"'configurationChanges'"'"', (select count(*) from configurationchangev27),
-  '"'"'speechProvidersV28'"'"', (select count(*) from speechproviderv28),
   '"'"'speechSessionsV28'"'"', (select count(*) from speechsessionv28),
-  '"'"'speechSegmentsV28'"'"', (select count(*) from speechsegmentv28),
-  '"'"'integrationConnectorsV28'"'"', (select count(*) from integrationconnectorv28),
-  '"'"'integrationPromotionsV28'"'"', (select count(*) from integrationpromotionv28),
   '"'"'integrationEventsV28'"'"', (select count(*) from integrationeventv28),
-  '"'"'reconciliationItemsV28'"'"', (select count(*) from reconciliationitemv28)
+  '"'"'speechAdaptersV29'"'"', (select count(*) from speechadapterv29),
+  '"'"'terminologyPacksV29'"'"', (select count(*) from veterinaryterminologypackv29),
+  '"'"'simulatorRunsV29'"'"', (select count(*) from simulatorrunv29),
+  '"'"'readinessAssessmentsV29'"'"', (select count(*) from readinessassessmentv29),
+  '"'"'hospitalPilotsV29'"'"', (select count(*) from hospitalpilotv29),
+  '"'"'pilotIncidentsV29'"'"', (select count(*) from pilotincidentv29),
+  '"'"'pilotMeasurementsV29'"'"', (select count(*) from pilotmeasurementv29),
+  '"'"'deploymentArtifactsV29'"'"', (select count(*) from exportartifactv29)
 )')"
+
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
 echo "Restored integrity sample: $counts"
