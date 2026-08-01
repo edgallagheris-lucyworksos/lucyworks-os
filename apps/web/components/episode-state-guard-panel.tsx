@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -32,7 +33,7 @@ export function EpisodeStateGuardPanel({ episodeRef, currentPhase }: { episodeRe
 
   async function load() {
     setStatus("");
-    const specRes = await fetch(`${API_BASE}/api/episode-state-machine`, { cache: "no-store" });
+    const specRes = await apiFetch(`/api/episode-state-machine`, { cache: "no-store" });
     if (!specRes.ok) {
       setStatus("Episode state machine failed to load.");
       return;
@@ -42,7 +43,7 @@ export function EpisodeStateGuardPanel({ episodeRef, currentPhase }: { episodeRe
     const candidates = Array.from(new Set([...(nextSpec.allowed_transitions?.[currentPhase || "intake"] || []), "procedure", "recovery", "discharge_ready", "discharged", "closed"]));
     const loaded: Guard[] = [];
     for (const target of candidates) {
-      const res = await fetch(`${API_BASE}/api/episodes/${episodeRef}/state-guard/${target}`, { cache: "no-store" });
+      const res = await apiFetch(`/api/episodes/${episodeRef}/state-guard/${target}`, { cache: "no-store" });
       if (res.ok) loaded.push(await res.json());
     }
     setGuards(loaded);
@@ -50,7 +51,7 @@ export function EpisodeStateGuardPanel({ episodeRef, currentPhase }: { episodeRe
 
   async function transition(target: string) {
     setStatus(`Trying transition to ${target}...`);
-    const res = await fetch(`${API_BASE}/api/episodes/${episodeRef}/transition`, {
+    const res = await apiFetch(`/api/episodes/${episodeRef}/transition`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target_state: target, actor_name: "Episode Command", reason: "Transition from episode state guard panel" }),

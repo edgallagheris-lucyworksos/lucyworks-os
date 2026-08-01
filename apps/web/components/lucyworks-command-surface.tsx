@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { SessionUser } from "@/lib/session";
@@ -129,7 +130,7 @@ export function LucyWorksCommandSurface({ mode, user }: { mode: Mode; user?: Ses
     setError("");
     const endpoint = endpointForMode(mode, user);
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`, { cache: "no-store" });
+      const res = await apiFetch(`${endpoint}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(JSON.stringify(data));
       const conflicts = data.conflicts?.length ? data.conflicts : data.critical_conflicts?.length ? data.critical_conflicts : [];

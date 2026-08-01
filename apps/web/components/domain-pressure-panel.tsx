@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -23,7 +24,7 @@ export function DomainPressurePanel() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/domain-pressure`, { cache: "no-store" });
+      const res = await apiFetch(`/api/domain-pressure`, { cache: "no-store" });
       setDomain(await res.json());
     }
     load();

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -62,7 +63,7 @@ function ActionsInner() {
   async function load(nextRole = role) {
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/workspace?role=${encodeURIComponent(nextRole)}`, { cache: "no-store" });
+      const res = await apiFetch(`/api/workspace?role=${encodeURIComponent(nextRole)}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`workspace ${res.status}`);
       setData(await res.json());
     } catch (err) {
@@ -75,7 +76,7 @@ function ActionsInner() {
     setNotice("");
     setError("");
     try {
-      const res = await fetch(`${API_BASE}${url}`, { method: "POST", ...options });
+      const res = await apiFetch(`${url}`, { method: "POST", ...options });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.detail?.reasons?.join(" | ") || body?.detail || `${label} failed ${res.status}`);
       setNotice(`${label} completed`);

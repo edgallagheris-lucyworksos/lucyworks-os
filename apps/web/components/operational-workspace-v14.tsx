@@ -1,5 +1,6 @@
 "use client";
 
+import { localOperationalDate } from "@/lib/operational-date";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
@@ -85,7 +86,7 @@ type Workspace = {
 type View = "attention" | "patients" | "unlinked";
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return localOperationalDate();
 }
 
 function displayTime(value?: string | null) {

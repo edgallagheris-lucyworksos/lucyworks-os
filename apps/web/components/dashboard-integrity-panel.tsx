@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -26,7 +27,7 @@ export function DashboardIntegrityPanel() {
 
   async function load() {
     setError("");
-    const res = await fetch(`${API_BASE}/api/dashboard/integrity`, { cache: "no-store" });
+    const res = await apiFetch(`/api/dashboard/integrity`, { cache: "no-store" });
     if (!res.ok) {
       setError("Dashboard integrity report failed to load.");
       return;

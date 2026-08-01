@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -11,14 +12,14 @@ export default function RoomsPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/room-states`, { cache: "no-store" });
+      const res = await apiFetch(`/api/room-states`, { cache: "no-store" });
       setRooms(await res.json());
     }
     load();
   }, []);
 
   async function setState(id: number, state: string) {
-    await fetch(`${API_BASE}/api/room-states/${id}/set?state=${state}`, { method: "POST" });
+    await apiFetch(`/api/room-states/${id}/set?state=${state}`, { method: "POST" });
     location.reload();
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -19,14 +20,14 @@ export default function ResultsPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/results`, { cache: "no-store" });
+      const res = await apiFetch(`/api/results`, { cache: "no-store" });
       setResults(await res.json());
     }
     load();
   }, []);
 
   async function markReviewed(id: number) {
-    await fetch(`${API_BASE}/api/results/${id}/action`, {
+    await apiFetch(`/api/results/${id}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "reviewed" }),

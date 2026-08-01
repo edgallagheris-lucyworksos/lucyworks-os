@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -23,7 +24,7 @@ export default function AlertsPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/alerts`, { cache: "no-store" });
+      const res = await apiFetch(`/api/alerts`, { cache: "no-store" });
       setData(await res.json());
     }
     load();

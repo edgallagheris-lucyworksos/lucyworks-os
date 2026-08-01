@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 
@@ -33,8 +34,8 @@ function QueuesInner() {
   async function load() {
     setLoading(true);
     const [usersRes, itemsRes] = await Promise.all([
-      fetch(`${API_BASE}/api/users`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/work-items`, { cache: "no-store" }),
+      apiFetch(`/api/users`, { cache: "no-store" }),
+      apiFetch(`/api/work-items`, { cache: "no-store" }),
     ]);
     setUsers(await usersRes.json());
     setItems(await itemsRes.json());
@@ -46,7 +47,7 @@ function QueuesInner() {
   }, []);
 
   async function setStatus(itemId: number, status: string) {
-    await fetch(`${API_BASE}/api/work-items/${itemId}/status`, {
+    await apiFetch(`/api/work-items/${itemId}/status`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, actor_name: "Queue UI" }),
@@ -55,7 +56,7 @@ function QueuesInner() {
   }
 
   async function assign(itemId: number, ownerRole: string, ownerUserId: number | null) {
-    await fetch(`${API_BASE}/api/work-items/${itemId}/assign`, {
+    await apiFetch(`/api/work-items/${itemId}/assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ owner_role: ownerRole, owner_user_id: ownerUserId, actor_name: "Queue UI" }),

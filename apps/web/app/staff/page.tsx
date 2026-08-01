@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -21,7 +22,7 @@ export default function StaffPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/staff-load`, { cache: "no-store" });
+      const res = await apiFetch(`/api/staff-load`, { cache: "no-store" });
       setStaff(await res.json());
     }
     load();

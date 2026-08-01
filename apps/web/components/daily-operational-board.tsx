@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { coreOperatingUnits, theatreUnits, type OperatingUnit } from "@/lib/hospital-operating-model";
@@ -39,7 +40,7 @@ function sourceLabel(source?: string) { return source === "public_verified" ? "p
 
 async function getJson<T>(path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+    const res = await apiFetch(`${path}`, { cache: "no-store" });
     if (!res.ok) return null;
     return await res.json();
   } catch {

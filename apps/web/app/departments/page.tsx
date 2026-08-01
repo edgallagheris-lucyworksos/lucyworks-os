@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -43,7 +44,7 @@ function DepartmentOpsInner() {
   async function load() {
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/departments`, { cache: "no-store" });
+      const res = await apiFetch(`/api/departments`, { cache: "no-store" });
       if (!res.ok) throw new Error(`departments ${res.status}`);
       setData(await res.json());
     } catch (err) {
@@ -56,7 +57,7 @@ function DepartmentOpsInner() {
     setError("");
     setNotice("");
     try {
-      const res = await fetch(`${API_BASE}/api/departments/seed?actor_name=Department%20Ops`, { method: "POST" });
+      const res = await apiFetch(`/api/departments/seed?actor_name=Department%20Ops`, { method: "POST" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(JSON.stringify(body));
       setNotice(`Seeded ${body.seeded_departments} departments`);

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -48,7 +49,7 @@ function HRInner() {
   async function load() {
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/hr`, { cache: "no-store" });
+      const res = await apiFetch(`/api/hr`, { cache: "no-store" });
       if (!res.ok) throw new Error(`hr ${res.status}`);
       setData(await res.json());
     } catch (err) { setError(err instanceof Error ? err.message : "HR overview failed to load"); }

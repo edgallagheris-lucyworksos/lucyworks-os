@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -30,8 +31,8 @@ export default function ConflictsPage() {
 
   async function load() {
     const [conflictRes, actionRes] = await Promise.all([
-      fetch(`${API_BASE}/api/conflicts`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/conflict-actions`, { cache: "no-store" }),
+      apiFetch(`/api/conflicts`, { cache: "no-store" }),
+      apiFetch(`/api/conflict-actions`, { cache: "no-store" }),
     ]);
     const conflictData = await conflictRes.json();
     setConflicts(conflictData.conflicts || []);
@@ -44,14 +45,14 @@ export default function ConflictsPage() {
 
   async function convert(conflict: ConflictItem) {
     setStatus("Creating work from conflict...");
-    await fetch(`${API_BASE}/api/conflicts/to-work?conflict_type=${encodeURIComponent(conflict.type)}&severity=${encodeURIComponent(conflict.severity)}&detail=${encodeURIComponent(conflict.detail)}`, { method: "POST" });
+    await apiFetch(`/api/conflicts/to-work?conflict_type=${encodeURIComponent(conflict.type)}&severity=${encodeURIComponent(conflict.severity)}&detail=${encodeURIComponent(conflict.detail)}`, { method: "POST" });
     setStatus("Conflict converted to work.");
     await load();
   }
 
   async function resolve(id: number) {
     setStatus("Resolving conflict action...");
-    await fetch(`${API_BASE}/api/conflict-actions/${id}/resolve?note=${encodeURIComponent("Resolved from Conflicts page")}`, { method: "POST" });
+    await apiFetch(`/api/conflict-actions/${id}/resolve?note=${encodeURIComponent("Resolved from Conflicts page")}`, { method: "POST" });
     setStatus("Conflict action resolved.");
     await load();
   }

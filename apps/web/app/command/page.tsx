@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -20,7 +21,7 @@ type FlowState = { summary: Record<string, number>; queues?: Record<string, any[
 
 async function getJson<T>(url: string): Promise<ApiState<T>> {
   try {
-    const res = await fetch(`${API_BASE}${url}`, { cache: "no-store" });
+    const res = await apiFetch(`${url}`, { cache: "no-store" });
     const data = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, data: null, error: `${res.status} ${JSON.stringify(data).slice(0, 120)}` };
     return { ok: true, data };
@@ -111,7 +112,7 @@ function CommandInner() {
 
   async function firstRun() {
     setNotice("Seeding hospital system...");
-    await fetch(`${API_BASE}/api/admin/first-run`, { method: "POST" }).catch(() => null);
+    await apiFetch(`/api/admin/first-run`, { method: "POST" }).catch(() => null);
     setNotice("Seed complete. Reloading command overview...");
     await load();
     setNotice("Command overview refreshed.");

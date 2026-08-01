@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -55,11 +56,11 @@ export function FlowReadinessPanel({ episodeId }: { episodeId: number }) {
   const [operating, setOperating] = useState<OperatingReadiness | null>(null);
 
   async function load() {
-    const res = await fetch(`${API_BASE}/api/flow-readiness/${episodeId}`, { cache: "no-store" });
+    const res = await apiFetch(`/api/flow-readiness/${episodeId}`, { cache: "no-store" });
     if (!res.ok) return;
     const flow = await res.json();
     setData(flow);
-    const opRes = await fetch(`${API_BASE}/api/episode-operating-readiness/${flow.episode_ref}`, { cache: "no-store" });
+    const opRes = await apiFetch(`/api/episode-operating-readiness/${flow.episode_ref}`, { cache: "no-store" });
     if (opRes.ok) setOperating(await opRes.json());
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -17,8 +18,8 @@ export function AssignmentDirectoryManager() {
   async function refresh() {
     try {
       const [staffResponse, resourceResponse] = await Promise.all([
-        fetch(`${API_BASE}/api/day-control/staff-options`),
-        fetch(`${API_BASE}/api/day-control/resource-options`),
+        apiFetch(`/api/day-control/staff-options`),
+        apiFetch(`/api/day-control/resource-options`),
       ]);
       const staffData = await staffResponse.json();
       const resourceData = await resourceResponse.json();
@@ -35,7 +36,7 @@ export function AssignmentDirectoryManager() {
   async function createStaff() {
     if (!staffForm.name || !staffForm.role || !staffForm.area) return setStatus("complete staff fields");
     try {
-      await fetch(`${API_BASE}/api/day-control/staff-options`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...staffForm, active: true }) });
+      await apiFetch(`/api/day-control/staff-options`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...staffForm, active: true }) });
       setStaffForm({ name: "", role: "", area: "" });
       setStatus("staff option saved");
       await refresh();
@@ -47,7 +48,7 @@ export function AssignmentDirectoryManager() {
   async function createResource() {
     if (!resourceForm.id || !resourceForm.name || !resourceForm.type) return setStatus("complete resource fields");
     try {
-      await fetch(`${API_BASE}/api/day-control/resource-options`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...resourceForm, active: true }) });
+      await apiFetch(`/api/day-control/resource-options`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...resourceForm, active: true }) });
       setResourceForm({ id: "", name: "", type: "" });
       setStatus("resource option saved");
       await refresh();
@@ -57,12 +58,12 @@ export function AssignmentDirectoryManager() {
   }
 
   async function deactivateStaff(item: StaffOption) {
-    await fetch(`${API_BASE}/api/day-control/staff-options/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: item.name, role: item.role, area: item.area, active: false }) });
+    await apiFetch(`/api/day-control/staff-options/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: item.name, role: item.role, area: item.area, active: false }) });
     await refresh();
   }
 
   async function deactivateResource(item: ResourceOption) {
-    await fetch(`${API_BASE}/api/day-control/resource-options/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, name: item.name, type: item.type, active: false }) });
+    await apiFetch(`/api/day-control/resource-options/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, name: item.name, type: item.type, active: false }) });
     await refresh();
   }
 

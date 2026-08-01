@@ -1,5 +1,6 @@
 "use client";
 
+import { localOperationalDate } from "@/lib/operational-date";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiGet, apiJson } from "@/lib/api-client";
@@ -125,7 +126,7 @@ function CompetencyRegister({ data, busy, act }: { data: Dashboard; busy: boolea
 }
 
 function ReplayImporter({ data, busy, act }: { data: Dashboard; busy: boolean; act: (path: string, init: RequestInit, success: string) => Promise<void> }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localOperationalDate();
   const [sourceDate, setSourceDate] = useState(today);
   const [eventsJson, setEventsJson] = useState("[\n  {\n    \"eventRef\": \"example-1\",\n    \"occurredAt\": \"2026-07-24T09:00:00Z\",\n    \"eventType\": \"delay\",\n    \"areaRef\": \"mri\",\n    \"payload\": {\n      \"expectedAlert\": true,\n      \"lucyworksDetected\": true,\n      \"decisionLatencyMinutes\": 5\n    }\n  }\n]");
   async function submit(event: FormEvent) {
