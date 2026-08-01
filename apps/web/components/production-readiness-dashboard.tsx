@@ -1,5 +1,6 @@
 "use client";
 
+import { requestEvidence } from "@/lib/evidence-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { apiJson, apiPost } from "@/lib/api";
 
@@ -99,8 +100,8 @@ export function ProductionReadinessDashboard() {
   }
 
   async function setControl(control: Control, status: string) {
-    const evidenceSummary = window.prompt(`Evidence or reason for ${status}:`, control.evidenceSummary || "") || undefined;
-    const waiverReason = status === "waived" ? window.prompt("Named waiver reason:") || undefined : undefined;
+    const evidenceSummary = await requestEvidence(`Evidence or reason for ${status}:`, control.evidenceSummary || "") || undefined;
+    const waiverReason = status === "waived" ? await requestEvidence("Named waiver reason:") || undefined : undefined;
     await run(`control-${control.controlRef}`, () => apiJson(`/api/production-readiness/controls/${control.controlRef}`, {
       method: "PATCH",
       body: JSON.stringify({ expectedVersion: control.version, status, evidenceSummary, waiverReason, reason: evidenceSummary }),
@@ -108,14 +109,14 @@ export function ProductionReadinessDashboard() {
   }
 
   async function addEvidence(control: Control) {
-    const summary = window.prompt("Evidence summary:");
+    const summary = await requestEvidence("Evidence summary:");
     if (!summary) return;
-    const sourceRef = window.prompt("Source/reference, ticket, report or URL label:") || undefined;
+    const sourceRef = await requestEvidence("Source/reference, ticket, report or URL label:") || undefined;
     await run(`evidence-${control.controlRef}`, () => apiPost(`/api/production-readiness/controls/${control.controlRef}/evidence`, { evidenceType: "reviewed_evidence", summary, sourceRef }));
   }
 
   async function createPilot() {
-    const accountableOwner = window.prompt("Named accountable owner:");
+    const accountableOwner = await requestEvidence("Named accountable owner:");
     if (!accountableOwner) return;
     await run("pilot", () => apiPost("/api/production-readiness/pilots", {
       phase,
@@ -132,16 +133,16 @@ export function ProductionReadinessDashboard() {
   }
 
   async function addObservation(pilot: Pilot) {
-    const severity = window.prompt("Severity: green, amber or red", "amber") || "amber";
-    const summary = window.prompt("What happened?");
+    const severity = await requestEvidence("Severity: green, amber or red", "amber") || "amber";
+    const summary = await requestEvidence("What happened?");
     if (!summary) return;
-    const expectedBehaviour = window.prompt("What should have happened?") || undefined;
-    const actualBehaviour = window.prompt("What actually happened?") || undefined;
+    const expectedBehaviour = await requestEvidence("What should have happened?") || undefined;
+    const actualBehaviour = await requestEvidence("What actually happened?") || undefined;
     await run(`observation-${pilot.runRef}`, () => apiPost(`/api/production-readiness/pilots/${pilot.runRef}/observations`, { severity, category: "workflow", summary, expectedBehaviour, actualBehaviour }));
   }
 
   async function resolveObservation(item: Observation) {
-    const resolution = window.prompt("Resolution and verification:");
+    const resolution = await requestEvidence("Resolution and verification:");
     if (!resolution) return;
     await run(`resolve-${item.observationRef}`, () => apiJson(`/api/production-readiness/observations/${item.observationRef}/resolve`, { method: "PATCH", body: JSON.stringify({ resolution }) }));
   }

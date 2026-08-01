@@ -1,5 +1,6 @@
 "use client";
 
+import { requestEvidence } from "@/lib/evidence-dialog";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -63,7 +64,7 @@ function LiveControl() {
   }, []);
 
   async function acknowledge(row: LiveEvent, status: string) {
-    const note = window.prompt(`${status} reason:`);
+    const note = await requestEvidence(`${status} reason:`);
     if (!note) return;
     setBusy(true);
     try {

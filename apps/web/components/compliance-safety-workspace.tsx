@@ -1,5 +1,6 @@
 "use client";
 
+import { requestEvidence } from "@/lib/evidence-dialog";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiJson } from "@/lib/api-client";
@@ -94,9 +95,9 @@ export function ComplianceSafetyWorkspace() {
   }
 
   async function verifyHazard(row: any) {
-    const evidence = window.prompt("Evidence references, comma separated:", (row.evidenceRefs || []).join(","));
+    const evidence = await requestEvidence("Evidence references, comma separated:", (row.evidenceRefs || []).join(","));
     if (evidence === null) return;
-    const reason = window.prompt("Verification reason:", "Design control and synthetic negative tests reviewed");
+    const reason = await requestEvidence("Verification reason:", "Design control and synthetic negative tests reviewed");
     if (!reason) return;
     setBusy(true); setError(""); setMessage("");
     try {
