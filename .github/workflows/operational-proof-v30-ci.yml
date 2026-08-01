@@ -1,0 +1,134 @@
+name: Operational Proof and Demo Hospital v30 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/operational_proof_v30_*.py"
+      - "apps/api/app/connected_surfaces_v30_patch.py"
+      - "apps/api/app/production_readiness_v30_patch.py"
+      - "apps/api/app/critical_result_deadline_patch.py"
+      - "apps/api/app/role_queue_routes.py"
+      - "apps/api/migrations/versions/0024_operational_proof_v30.py"
+      - "apps/api/operational_proof_v30_*.py"
+      - "apps/api/hospital_command_v9_smoke_test.py"
+      - "apps/web/app/operational-proof/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/operational-proof-v30.tsx"
+      - "docs/OPERATIONAL_PROOF_DEMO_HOSPITAL_V30.md"
+      - "scripts/validate_operational_proof_v30.py"
+      - "scripts/prove-operational-v30.sh"
+      - "scripts/restore-rehearsal.sh"
+      - "package.json"
+      - ".github/workflows/operational-proof-v30-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/api/app/operational_proof_v30_*.py"
+      - "apps/api/app/connected_surfaces_v30_patch.py"
+      - "apps/api/app/production_readiness_v30_patch.py"
+      - "apps/api/app/critical_result_deadline_patch.py"
+      - "apps/api/app/role_queue_routes.py"
+      - "apps/api/migrations/versions/0024_operational_proof_v30.py"
+      - "apps/api/operational_proof_v30_*.py"
+      - "apps/api/hospital_command_v9_smoke_test.py"
+      - "apps/web/app/operational-proof/**"
+      - "apps/web/app/system-control/page.tsx"
+      - "apps/web/components/operational-proof-v30.tsx"
+      - "docs/OPERATIONAL_PROOF_DEMO_HOSPITAL_V30.md"
+      - "scripts/validate_operational_proof_v30.py"
+      - "scripts/prove-operational-v30.sh"
+      - "scripts/restore-rehearsal.sh"
+      - "package.json"
+      - ".github/workflows/operational-proof-v30-ci.yml"
+
+jobs:
+  connected-journey-stress-mobile-and-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Validate v30 architecture, authority and deployment boundary
+        run: python scripts/validate_operational_proof_v30.py 2>&1 | tee operational-proof-v30-audit.log
+      - name: Compile v30 API, patches, migration and proofs
+        working-directory: apps/api
+        run: >-
+          python -m py_compile
+          app/operational_proof_v30_models.py
+          app/operational_proof_v30_routes.py
+          app/connected_surfaces_v30_patch.py
+          app/production_readiness_v30_patch.py
+          operational_proof_v30_smoke_test.py
+          operational_proof_v30_authority_test.py
+          migrations/versions/0024_operational_proof_v30.py
+      - name: Run established canonical referral-to-closure proof
+        working-directory: apps/api
+        run: python hospital_command_v9_smoke_test.py 2>&1 | tee hospital-command-v9-for-v30.log
+      - name: Run connected board, queue, evidence and eight-scenario proof
+        working-directory: apps/api
+        run: python operational_proof_v30_smoke_test.py 2>&1 | tee operational-proof-v30.log
+      - name: Run authority, stale-state, mobile and urgent-access proof
+        working-directory: apps/api
+        run: python operational_proof_v30_authority_test.py 2>&1 | tee operational-proof-v30-authority.log
+      - name: Verify SQLite migration 0024 and v30 evidence tables
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -f /tmp/lucyworks-v30-ci.db
+          DATABASE_URL=sqlite:////tmp/lucyworks-v30-ci.db alembic upgrade head 2>&1 | tee operational-proof-migration-v30.log
+          DATABASE_URL=sqlite:////tmp/lucyworks-v30-ci.db python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-v30-ci.db')
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          expected = {
+              'operationalproofrunv30', 'operationalproofstepv30',
+              'operationalproofscenariov30', 'mobileacceptancev30',
+              'canonicalepisodestate', 'episodeclosurev9', 'hospitalpilotv29',
+          }
+          tables = set(inspect(engine).get_table_names())
+          assert version == '0024_operational_proof_v30', version
+          assert expected <= tables, expected - tables
+          print('OPERATIONAL_PROOF_MIGRATION_V30_PASSED_AT_0024')
+          PY
+      - name: Validate restore coverage
+        run: |
+          bash -n scripts/restore-rehearsal.sh
+          grep -q '0024_operational_proof_v30' scripts/restore-rehearsal.sh
+          grep -q 'operationalproofrunv30' scripts/restore-rehearsal.sh
+          grep -q 'operationalproofstepv30' scripts/restore-rehearsal.sh
+          grep -q 'operationalproofscenariov30' scripts/restore-rehearsal.sh
+          grep -q 'mobileacceptancev30' scripts/restore-rehearsal.sh
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build operational proof and complete web application
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee operational-proof-web-v30.log
+      - name: Upload v30 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operational-proof-v30-evidence
+          path: |
+            operational-proof-v30-audit.log
+            apps/api/hospital-command-v9-for-v30.log
+            apps/api/operational-proof-v30.log
+            apps/api/operational-proof-v30-authority.log
+            apps/api/operational-proof-migration-v30.log
+            apps/web/operational-proof-web-v30.log
+          if-no-files-found: warn

@@ -17,6 +17,7 @@
     "monorepo:check": "bash scripts/check-monorepo.sh",
     "monorepo:run": "bash scripts/run-monorepo.sh",
     "codespace:run": "bash scripts/codespace-autostart.sh",
-    "codespace:health": "bash scripts/codespace-health.sh"
+    "codespace:health": "bash scripts/codespace-health.sh",
+    "proof:v30": "bash scripts/prove-operational-v30.sh"
   }
 }
