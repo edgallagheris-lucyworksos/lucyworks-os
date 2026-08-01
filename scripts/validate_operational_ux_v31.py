@@ -38,13 +38,19 @@ required_markers = {
         "/clinical-execution",
         "/episode-command",
     ],
+    WEB / "components" / "technical-surface-boundary-v31.tsx": [
+        "Technical administration surface",
+        "Legacy compatibility surface",
+        "Patient Command",
+        "Hospital Today",
+    ],
     WEB / "lib" / "evidence-dialog.ts": [
         'role", "dialog"',
         'aria-modal",
         "Confirm evidence",
         "min-height:48px",
     ],
-    WEB / "app" / "layout.tsx": ["EpisodeSelectionBridgeV31"],
+    WEB / "app" / "layout.tsx": ["EpisodeSelectionBridgeV31", "TechnicalSurfaceBoundaryV31"],
     WEB / "app" / "referral-intake" / "page.tsx": ["GuidedReferralIntakeV31"],
 }
 for path, markers in required_markers.items():
