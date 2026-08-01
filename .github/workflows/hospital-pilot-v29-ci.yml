@@ -6,7 +6,7 @@ on:
       - "apps/api/app/hospital_pilot_v29_*.py"
       - "apps/api/app/production_readiness_v29_patch.py"
       - "apps/api/app/production_readiness_v28_patch.py"
-      - "apps/api/migrations/versions/0023_hospital_pilot_v29.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/hospital_pilot_v29_*.py"
       - "apps/web/app/pilot-lab/**"
       - "apps/web/components/hospital-pilot-lab-v29.tsx"
@@ -21,7 +21,7 @@ on:
       - "apps/api/app/hospital_pilot_v29_*.py"
       - "apps/api/app/production_readiness_v29_patch.py"
       - "apps/api/app/production_readiness_v28_patch.py"
-      - "apps/api/migrations/versions/0023_hospital_pilot_v29.py"
+      - "apps/api/migrations/versions/**"
       - "apps/api/hospital_pilot_v29_*.py"
       - "apps/web/app/pilot-lab/**"
       - "apps/web/components/hospital-pilot-lab-v29.tsx"
@@ -68,7 +68,7 @@ jobs:
       - name: Run strict authority, failure and urgent-access proof
         working-directory: apps/api
         run: python hospital_pilot_v29_authority_test.py 2>&1 | tee hospital-pilot-v29-authority.log
-      - name: Verify SQLite migration 0023 and v29 evidence tables
+      - name: Verify current migration head and v29 evidence tables
         working-directory: apps/api
         shell: bash
         run: |
@@ -87,14 +87,14 @@ jobs:
               'hospitalpilotv29', 'pilotapprovalv29', 'pilotincidentv29',
               'pilotmeasurementv29', 'exportartifactv29',
           }
-          assert version == '0023_hospital_pilot_v29', version
+          assert version == '0024_operational_proof_v30', version
           assert expected <= tables, expected - tables
-          print('HOSPITAL_PILOT_MIGRATION_V29_PASSED')
+          print('HOSPITAL_PILOT_MIGRATION_V29_PASSED_AT_0024')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0023_hospital_pilot_v29' scripts/restore-rehearsal.sh
+          grep -q '0024_operational_proof_v30' scripts/restore-rehearsal.sh
           grep -q 'speechadapterv29' scripts/restore-rehearsal.sh
           grep -q 'integrationsimulatorv29' scripts/restore-rehearsal.sh
           grep -q 'readinessassessmentv29' scripts/restore-rehearsal.sh
