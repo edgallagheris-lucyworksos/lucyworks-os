@@ -31,8 +31,8 @@ def add_named_import(text: str, module: str, name: str) -> str:
     return import_line + text
 
 
-def remove_unused_api_base(text: str) -> str:
-    if "API_BASE" in text:
+def cleanup_api_base(text: str) -> str:
+    if text.count("API_BASE") > 1:
         return text
     text = re.sub(r'^const API_BASE = process\.env\.NEXT_PUBLIC_API_BASE[^\n]*\n\n?', "", text, flags=re.MULTILINE)
     text = re.sub(r'import \{\s*API_BASE\s*\} from "@/lib/api-client";\n?', "", text)
@@ -46,7 +46,6 @@ def transform(path: Path) -> bool:
     text = original
 
     if rel not in PUBLIC_AUTH and "fetch(`${API_BASE}" in text:
-        # Static API_BASE template calls become authenticated path calls.
         text, count = re.subn(
             r'fetch\(`\$\{API_BASE\}([^`]*)`',
             lambda match: f'apiFetch(`{match.group(1)}`',
@@ -54,7 +53,8 @@ def transform(path: Path) -> bool:
         )
         if count:
             text = add_named_import(text, "@/lib/api-client", "apiFetch")
-            text = remove_unused_api_base(text)
+
+    text = cleanup_api_base(text)
 
     if "new Date().toISOString().slice(0, 10)" in text:
         text = text.replace("new Date().toISOString().slice(0, 10)", "localOperationalDate()")
