@@ -38,10 +38,10 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0023_hospital_pilot_v29" ]] || { echo "restored migration version is $version, expected 0023_hospital_pilot_v29" >&2; exit 1; }
+[[ "$version" == "0024_operational_proof_v30" ]] || { echo "restored migration version is $version, expected 0024_operational_proof_v30" >&2; exit 1; }
 
 # Every governed table remains explicit here so a restore cannot pass merely
-# because the database starts. This is the durable evidence surface through v29.
+# because the database starts. This is the durable evidence surface through v30.
 for table in \
   evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
   hospitalconfigurationrecord configurationverificationtask workforceprofile workforcecompetency \
@@ -72,7 +72,8 @@ for table in \
   integrationpromotionv28 integrationeventv28 reconciliationitemv28 \
   speechadapterv29 veterinaryterminologypackv29 integrationsimulatorv29 \
   simulatorscenariov29 simulatorrunv29 readinessassessmentv29 hospitalpilotv29 \
-  pilotapprovalv29 pilotincidentv29 pilotmeasurementv29 exportartifactv29; do
+  pilotapprovalv29 pilotincidentv29 pilotmeasurementv29 exportartifactv29 \
+  operationalproofrunv30 operationalproofstepv30 operationalproofscenariov30 mobileacceptancev30; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
 done
@@ -91,7 +92,11 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'hospitalPilotsV29'"'"', (select count(*) from hospitalpilotv29),
   '"'"'pilotIncidentsV29'"'"', (select count(*) from pilotincidentv29),
   '"'"'pilotMeasurementsV29'"'"', (select count(*) from pilotmeasurementv29),
-  '"'"'deploymentArtifactsV29'"'"', (select count(*) from exportartifactv29)
+  '"'"'deploymentArtifactsV29'"'"', (select count(*) from exportartifactv29),
+  '"'"'operationalProofRunsV30'"'"', (select count(*) from operationalproofrunv30),
+  '"'"'operationalProofStepsV30'"'"', (select count(*) from operationalproofstepv30),
+  '"'"'operationalProofScenariosV30'"'"', (select count(*) from operationalproofscenariov30),
+  '"'"'mobileAcceptanceV30'"'"', (select count(*) from mobileacceptancev30)
 )')"
 
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"
