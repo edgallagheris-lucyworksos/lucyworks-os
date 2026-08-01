@@ -1,0 +1,53 @@
+name: Operational UX and Real-UAT v31 Inventory
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "apps/api/**"
+      - "scripts/audit_operational_ux.py"
+      - "scripts/validate_operational_ux_v31.py"
+      - "docs/OPERATIONAL_UX_REAL_UAT_V31.md"
+      - ".github/workflows/operational-ux-v31-ci.yml"
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      - "apps/web/**"
+      - "apps/api/**"
+      - "scripts/audit_operational_ux.py"
+      - "scripts/validate_operational_ux_v31.py"
+      - "docs/OPERATIONAL_UX_REAL_UAT_V31.md"
+      - ".github/workflows/operational-ux-v31-ci.yml"
+
+jobs:
+  inventory-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Inventory operational UX defects
+        run: python scripts/audit_operational_ux.py 2>&1 | tee operational-ux-v31-inventory.log
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install --no-audit --no-fund
+      - name: Build complete production web application
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build 2>&1 | tee operational-ux-v31-web.log
+      - name: Upload inventory evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operational-ux-v31-inventory
+          path: |
+            operational-ux-v31-inventory.log
+            apps/web/operational-ux-v31-web.log
+          if-no-files-found: warn
