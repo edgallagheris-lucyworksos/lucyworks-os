@@ -389,7 +389,7 @@ export function OperationalProofV30() {
         <h2 style={{ marginTop: 0 }}>4. Mobile acceptance</h2>
         <p>Browser diagnostics can prove viewport, security, connectivity, touch and microphone access. They cannot prove physical keyboard overlap or actual Android usability.</p>
         <button style={button} onClick={runMobileDiagnostics}>Test this device</button>
-        {diagnostics.testedAt && <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: "#f8fafc", padding: 10, borderRadius: 10 }}>{JSON.stringify(diagnostics, null, 2)}</pre>}
+        {Boolean(diagnostics.testedAt) && <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: "#f8fafc", padding: 10, borderRadius: 10 }}>{JSON.stringify(diagnostics, null, 2)}</pre>}
         <label style={{ display: "flex", gap: 9, alignItems: "flex-start", marginTop: 10 }}>
           <input type="checkbox" checked={manualAndroidConfirmation} onChange={event => setManualAndroidConfirmation(event.target.checked)} />
           <span><strong>I personally completed the physical Android journey</strong><br />Login → Quick Input → create patient-linked work → find it in Patient Command/Workspace → act → refresh → verify persistence and named audit.</span>
