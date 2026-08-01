@@ -7,10 +7,12 @@ from sqlmodel import Session, select
 
 import app.hospital_master_board_v11_routes as board_routes
 import app.hospital_ops_service as hospital_ops_service
+import app.role_queue_routes as role_queue_routes
 from app.hospital_ops_models import BoardChangeEvent, CanonicalEpisodeState
 
 
 _original_board_snapshot = board_routes.board_snapshot
+_original_queue_for_role = role_queue_routes.queue_for_role
 
 
 def _row(row: Any) -> dict[str, Any]:
@@ -52,5 +54,22 @@ def board_snapshot_v30(session: Session, premises_ref: str, operational_date: da
     return board
 
 
+def queue_for_role_v30(session: Session, role: str) -> dict[str, Any]:
+    payload = _original_queue_for_role(session, role)
+    if role != "manager":
+        return payload
+    completed = session.exec(
+        select(CanonicalEpisodeState)
+        .where(CanonicalEpisodeState.status == "closed")
+        .order_by(CanonicalEpisodeState.updated_at.desc())
+    ).all()
+    recent = [{**_row(row), "queue_state": "recently_completed"} for row in completed[:20]]
+    payload["recent_completed_episodes"] = recent
+    payload["canonical_episodes"] = list(payload.get("canonical_episodes", [])) + recent
+    payload.setdefault("summary", {})["recent_completed_count"] = len(recent)
+    return payload
+
+
 board_routes.board_snapshot = board_snapshot_v30
 hospital_ops_service.board_snapshot = board_snapshot_v30
+role_queue_routes.queue_for_role = queue_for_role_v30
