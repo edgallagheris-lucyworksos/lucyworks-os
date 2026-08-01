@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { API_BASE, apiGet, apiJson, apiPost } from "@/lib/api";
 import { getSession } from "@/lib/session";
@@ -108,7 +109,7 @@ export function HospitalOperatingBoard() {
       const session = getSession();
       if (!session?.token) return;
       try {
-        const response = await fetch(`${API_BASE}/api/hospital-ops/stream?premises_ref=${PREMISES}&operational_date=${operationalDate}&after_id=${board?.summary.lastChangeId || 0}`, {
+        const response = await apiFetch(`/api/hospital-ops/stream?premises_ref=${PREMISES}&operational_date=${operationalDate}&after_id=${board?.summary.lastChangeId || 0}`, {
           headers: { Authorization: `Bearer ${session.token}` },
           signal: controller.signal,
           cache: "no-store",

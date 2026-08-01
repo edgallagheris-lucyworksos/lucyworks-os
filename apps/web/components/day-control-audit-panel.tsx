@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -11,7 +12,7 @@ export function DayControlAuditPanel() {
   const [status, setStatus] = useState("loading");
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/day-control/audit`).then((response) => response.json()).then((data) => {
+    apiFetch(`/api/day-control/audit`).then((response) => response.json()).then((data) => {
       setEvents(Array.isArray(data.audit) ? data.audit.slice(-10).reverse() : []);
       setStatus("ready");
     }).catch(() => setStatus("offline"));

@@ -1,5 +1,6 @@
 "use client";
 
+import { localOperationalDate } from "@/lib/operational-date";
 import { useMemo, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
 
@@ -133,7 +134,7 @@ export function OperationalProofV30() {
         organisationRef: organisationRef.trim(),
         siteRef: siteRef.trim(),
         premisesRef: premisesRef.trim(),
-        operationalDate: new Date().toISOString().slice(0, 10),
+        operationalDate: localOperationalDate(),
         mode: "synthetic",
         reason: "Create a governed connected operational proof run.",
       });

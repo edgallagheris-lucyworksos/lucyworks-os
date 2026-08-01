@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -45,7 +46,7 @@ export default function DashboardPage() {
 
   async function load() {
     setError("");
-    const res = await fetch(`${API_BASE}/api/dashboard/intelligence`, { cache: "no-store" });
+    const res = await apiFetch(`/api/dashboard/intelligence`, { cache: "no-store" });
     if (!res.ok) { setError("Dashboard intelligence failed to load."); return; }
     setData(await res.json());
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { coreOperatingUnits, theatreUnits, type OperatingUnit } from "@/lib/hospital-operating-model";
@@ -18,7 +19,7 @@ function n(v: unknown) { const x = typeof v === "number" ? v : Number(v); return
 function tone(v: unknown): Tone { const x = l(v); return x.includes("red") || x.includes("blocked") || x.includes("high") ? "red" : x.includes("amber") || x.includes("held") || x.includes("pending") || x.includes("turnover") ? "amber" : x.includes("ready") || x.includes("active") ? "green" : "blue"; }
 function sourceLabel(v: string) { return v === "public_verified" ? "public verified" : "configurable"; }
 
-async function getJson<T>(path: string): Promise<T | null> { try { const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" }); return res.ok ? await res.json() : null; } catch { return null; } }
+async function getJson<T>(path: string): Promise<T | null> { try { const res = await apiFetch(`${path}`, { cache: "no-store" }); return res.ok ? await res.json() : null; } catch { return null; } }
 function blocks(data: Dashboard | null) { return (data?.slots || []).flatMap((slot) => slot.blocks || []); }
 function findBlock(unit: OperatingUnit, data: Dashboard | null) { return blocks(data).find((b) => `${l(b?.room?.name)} ${l(b?.room?.department)} ${l(b?.block_type)}`.includes(l(unit.label.split(" ")[0]))) || null; }
 function conflicts(unit: OperatingUnit, pulse: Pulse | null) { return (pulse?.conflicts || []).filter((x) => `${l(x.department)} ${l(x.detail)} ${l(x.type)}`.includes(l(unit.label.split(" ")[0]))); }

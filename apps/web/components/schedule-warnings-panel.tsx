@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { detectDayControlRisks } from "@/lib/day-control-risks";
 import { useDayControlStore } from "@/lib/day-control-store";
@@ -16,7 +17,7 @@ export function ScheduleWarningsPanel() {
 
   useEffect(() => {
     setWarnings(localWarnings);
-    fetch(`${API_BASE}/api/day-control/conflicts`).then((response) => response.json()).then((data) => {
+    apiFetch(`/api/day-control/conflicts`).then((response) => response.json()).then((data) => {
       if (Array.isArray(data.conflicts)) {
         setWarnings(data.conflicts);
         setSource("backend detector");

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { procedureForWork } from "@/lib/clinical-catalogue";
 import type { ScheduledWorkBlock } from "@/lib/day-control-work";
@@ -145,8 +146,8 @@ export function QuickAssignmentStrip({ block, blocks, onAssign, onClear }: Quick
   const [resourceId, setResourceId] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/day-control/staff-options`).then((r) => r.json()).then((data) => setStaff(Array.isArray(data.staff) ? data.staff : [])).catch(() => setStaff([]));
-    fetch(`${API_BASE}/api/day-control/resource-options`).then((r) => r.json()).then((data) => setResources(Array.isArray(data.resources) ? data.resources : [])).catch(() => setResources([]));
+    apiFetch(`/api/day-control/staff-options`).then((r) => r.json()).then((data) => setStaff(Array.isArray(data.staff) ? data.staff : [])).catch(() => setStaff([]));
+    apiFetch(`/api/day-control/resource-options`).then((r) => r.json()).then((data) => setResources(Array.isArray(data.resources) ? data.resources : [])).catch(() => setResources([]));
   }, []);
 
   const staffOptions = useMemo(() => staffCandidates(block, blocks, staff), [block, blocks, staff]);

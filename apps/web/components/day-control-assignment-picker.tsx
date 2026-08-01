@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import type { OperationalTarget } from "@/lib/operational-actions";
 import type { ScheduledWorkBlock } from "@/lib/day-control-work";
@@ -17,8 +18,8 @@ export function DayControlAssignmentPicker({ target, onPatchBlock, onStatus }: {
   const [selectedResourceId, setSelectedResourceId] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/day-control/staff-options`).then((r) => r.json()).then((data) => setStaff(Array.isArray(data.staff) ? data.staff : [])).catch(() => setStaff([]));
-    fetch(`${API_BASE}/api/day-control/resource-options`).then((r) => r.json()).then((data) => setResources(Array.isArray(data.resources) ? data.resources : [])).catch(() => setResources([]));
+    apiFetch(`/api/day-control/staff-options`).then((r) => r.json()).then((data) => setStaff(Array.isArray(data.staff) ? data.staff : [])).catch(() => setStaff([]));
+    apiFetch(`/api/day-control/resource-options`).then((r) => r.json()).then((data) => setResources(Array.isArray(data.resources) ? data.resources : [])).catch(() => setResources([]));
   }, []);
 
   async function patchAssignment(patch: Record<string, string | number | null>) {
@@ -26,7 +27,7 @@ export function DayControlAssignmentPicker({ target, onPatchBlock, onStatus }: {
       onPatchBlock(String(target.id), patch as Partial<ScheduledWorkBlock>);
       return;
     }
-    const response = await fetch(`${API_BASE}/api/day-control/blocks/${target.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    const response = await apiFetch(`/api/day-control/blocks/${target.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
     if (!response.ok) throw new Error("assignment patch failed");
   }
 

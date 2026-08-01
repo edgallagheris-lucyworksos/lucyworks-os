@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { bvsFlowStages, moduleRoute } from "@/lib/bvs-flow-map";
@@ -13,7 +14,7 @@ function lower(value: unknown) { return String(value || "").toLowerCase(); }
 function num(value: unknown) { const n = typeof value === "number" ? value : Number(value); return Number.isFinite(n) ? n : 0; }
 function sourceLabel(source: string) { return source === "public_verified" ? "public verified" : "configurable"; }
 function severity(value?: string) { const v = lower(value); return v.includes("red") || v.includes("high") || v.includes("critical") ? "red" : v.includes("amber") || v.includes("medium") ? "amber" : "blue"; }
-async function getJson<T>(path: string): Promise<T | null> { try { const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" }); return res.ok ? await res.json() : null; } catch { return null; } }
+async function getJson<T>(path: string): Promise<T | null> { try { const res = await apiFetch(`${path}`, { cache: "no-store" }); return res.ok ? await res.json() : null; } catch { return null; } }
 
 function stageConflicts(stageId: string, pulse: PulseData | null) {
   const token = stageId.split("-")[0];

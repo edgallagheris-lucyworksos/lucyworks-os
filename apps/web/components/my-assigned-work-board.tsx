@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -10,13 +11,13 @@ type WorkCommand = "start" | "block" | "complete" | "return-to-queue";
 
 async function getQueue(role: string): Promise<QueueData | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/role-queues/my-shift?role=${encodeURIComponent(role)}`, { cache: "no-store" });
+    const res = await apiFetch(`/api/role-queues/my-shift?role=${encodeURIComponent(role)}`, { cache: "no-store" });
     return res.ok ? await res.json() : null;
   } catch { return null; }
 }
 
 async function sendWorkCommand(itemId: number, command: WorkCommand) {
-  const res = await fetch(`${API_BASE}/api/actions/work-items/${itemId}/${command}`, {
+  const res = await apiFetch(`/api/actions/work-items/${itemId}/${command}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ actor_name: "LucyWorks UI", note: `${command} from My Shift` }),

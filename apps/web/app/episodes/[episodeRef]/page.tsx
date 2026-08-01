@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { AuthGuard } from "@/components/auth-guard";
@@ -65,11 +66,11 @@ export default function EpisodeDetailPage() {
 
   async function load() {
     const [episodeRes, staffRes, dischargeRes, pharmacyRes, stockOrderRes] = await Promise.all([
-      fetch(`${API_BASE}/api/episode-command/${episodeRef}`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/staff-load`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/discharge-readiness`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/pharmacy-requests`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/stock-orders`, { cache: "no-store" }),
+      apiFetch(`/api/episode-command/${episodeRef}`, { cache: "no-store" }),
+      apiFetch(`/api/staff-load`, { cache: "no-store" }),
+      apiFetch(`/api/discharge-readiness`, { cache: "no-store" }),
+      apiFetch(`/api/pharmacy-requests`, { cache: "no-store" }),
+      apiFetch(`/api/stock-orders`, { cache: "no-store" }),
     ]);
     const episodeData = await episodeRes.json();
     setData(episodeData);
@@ -84,14 +85,14 @@ export default function EpisodeDetailPage() {
   const staffById = useMemo(() => { const map: Record<number, StaffLoad> = {}; for (const s of staffLoad) map[s.staff_member_id] = s; return map; }, [staffLoad]);
   const read = useMemo(() => data ? caseIntelligence(data, discharge, pharmacy, stockOrders) : null, [data, discharge, pharmacy, stockOrders]);
 
-  async function shiftBlock(blockId: number, minutes: number) { setStatus(`Shifting block chain ${minutes} minutes...`); await fetch(`${API_BASE}/api/schedule/block/${blockId}/shift`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ minutes, actor_name: "Episode Command" }) }); setStatus("Schedule updated."); await load(); }
-  async function allocateStaff(blockId: number, staffId: string) { if (!staffId) return; setStatus("Assigning staff..."); const res = await fetch(`${API_BASE}/api/staff/allocate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schedule_block_id: blockId, staff_member_id: Number(staffId), actor_name: "Episode Command" }) }); const body = await res.json(); setStatus(body.status === "conflict" ? `Staff conflict: ${body.detail}` : `Assigned ${body.staff}.`); await load(); }
-  async function convertConflict(conflict: any) { setStatus("Creating work from conflict..."); await fetch(`${API_BASE}/api/conflicts/to-work?conflict_type=${encodeURIComponent(conflict.type)}&severity=${encodeURIComponent(conflict.severity)}&detail=${encodeURIComponent(conflict.detail)}`, { method: "POST" }); setStatus("Conflict converted to work."); await load(); }
-  async function markResultReviewed(resultId: number) { setStatus("Marking result reviewed..."); await fetch(`${API_BASE}/api/results/${resultId}/action`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "reviewed", actor_name: "Episode Command", required_action: "Reviewed from episode command" }) }); setStatus("Result reviewed."); await load(); }
+  async function shiftBlock(blockId: number, minutes: number) { setStatus(`Shifting block chain ${minutes} minutes...`); await apiFetch(`/api/schedule/block/${blockId}/shift`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ minutes, actor_name: "Episode Command" }) }); setStatus("Schedule updated."); await load(); }
+  async function allocateStaff(blockId: number, staffId: string) { if (!staffId) return; setStatus("Assigning staff..."); const res = await apiFetch(`/api/staff/allocate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schedule_block_id: blockId, staff_member_id: Number(staffId), actor_name: "Episode Command" }) }); const body = await res.json(); setStatus(body.status === "conflict" ? `Staff conflict: ${body.detail}` : `Assigned ${body.staff}.`); await load(); }
+  async function convertConflict(conflict: any) { setStatus("Creating work from conflict..."); await apiFetch(`/api/conflicts/to-work?conflict_type=${encodeURIComponent(conflict.type)}&severity=${encodeURIComponent(conflict.severity)}&detail=${encodeURIComponent(conflict.detail)}`, { method: "POST" }); setStatus("Conflict converted to work."); await load(); }
+  async function markResultReviewed(resultId: number) { setStatus("Marking result reviewed..."); await apiFetch(`/api/results/${resultId}/action`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "reviewed", actor_name: "Episode Command", required_action: "Reviewed from episode command" }) }); setStatus("Result reviewed."); await load(); }
   async function postAction(url: string, done: string) { setStatus("Updating..."); await fetch(url, { method: "POST" }); setStatus(done); await load(); }
   async function updateDischargeReadiness(item: DischargeReadiness) {
     setStatus("Updating discharge readiness...");
-    await fetch(`${API_BASE}/api/discharge-readiness/${item.id}/update`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clinician_signoff: item.clinician_signoff, medication_ready: item.medication_ready, owner_updated: item.owner_updated, admin_ready: item.admin_ready, results_reviewed: item.results_reviewed, care_instructions_ready: item.care_instructions_ready, blocker_summary: item.blocker_summary, urgency: item.urgency }) });
+    await apiFetch(`/api/discharge-readiness/${item.id}/update`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clinician_signoff: item.clinician_signoff, medication_ready: item.medication_ready, owner_updated: item.owner_updated, admin_ready: item.admin_ready, results_reviewed: item.results_reviewed, care_instructions_ready: item.care_instructions_ready, blocker_summary: item.blocker_summary, urgency: item.urgency }) });
     setStatus("Discharge readiness refreshed."); await load();
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -51,7 +52,7 @@ export default function OperatingModelPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/operating-catalogue`, { cache: "no-store" });
+      const res = await apiFetch(`/api/operating-catalogue`, { cache: "no-store" });
       setCatalogue(await res.json());
     }
     load();

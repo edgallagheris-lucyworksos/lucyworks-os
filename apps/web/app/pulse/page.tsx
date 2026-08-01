@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -63,7 +64,7 @@ export default function PulsePage() {
   const [pulse, setPulse] = useState<Pulse | null>(null);
 
   async function load() {
-    const res = await fetch(`${API_BASE}/api/pulse`, { cache: "no-store" });
+    const res = await apiFetch(`/api/pulse`, { cache: "no-store" });
     setPulse(await res.json());
   }
 

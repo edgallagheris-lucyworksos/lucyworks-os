@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -60,9 +61,9 @@ export default function SchedulePage() {
 
   async function load() {
     const [blockRes, episodeRes, catalogueRes] = await Promise.all([
-      fetch(`${API_BASE}/api/schedule-blocks`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/episodes`, { cache: "no-store" }),
-      fetch(`${API_BASE}/api/operating-catalogue`, { cache: "no-store" }),
+      apiFetch(`/api/schedule-blocks`, { cache: "no-store" }),
+      apiFetch(`/api/episodes`, { cache: "no-store" }),
+      apiFetch(`/api/operating-catalogue`, { cache: "no-store" }),
     ]);
     const episodeData = await episodeRes.json();
     const catalogueData = await catalogueRes.json();
@@ -96,7 +97,7 @@ export default function SchedulePage() {
   async function generateFromTemplate() {
     if (!episodeRef || !procedureName || !startTime) return;
     setStatus("Generating schedule from operating catalogue...");
-    const res = await fetch(`${API_BASE}/api/operating-catalogue/schedule-from-template`, {
+    const res = await apiFetch(`/api/operating-catalogue/schedule-from-template`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ episode_ref: episodeRef, procedure_name: procedureName, room_name: roomName || "Unassigned", start_time: new Date(startTime).toISOString(), actor_name: "Schedule UI" }),

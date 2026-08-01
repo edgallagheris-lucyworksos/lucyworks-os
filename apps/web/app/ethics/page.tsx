@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -32,7 +33,7 @@ export default function EthicsPage() {
   const [status, setStatus] = useState("");
 
   async function load() {
-    const res = await fetch(`${API_BASE}/api/lucy-ethics`, { cache: "no-store" });
+    const res = await apiFetch(`/api/lucy-ethics`, { cache: "no-store" });
     setItems(await res.json());
   }
 
@@ -55,7 +56,7 @@ export default function EthicsPage() {
       escalation_required: true,
     };
     if (episodeId.trim()) payload.episode_id = Number(episodeId);
-    const res = await fetch(`${API_BASE}/api/lucy-ethics`, {
+    const res = await apiFetch(`/api/lucy-ethics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -69,7 +70,7 @@ export default function EthicsPage() {
 
   async function resolve(id: number) {
     setStatus("Resolving Lucy Ethics flag...");
-    await fetch(`${API_BASE}/api/lucy-ethics/${id}/resolve?note=${encodeURIComponent("Resolved from Lucy Ethics")}`, { method: "POST" });
+    await apiFetch(`/api/lucy-ethics/${id}/resolve?note=${encodeURIComponent("Resolved from Lucy Ethics")}`, { method: "POST" });
     setStatus("Lucy Ethics flag resolved.");
     await load();
   }

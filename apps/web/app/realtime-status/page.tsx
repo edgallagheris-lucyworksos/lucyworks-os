@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -26,8 +27,8 @@ export default function RealtimeStatusPage() {
     setError("");
     try {
       const [statusRes, eventsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/realtime/status`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/realtime/events`, { cache: "no-store" }),
+        apiFetch(`/api/realtime/status`, { cache: "no-store" }),
+        apiFetch(`/api/realtime/events`, { cache: "no-store" }),
       ]);
       const statusData = await statusRes.json().catch(() => ({}));
       const eventsData = await eventsRes.json().catch(() => ({}));
@@ -47,7 +48,7 @@ export default function RealtimeStatusPage() {
   }
 
   async function publishTestEvent() {
-    await fetch(`${API_BASE}/api/realtime/publish`, {
+    await apiFetch(`/api/realtime/publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

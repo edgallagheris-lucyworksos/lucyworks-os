@@ -1,5 +1,6 @@
 "use client";
 
+import { requestEvidence } from "@/lib/evidence-dialog";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiJson, apiPost } from "@/lib/api";
@@ -154,7 +155,7 @@ export function BoundedPilotControlV24() {
   }
 
   async function setUat(item: UAT, next: "passed" | "failed") {
-    const evidenceSummary = window.prompt(`${next === "passed" ? "Evidence that this passed" : "Failure detail"}:`);
+    const evidenceSummary = await requestEvidence(`${next === "passed" ? "Evidence that this passed" : "Failure detail"}:`);
     if (!evidenceSummary || evidenceSummary.trim().length < 8) return;
     await run(`uat ${next}`, () => apiJson(`/api/v24/pilots/${selectedRef}/uat/${item.scenarioRef}`, { method: "PUT", body: JSON.stringify({ expectedVersion: item.version, status: next, evidenceSummary, reason: evidenceSummary }) }));
   }
@@ -169,7 +170,7 @@ export function BoundedPilotControlV24() {
   }
 
   async function reviewComparison(item: Comparison, decision: "approved" | "rejected") {
-    const note = window.prompt(`${words(decision)} mismatch review note:`);
+    const note = await requestEvidence(`${words(decision)} mismatch review note:`);
     if (!note || note.trim().length < 8) return;
     await run(`comparison ${decision}`, () => apiPost(`/api/v24/pilots/${selectedRef}/shadow-comparisons/${item.comparisonRef}/review`, { expectedVersion: item.version, decision, note }));
   }
@@ -181,7 +182,7 @@ export function BoundedPilotControlV24() {
   }
 
   async function resolveObservation(item: Observation) {
-    const resolution = window.prompt("Resolution and verification:");
+    const resolution = await requestEvidence("Resolution and verification:");
     if (!resolution || resolution.trim().length < 8) return;
     await run("resolve observation", () => apiJson(`/api/v24/pilots/${selectedRef}/observations/${item.observationRef}/resolve`, { method: "PATCH", body: JSON.stringify({ resolution }) }));
   }

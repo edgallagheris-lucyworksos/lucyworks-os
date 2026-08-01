@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -19,7 +20,7 @@ export function DomainAutomationPanel() {
 
   async function runAutomation() {
     setStatus("Running cross-domain links...");
-    const res = await fetch(`${API_BASE}/api/automation/run-domain-links`, { method: "POST" });
+    const res = await apiFetch(`/api/automation/run-domain-links`, { method: "POST" });
     const body = await res.json();
     setResult(body);
     setStatus("Domain links updated.");

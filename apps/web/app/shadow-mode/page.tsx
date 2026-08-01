@@ -1,5 +1,6 @@
 "use client";
 
+import { requestEvidence } from "@/lib/evidence-dialog";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -71,7 +72,7 @@ function CanonicalShadowWorkspace() {
   }
 
   async function decide(row: Comparison, decision: string) {
-    const note = window.prompt("Record the reason and evidence for this decision:");
+    const note = await requestEvidence("Record the reason and evidence for this decision:");
     if (!note) return;
     setBusy(true); setError("");
     try {

@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -49,8 +50,8 @@ function OvernightInner() {
     setError("");
     try {
       const [boardRes, gridRes] = await Promise.all([
-        fetch(`${API_BASE}/api/overnight-board`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/overnight-grid`, { cache: "no-store" }),
+        apiFetch(`/api/overnight-board`, { cache: "no-store" }),
+        apiFetch(`/api/overnight-grid`, { cache: "no-store" }),
       ]);
       if (!boardRes.ok) throw new Error(`overnight-board ${boardRes.status}`);
       if (!gridRes.ok) throw new Error(`overnight-grid ${gridRes.status}`);
@@ -65,7 +66,7 @@ function OvernightInner() {
     setStatus("Loading hospital-scale demo...");
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/admin/seed-hospital-scale`, { method: "POST" });
+      const res = await apiFetch(`/api/admin/seed-hospital-scale`, { method: "POST" });
       if (!res.ok) throw new Error(`seed failed ${res.status}`);
       await load();
       setStatus("Hospital-scale demo loaded: theatres, MRI/CT/X-ray, ICU/wards, pharmacy, insurance, overnight tasks.");

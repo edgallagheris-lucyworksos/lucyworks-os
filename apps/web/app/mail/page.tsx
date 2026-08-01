@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
@@ -32,14 +33,14 @@ export default function MailPage() {
   const [reply, setReply] = useState("");
 
   async function loadThreads() {
-    const res = await fetch(`${API_BASE}/api/message-threads`, { cache: "no-store" });
+    const res = await apiFetch(`/api/message-threads`, { cache: "no-store" });
     const data = await res.json();
     setThreads(data);
     if (!selected && data.length) setSelected(data[0]);
   }
 
   async function loadEntries(threadId: number) {
-    const res = await fetch(`${API_BASE}/api/message-threads/${threadId}/entries`, { cache: "no-store" });
+    const res = await apiFetch(`/api/message-threads/${threadId}/entries`, { cache: "no-store" });
     setEntries(await res.json());
   }
 
@@ -53,7 +54,7 @@ export default function MailPage() {
 
   async function sendReply() {
     if (!selected || !reply.trim()) return;
-    await fetch(`${API_BASE}/api/messages/${selected.id}`, {
+    await apiFetch(`/api/messages/${selected.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sender_name: "LucyWorks User", direction: "outbound", body: reply, material_decision_flag: true, actor_name: "Mail Ops" }),

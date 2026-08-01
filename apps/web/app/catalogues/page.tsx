@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -40,7 +41,7 @@ function CataloguesInner() {
   async function load() {
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/catalogues`, { cache: "no-store" });
+      const res = await apiFetch(`/api/catalogues`, { cache: "no-store" });
       if (!res.ok) throw new Error(`catalogues ${res.status}`);
       setData(await res.json());
     } catch (err) {

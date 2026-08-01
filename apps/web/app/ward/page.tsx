@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -53,7 +54,7 @@ function WardInner() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_BASE}/api/ward-board`, { cache: "no-store" });
+      const res = await apiFetch(`/api/ward-board`, { cache: "no-store" });
       setBoard(await res.json());
     }
     load();

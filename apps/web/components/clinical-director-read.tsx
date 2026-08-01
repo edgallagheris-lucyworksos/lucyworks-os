@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -99,7 +100,7 @@ export function ClinicalDirectorReadPanel() {
   async function load() {
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/dashboard/clinical-director`, { cache: "no-store" });
+      const res = await apiFetch(`/api/dashboard/clinical-director`, { cache: "no-store" });
       if (!res.ok) throw new Error("Clinical director read failed");
       setData(await res.json());
     } catch (err) {

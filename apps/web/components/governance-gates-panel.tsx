@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import { useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
@@ -53,7 +54,7 @@ export function GovernanceGatesPanel() {
 
   async function load() {
     try {
-      const response = await fetch(`${API_BASE}/api/day-control/governance-gates`);
+      const response = await apiFetch(`/api/day-control/governance-gates`);
       if (!response.ok) throw new Error("governance request failed");
       const data = await response.json();
       setGates(Array.isArray(data.gates) ? data.gates : []);

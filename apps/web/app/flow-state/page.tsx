@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -43,7 +44,7 @@ function FlowStateInner() {
   async function load() {
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/api/flow-state`, { cache: "no-store" });
+      const res = await apiFetch(`/api/flow-state`, { cache: "no-store" });
       if (!res.ok) throw new Error(`flow-state ${res.status}`);
       setData(await res.json());
     } catch (err) {

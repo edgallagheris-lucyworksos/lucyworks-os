@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
@@ -23,9 +24,9 @@ export default function AdmissionsPage() {
   useEffect(() => {
     async function load() {
       const [a, e, p] = await Promise.all([
-        fetch(`${API_BASE}/api/admissions`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/episodes`, { cache: "no-store" }),
-        fetch(`${API_BASE}/api/patients`, { cache: "no-store" }),
+        apiFetch(`/api/admissions`, { cache: "no-store" }),
+        apiFetch(`/api/episodes`, { cache: "no-store" }),
+        apiFetch(`/api/patients`, { cache: "no-store" }),
       ]);
       setAdmissions(await a.json());
       setEpisodes(await e.json());
