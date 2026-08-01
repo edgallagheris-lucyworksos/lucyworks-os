@@ -89,14 +89,14 @@ jobs:
               'integrationconnectorv28', 'integrationpromotionv28',
               'integrationeventv28', 'reconciliationitemv28',
           }
-          assert version == '0023_hospital_pilot_v29', version
+          assert version == '0024_operational_proof_v30', version
           assert expected <= tables, expected - tables
-          print('REAL_HOSPITAL_CONNECTION_MIGRATION_V28_PASSED_AT_0023')
+          print('REAL_HOSPITAL_CONNECTION_MIGRATION_V28_PASSED_AT_0024')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0023_hospital_pilot_v29' scripts/restore-rehearsal.sh
+          grep -q '0024_operational_proof_v30' scripts/restore-rehearsal.sh
           grep -q 'speechsessionv28' scripts/restore-rehearsal.sh
           grep -q 'integrationpromotionv28' scripts/restore-rehearsal.sh
           grep -q 'reconciliationitemv28' scripts/restore-rehearsal.sh
