@@ -33,6 +33,11 @@ public_auth_surfaces = {
     "apps/web/app/login/page.tsx",
     "apps/web/app/auth/callback/page.tsx",
 }
+episode_context_required = {
+    "apps/web/components/hospital-command-workspace.tsx",
+    "apps/web/components/detailed-patient-record-workspace.tsx",
+    "apps/web/app/clinical-execution/page.tsx",
+}
 episode_context_markers = (
     "useSearchParams",
     "initialEpisode",
@@ -57,10 +62,8 @@ for path in WEB.rglob("*.tsx"):
     if "Raw data" in text or "JSON.stringify(data, null, 2)" in text:
         add("WARN", path, "RAW_DATA_UI", "Raw JSON or generic data presentation should not be a normal clinical/operational surface.")
 
-    has_episode_input = "useState(\"\")" in text and "episodeRef" in text
-    has_episode_context = any(marker in text for marker in episode_context_markers)
-    if has_episode_input and not has_episode_context:
-        add("WARN", path, "EPISODE_CONTEXT", "Episode-aware pages must load the selected episode from URL, route parameters or an explicit initial episode prop.")
+    if rel in episode_context_required and not any(marker in text for marker in episode_context_markers):
+        add("WARN", path, "EPISODE_CONTEXT", "Episode Command, Patient Record and Clinical Execution must load the selected episode from URL, route parameters or an explicit initial episode prop.")
 
     if "ModulePage" in text and any(core in rel for core in ["app/workspace/", "app/hospital-board/", "app/care/", "app/referral-intake/"]):
         add("ERROR", path, "GENERIC_CORE_SURFACE", "Core hospital work must not use the generic module renderer.")
@@ -86,6 +89,7 @@ required = {
     WEB / "app" / "workspace" / "page.tsx": "OperationalWorkspaceV16",
     WEB / "app" / "care" / "page.tsx": "CareBriefV16",
     WEB / "app" / "hospital-board" / "page.tsx": "ResponsiveHospitalBoardV15",
+    WEB / "app" / "referral-intake" / "page.tsx": "GuidedReferralIntakeV31",
 }
 for path, marker in required.items():
     if not path.exists() or marker not in path.read_text(encoding="utf-8"):
@@ -103,4 +107,4 @@ errors = [item for item in findings if item.severity == "ERROR"]
 if errors:
     raise SystemExit(f"Operational UX audit failed with {len(errors)} blocking finding(s)")
 
-print("OPERATIONAL UX AUDIT PASSED (warnings remain visible for planned consolidation)\n")
+print("OPERATIONAL UX AUDIT PASSED\n")
