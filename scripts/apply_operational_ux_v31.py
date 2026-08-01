@@ -60,6 +60,14 @@ def transform(path: Path) -> bool:
         text = text.replace("new Date().toISOString().slice(0, 10)", "localOperationalDate()")
         text = add_named_import(text, "@/lib/operational-date", "localOperationalDate")
 
+    if "window.prompt(" in text:
+        text = text.replace("window.prompt(", "await requestEvidence(")
+        text = add_named_import(text, "@/lib/evidence-dialog", "requestEvidence")
+
+    if "window.alert(" in text:
+        text = text.replace("window.alert(", "void showEvidenceNotice(")
+        text = add_named_import(text, "@/lib/evidence-dialog", "showEvidenceNotice")
+
     if text != original:
         path.write_text(text, encoding="utf-8")
         print(rel)
