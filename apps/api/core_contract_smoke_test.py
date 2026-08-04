@@ -8,6 +8,7 @@ if TEST_DB.exists():
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
 os.environ["LUCYWORKS_LEGACY_TEST_BYPASS"] = "true"
+os.environ["AUTO_CREATE_SCHEMA"] = "true"
 
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
@@ -25,7 +26,7 @@ try:
         body = response.json()
 
         assert body["system"] == "LucyWorks OS"
-        assert body["contract_version"] == "1.0.0"
+        assert body["contract_version"] == "1.1.0"
         assert body["overall_state"] == "partial"
 
         capabilities = {item["key"]: item for item in body["capabilities"]}
@@ -40,12 +41,22 @@ try:
             "system_proof",
         }
         assert required == set(capabilities)
-        assert capabilities["system_proof"]["state"] == "missing"
-        assert capabilities["system_proof"]["blockers"]
-        assert all(item["authority"] for item in capabilities.values())
-        assert "No module may claim ready" in body["operating_rule"]
 
-    print("\n--- CORE CONTRACT SMOKE TEST PASSED ---\n")
+        workflow = capabilities["workflow_engine"]
+        assert workflow["state"] == "partial"
+        assert "test:hospital_command_v9_smoke_test.py" in workflow["proof"]
+        assert any(item.startswith("route:/api/v9/episodes/") for item in workflow["proof"])
+
+        system_proof = capabilities["system_proof"]
+        assert system_proof["state"] == "partial"
+        assert "referral creation and acceptance" in system_proof["proof"]
+        assert any("synthetic SQLite" in item for item in system_proof["blockers"])
+        assert any("invoice/payment integration" in item for item in system_proof["blockers"])
+
+        assert all(item["authority"] for item in capabilities.values())
+        assert "real-site validation" in body["operating_rule"]
+
+    print("\n--- RUNTIME CORE CONTRACT TEST PASSED ---\n")
 finally:
     if TEST_DB.exists():
         TEST_DB.unlink()
