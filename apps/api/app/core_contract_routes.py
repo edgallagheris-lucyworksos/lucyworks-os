@@ -186,7 +186,7 @@ def get_core_contract(request: Request) -> CoreContract:
         overall = "ready"
 
     return CoreContract(
-        system="LucyWorks OS",
+        system="LucyWorksOS",
         contract_version="1.1.0",
         generated_at=datetime.now(timezone.utc),
         overall_state=overall,
