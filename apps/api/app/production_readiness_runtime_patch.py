@@ -209,8 +209,3 @@ service.add_observation = add_observation_evidenced
 service.update_pilot = update_pilot_evidenced
 service.resolve_observation = resolve_observation_evidenced
 
-# Temporary mount until the application router registry is consolidated.
-from app.core_contract_routes import router as core_contract_router  # noqa: E402
-from app.main_fixed import app as core_app  # noqa: E402
-
-core_app.include_router(core_contract_router)
