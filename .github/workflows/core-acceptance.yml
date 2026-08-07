@@ -1,0 +1,40 @@
+name: LucyWorks Core Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/hospital_command_*.py"
+      - "apps/api/app/core_contract_routes.py"
+      - "apps/api/hospital_command_v9_smoke_test.py"
+      - "apps/api/core_contract_smoke_test.py"
+      - ".github/workflows/core-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/app/hospital_command_*.py"
+      - "apps/api/app/core_contract_routes.py"
+      - "apps/api/hospital_command_v9_smoke_test.py"
+      - "apps/api/core_contract_smoke_test.py"
+      - ".github/workflows/core-acceptance.yml"
+
+jobs:
+  canonical-lifecycle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile core modules
+        run: python -m compileall -q app
+      - name: Prove canonical referral-to-closure lifecycle
+        run: python hospital_command_v9_smoke_test.py
+      - name: Prove runtime core contract reflects mounted routes and schema
+        run: python core_contract_smoke_test.py
