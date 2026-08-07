@@ -25,7 +25,7 @@ try:
         assert response.status_code == 200, response.text
         body = response.json()
 
-        assert body["system"] == "LucyWorks OS"
+        assert body["system"] == "LucyWorksOS"
         assert body["contract_version"] == "1.1.0"
         assert body["overall_state"] == "partial"
 
