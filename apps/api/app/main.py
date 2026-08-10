@@ -58,6 +58,7 @@ from app.integration_routes import router as integration_router
 from app.hospital_ops_routes import router as hospital_ops_router
 from app.hospital_ops_extension_routes import router as hospital_ops_extension_router
 from app.production_readiness_routes import router as production_readiness_router
+from app.core_contract_routes import router as core_contract_router
 from app.observability_routes import router as observability_router
 from app.hospital_intelligence_routes import router as hospital_intelligence_router
 from app.bvs_v6_routes import router as bvs_v6_router
@@ -178,6 +179,7 @@ app.include_router(integration_router)
 app.include_router(hospital_ops_router)
 app.include_router(hospital_ops_extension_router)
 app.include_router(production_readiness_router)
+app.include_router(core_contract_router)
 app.include_router(pilot_control_v24_router)
 app.include_router(safety_control_v25_router)
 app.include_router(observability_router)
