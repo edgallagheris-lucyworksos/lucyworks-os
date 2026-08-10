@@ -18,6 +18,8 @@ on:
       - "apps/web/components/episode-client-finance-actions.tsx"
       - "apps/web/components/episode-complaint-control.tsx"
       - "apps/web/components/responsive-hospital-board-v15.tsx"
+      - "docs/OPERATING_MODEL.md"
+      - "scripts/validate_system_ready.py"
       - ".github/workflows/platform-regression.yml"
   push:
     branches: [main]
@@ -28,6 +30,8 @@ on:
       - "apps/api/app/regulated_workflow_v32_*.py"
       - "apps/api/migrations/versions/**"
       - "apps/web/**"
+      - "docs/OPERATING_MODEL.md"
+      - "scripts/validate_system_ready.py"
       - ".github/workflows/platform-regression.yml"
 
 concurrency:
@@ -35,6 +39,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  system-contract:
+    name: System-ready product contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate coherent hospital operating model
+        run: python scripts/validate_system_ready.py
+
   api-platform:
     name: API, schema and governed journey
     runs-on: ubuntu-latest
