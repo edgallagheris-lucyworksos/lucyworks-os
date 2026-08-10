@@ -57,7 +57,6 @@ jobs:
           from alembic.config import Config
           from alembic.script import ScriptDirectory
           from sqlalchemy import create_engine, inspect, text
-
           engine = create_engine('sqlite:////tmp/lucyworks-speech-v19-ci.db')
           expected = {'speechcapturev19', 'speechdraftv19', 'speechphrasepackv19', 'safetyrecordv25', 'canonicalcommandv26'}
           expected_head = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
