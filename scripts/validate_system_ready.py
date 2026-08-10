@@ -23,7 +23,6 @@ def forbid(path: str, *needles: str) -> None:
         assert needle not in text, f"{path} contains prohibited production shortcut: {needle}"
 
 
-# One explicit operating model ties clinical, client, staff and commercial outcomes together.
 require(
     "docs/OPERATING_MODEL.md",
     "Patient",
@@ -34,7 +33,6 @@ require(
     "Commercial metrics must be explainable",
 )
 
-# Normal hospital staff enter through product shells rather than historical versioned components.
 require(
     "apps/web/app/hospital-board/page.tsx",
     "Hospital operations",
@@ -57,30 +55,41 @@ require(
     "Clinical state, authority, client communication, evidence and financial controls share one patient context.",
 )
 
-# Staff-facing finance/client actions must create real evidence rather than browser-invented references.
+# Staff-facing actions call high-level governed commands; they do not invent or orchestrate evidence references.
 require(
     "apps/web/components/episode-client-finance-actions.tsx",
     "/estimates/deliver-and-issue",
     "/charges",
     "/complaints",
-    "/prescription-choice",
-    "/communications",
+    "/prescription-choice/deliver-and-record",
     "/api/auth/me",
 )
 forbid(
     "apps/web/components/episode-client-finance-actions.tsx",
+    "/api/v8/episodes/",
     "episode-ui:",
     "fake-evidence",
     "synthetic-evidence",
+    "informationDeliveryRef",
 )
 
-# The server owns estimate authority/delivery evidence and keeps legacy issue writes behind the boundary.
+# The server owns authority resolution, communication evidence and the linked estimate/prescription records.
 require(
     "apps/api/app/regulated_workflow_v32_client_actions.py",
     "active_authority",
     "CommunicationEventV8",
+    "client_communication_evidence",
     "v32_estimate_written_delivery",
+    "deliver_and_record_prescription_choice",
+    "v32_prescription_choice_information",
     "create_regulated_estimate",
+    "create_prescription_choice",
+)
+require(
+    "apps/api/regulated_workflow_v32_client_actions_smoke_test.py",
+    "estimates/deliver-and-issue",
+    "prescription-choice/deliver-and-record",
+    "legacy.status_code == 410",
 )
 require(
     "apps/api/app/regulated_workflow_v32_middleware.py",
@@ -89,14 +98,12 @@ require(
     "/api/v32/episodes/",
 )
 
-# AI-assisted clinical output stays draft until an authorised human review links the final record.
 require(
     "apps/api/app/regulated_workflow_v32_routes.py",
     "clinical AI output requires review by a verified clinical role",
     "reviewed AI output must link to the final human-confirmed record",
 )
 
-# Commercial presentation must distinguish capacity/revenue evidence from actual profit.
 require(
     "apps/web/components/hospital-value-panel.tsx",
     "Commercial capacity",
@@ -109,7 +116,6 @@ require(
     "over estimate ceiling",
 )
 
-# One authoritative platform gate follows the actual Alembic head and builds the hospital web app.
 require(
     ".github/workflows/platform-regression.yml",
     "LucyWorks Platform Regression",
@@ -117,6 +123,7 @@ require(
     "get_current_head()",
     "regulated_workflow_v32_smoke_test.py",
     "regulated_workflow_v32_extension_smoke_test.py",
+    "regulated_workflow_v32_client_actions_smoke_test.py",
     "speech_capture_v19_smoke_test.py",
     "npm run build",
 )
