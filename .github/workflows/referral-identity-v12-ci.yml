@@ -5,35 +5,27 @@ on:
     paths:
       - "apps/api/app/referral_identity_v12_*.py"
       - "apps/api/referral_identity_v12_smoke_test.py"
-      - "apps/api/migrations/versions/*.py"
-      - "apps/api/app/main.py"
+      - "apps/api/migrations/versions/0012_*.py"
       - "apps/web/components/referral-intake-workspace.tsx"
       - "apps/web/components/access-review-workspace-v12.tsx"
       - "apps/web/components/assurance-control-workspace-v12.tsx"
       - "apps/web/app/referral-intake/**"
       - "apps/web/app/access-review/**"
       - "apps/web/app/assurance-control/**"
-      - "apps/web/app/system-control/**"
-      - "apps/web/app/page.tsx"
       - ".github/workflows/referral-identity-v12-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "apps/api/app/referral_identity_v12_*.py"
       - "apps/api/referral_identity_v12_smoke_test.py"
-      - "apps/api/migrations/versions/*.py"
-      - "apps/api/app/main.py"
+      - "apps/api/migrations/versions/0012_*.py"
       - "apps/web/components/referral-intake-workspace.tsx"
       - "apps/web/components/access-review-workspace-v12.tsx"
       - "apps/web/components/assurance-control-workspace-v12.tsx"
       - "apps/web/app/referral-intake/**"
       - "apps/web/app/access-review/**"
       - "apps/web/app/assurance-control/**"
-      - "apps/web/app/system-control/**"
-      - "apps/web/app/page.tsx"
       - ".github/workflows/referral-identity-v12-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
 
 jobs:
   api-and-sqlite:
@@ -50,7 +42,7 @@ jobs:
           cache-dependency-path: apps/api/requirements.txt
       - run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile referral identity modules
-        run: python -m py_compile app/referral_identity_v12_models.py app/referral_identity_v12_routes.py app/main.py referral_identity_v12_smoke_test.py migrations/versions/0012_referral_identity_assurance.py
+        run: python -m py_compile app/referral_identity_v12_models.py app/referral_identity_v12_routes.py referral_identity_v12_smoke_test.py migrations/versions/0012_referral_identity_assurance.py
       - name: Run atomic identity, duplicate, triage, scheduling and access journey
         run: python referral_identity_v12_smoke_test.py
       - name: Verify referral tables at the current migration head

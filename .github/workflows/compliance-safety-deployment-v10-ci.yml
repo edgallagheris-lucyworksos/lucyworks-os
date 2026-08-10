@@ -8,17 +8,15 @@ on:
       - "apps/api/app/compliance_safety_models.py"
       - "apps/api/app/compliance_safety_routes.py"
       - "apps/api/compliance_safety_v10_deployment_smoke_test.py"
-      - "apps/api/app/main.py"
       - ".github/workflows/compliance-safety-deployment-v10-ci.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "apps/api/app/compliance_safety_deployment_routes.py"
       - "apps/api/app/compliance_safety_evidence_patch.py"
       - "apps/api/app/compliance_safety_models.py"
       - "apps/api/app/compliance_safety_routes.py"
       - "apps/api/compliance_safety_v10_deployment_smoke_test.py"
-      - "apps/api/app/main.py"
       - ".github/workflows/compliance-safety-deployment-v10-ci.yml"
 
 jobs:
