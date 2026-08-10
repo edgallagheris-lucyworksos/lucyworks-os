@@ -56,6 +56,14 @@ export function EpisodeClientFinanceActions() {
     { category: "procedure", description: "", quantity: 1, lowerUnitPence: 0, upperUnitPence: 0, taxRatePercent: 20, optional: false },
   ]);
 
+  const [chargeCategory, setChargeCategory] = useState("procedure");
+  const [chargeDescription, setChargeDescription] = useState("");
+  const [chargeQuantity, setChargeQuantity] = useState("1");
+  const [chargeUnitPrice, setChargeUnitPrice] = useState("");
+  const [thirdPartyCost, setThirdPartyCost] = useState("");
+  const [chargeMarkup, setChargeMarkup] = useState("");
+  const [externalSupplier, setExternalSupplier] = useState("");
+
   const [complaintChannel, setComplaintChannel] = useState("phone");
   const [complaintCategory, setComplaintCategory] = useState("communication");
   const [complaintSeverity, setComplaintSeverity] = useState("standard");
@@ -134,6 +142,54 @@ export function EpisodeClientFinanceActions() {
       }),
       "Written estimate delivered and issued with authority and communication evidence recorded.",
     );
+  }
+
+  async function recordCharge() {
+    if (!command?.episode.patient_ref || !chargeDescription.trim()) {
+      setError("Charge description is required.");
+      return;
+    }
+    const quantity = Number(chargeQuantity);
+    const unitPence = pence(chargeUnitPrice);
+    if (!Number.isFinite(quantity) || quantity <= 0 || unitPence < 0) {
+      setError("Charge quantity and unit price must be valid positive values.");
+      return;
+    }
+    const hasThirdParty = Boolean(thirdPartyCost || chargeMarkup || externalSupplier.trim());
+    const costPence = thirdPartyCost ? pence(thirdPartyCost) : undefined;
+    const markupPence = chargeMarkup ? pence(chargeMarkup) : undefined;
+    if (hasThirdParty && (!externalSupplier.trim() || costPence === undefined || markupPence === undefined)) {
+      setError("Third-party charges require supplier, supplier cost and markup together.");
+      return;
+    }
+    const gross = Math.round(quantity * unitPence);
+    if (hasThirdParty && (costPence || 0) + (markupPence || 0) !== gross) {
+      setError(`Supplier cost plus markup must equal the gross charge of £${pounds(gross)}.`);
+      return;
+    }
+    await run(
+      () => apiJson(`/api/v32/episodes/${encodeURIComponent(episodeRef)}/charges`, {
+        method: "POST",
+        body: JSON.stringify({
+          patientRef: command.episode.patient_ref,
+          category: chargeCategory.trim(),
+          description: chargeDescription.trim(),
+          quantity,
+          unitPence,
+          thirdPartyCostPence: costPence,
+          markupPence,
+          externalSupplier: externalSupplier.trim() || undefined,
+          sourceSystem: "lucyworks",
+          reason: "Performed service charge recorded from episode command",
+        }),
+      }),
+      "Charge recorded and linked to the patient episode.",
+    );
+    setChargeDescription("");
+    setChargeUnitPrice("");
+    setThirdPartyCost("");
+    setChargeMarkup("");
+    setExternalSupplier("");
   }
 
   async function recordComplaint() {
@@ -245,6 +301,17 @@ export function EpisodeClientFinanceActions() {
           </div>
         </details>
 
+        <details open>
+          <summary>Record performed charge</summary>
+          <div className="form">
+            <div className="row"><label>Category<input style={field} value={chargeCategory} onChange={event => setChargeCategory(event.target.value)} /></label><label>Quantity<input style={field} inputMode="decimal" value={chargeQuantity} onChange={event => setChargeQuantity(event.target.value)} /></label></div>
+            <label>Description<input style={field} value={chargeDescription} onChange={event => setChargeDescription(event.target.value)} placeholder="Performed service or supplied item" /></label>
+            <label>Unit price £<input style={field} inputMode="decimal" value={chargeUnitPrice} onChange={event => setChargeUnitPrice(event.target.value)} /></label>
+            <details className="nested"><summary>Third-party supplier / markup</summary><div className="form compact"><label>Supplier<input style={field} value={externalSupplier} onChange={event => setExternalSupplier(event.target.value)} /></label><div className="row"><label>Supplier cost £<input style={field} inputMode="decimal" value={thirdPartyCost} onChange={event => setThirdPartyCost(event.target.value)} /></label><label>Markup £<input style={field} inputMode="decimal" value={chargeMarkup} onChange={event => setChargeMarkup(event.target.value)} /></label></div></div></details>
+            <button type="button" className="primary" disabled={busy} onClick={() => void recordCharge()}>Record charge</button>
+          </div>
+        </details>
+
         <details>
           <summary>Record client concern / complaint</summary>
           <div className="form">
@@ -270,7 +337,7 @@ export function EpisodeClientFinanceActions() {
 }
 
 const css = `
-.ecfa{margin:0 12px 14px;background:#fff;border:1px solid #d7dee8;border-radius:14px;box-shadow:0 5px 18px rgba(15,23,42,.05);color:#172033;font-family:Inter,system-ui,sans-serif;overflow:hidden}.ecfa *{box-sizing:border-box}.ecfa>header{display:flex;justify-content:space-between;gap:14px;align-items:end;padding:13px 15px;background:#f8fafc;border-bottom:1px solid #e5eaf0}.ecfa header span{display:block;color:#65758a;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.ecfa h2{margin:2px 0 0;font-size:17px}.ecfa header p{margin:0;max-width:520px;color:#68778a;font-size:11px;line-height:1.4}.ecfa-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#e5eaf0}.ecfa details{background:white;padding:0}.ecfa summary{cursor:pointer;padding:12px 14px;font-size:13px;font-weight:800;color:#213a52}.form{display:grid;gap:8px;padding:0 14px 14px}.form label{display:grid;gap:3px;color:#526174;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.line{display:grid;grid-template-columns:1fr 2fr .8fr .8fr;gap:6px;padding:8px;background:#f8fafc;border:1px solid #e3e9ef;border-radius:9px}.line .wide{min-width:0}.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.check{display:flex!important;align-items:center;gap:7px!important;text-transform:none!important;letter-spacing:0!important;font-size:12px!important}.check input{width:17px;height:17px}.primary,.minor{border:0;border-radius:8px;padding:9px 11px;font-weight:800;cursor:pointer}.primary{background:#173f5f;color:white;min-height:42px}.primary:disabled{opacity:.55;cursor:wait}.minor{background:#edf2f7;color:#294761}.ecfa-alert{margin:10px 14px 0;border-radius:8px;padding:9px 11px;font-size:12px;font-weight:700}.ecfa-alert.error{background:#fff1f2;color:#991b1b;border:1px solid #fecdd3}.ecfa-alert.success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.ecfa{margin:0 12px 14px;background:#fff;border:1px solid #d7dee8;border-radius:14px;box-shadow:0 5px 18px rgba(15,23,42,.05);color:#172033;font-family:Inter,system-ui,sans-serif;overflow:hidden}.ecfa *{box-sizing:border-box}.ecfa>header{display:flex;justify-content:space-between;gap:14px;align-items:end;padding:13px 15px;background:#f8fafc;border-bottom:1px solid #e5eaf0}.ecfa header span{display:block;color:#65758a;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}.ecfa h2{margin:2px 0 0;font-size:17px}.ecfa header p{margin:0;max-width:520px;color:#68778a;font-size:11px;line-height:1.4}.ecfa-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:#e5eaf0}.ecfa details{background:white;padding:0}.ecfa summary{cursor:pointer;padding:12px 14px;font-size:13px;font-weight:800;color:#213a52}.form{display:grid;gap:8px;padding:0 14px 14px}.form.compact{padding:0 8px 8px}.form label{display:grid;gap:3px;color:#526174;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.line{display:grid;grid-template-columns:1fr 2fr .8fr .8fr;gap:6px;padding:8px;background:#f8fafc;border:1px solid #e3e9ef;border-radius:9px}.line .wide{min-width:0}.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.check{display:flex!important;align-items:center;gap:7px!important;text-transform:none!important;letter-spacing:0!important;font-size:12px!important}.check input{width:17px;height:17px}.nested{border:1px solid #e3e9ef!important;border-radius:8px!important;background:#f8fafc!important}.nested>summary{padding:9px!important;font-size:11px!important}.primary,.minor{border:0;border-radius:8px;padding:9px 11px;font-weight:800;cursor:pointer}.primary{background:#173f5f;color:white;min-height:42px}.primary:disabled{opacity:.55;cursor:wait}.minor{background:#edf2f7;color:#294761}.ecfa-alert{margin:10px 14px 0;border-radius:8px;padding:9px 11px;font-size:12px;font-weight:700}.ecfa-alert.error{background:#fff1f2;color:#991b1b;border:1px solid #fecdd3}.ecfa-alert.success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
 @media(max-width:980px){.ecfa-grid{grid-template-columns:1fr}.ecfa>header{align-items:flex-start;flex-direction:column}.line{grid-template-columns:1fr 1fr}.line .wide{grid-column:1/-1}}
 @media(max-width:560px){.ecfa{margin:0 7px 10px}.row{grid-template-columns:1fr}.line{grid-template-columns:1fr 1fr}.line label:first-child,.line .wide{grid-column:1/-1}}
 `;
