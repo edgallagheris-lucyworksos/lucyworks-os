@@ -6,7 +6,6 @@ on:
       - "apps/api/app/regulated_workflow_v32_*.py"
       - "apps/api/regulated_workflow_v32*_smoke_test.py"
       - "apps/api/migrations/versions/0025_regulated_workflow_v32.py"
-      - "apps/api/app/main.py"
       - ".github/workflows/regulated-workflow-v32.yml"
   push:
     branches: [main]
@@ -14,8 +13,11 @@ on:
       - "apps/api/app/regulated_workflow_v32_*.py"
       - "apps/api/regulated_workflow_v32*_smoke_test.py"
       - "apps/api/migrations/versions/0025_regulated_workflow_v32.py"
-      - "apps/api/app/main.py"
       - ".github/workflows/regulated-workflow-v32.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   regulated-workflow-v32:
@@ -38,7 +40,7 @@ jobs:
         run: python regulated_workflow_v32_smoke_test.py
       - name: Run charge and client-governance acceptance test
         run: python regulated_workflow_v32_extension_smoke_test.py
-      - name: Verify migration head and governed tables
+      - name: Verify current migration head and governed tables
         env:
           DATABASE_URL: sqlite:////tmp/lucyworks-regulated-v32-migration.db
           AUTO_CREATE_SCHEMA: "false"
@@ -46,6 +48,8 @@ jobs:
           rm -f /tmp/lucyworks-regulated-v32-migration.db
           alembic upgrade head
           python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
           from sqlalchemy import create_engine, inspect, text
           engine = create_engine('sqlite:////tmp/lucyworks-regulated-v32-migration.db')
           required = {
@@ -54,8 +58,9 @@ jobs:
           }
           tables = set(inspect(engine).get_table_names())
           assert not (required - tables), sorted(required - tables)
+          expected_head = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
-          assert version == '0025_regulated_workflow_v32', version
-          print('Regulated workflow v32 migration and governed tables verified')
+          assert version == expected_head, (version, expected_head)
+          print(f'Regulated workflow v32 tables verified at current head {expected_head}')
           PY
