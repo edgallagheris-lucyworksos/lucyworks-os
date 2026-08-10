@@ -75,19 +75,22 @@ jobs:
           rm -f /tmp/lucyworks-automation-v23-ci.db
           DATABASE_URL=sqlite:////tmp/lucyworks-automation-v23-ci.db alembic upgrade head 2>&1 | tee automation-migration-v23.log
           DATABASE_URL=sqlite:////tmp/lucyworks-automation-v23-ci.db python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
           from sqlalchemy import create_engine, inspect, text
           engine = create_engine('sqlite:////tmp/lucyworks-automation-v23-ci.db')
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          expected_head = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0024_operational_proof_v30', version
+          assert version == expected_head, (version, expected_head)
           assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
-          print('AUTOMATION_OPERATOR_V23_PASSED_AT_0024')
+          print(f'AUTOMATION_OPERATOR_V23_PASSED_AT_{expected_head}')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0024_operational_proof_v30' scripts/restore-rehearsal.sh
+          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
           grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
