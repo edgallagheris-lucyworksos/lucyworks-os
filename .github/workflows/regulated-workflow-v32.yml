@@ -1,0 +1,46 @@
+name: Regulated Workflow v32 Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/regulated_workflow_v32_*.py"
+      - "apps/api/regulated_workflow_v32_smoke_test.py"
+      - "apps/api/migrations/versions/0025_regulated_workflow_v32.py"
+      - "apps/api/app/main.py"
+      - ".github/workflows/regulated-workflow-v32.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/app/regulated_workflow_v32_*.py"
+      - "apps/api/regulated_workflow_v32_smoke_test.py"
+      - "apps/api/migrations/versions/0025_regulated_workflow_v32.py"
+      - "apps/api/app/main.py"
+      - ".github/workflows/regulated-workflow-v32.yml"
+
+jobs:
+  regulated-workflow-v32:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile regulated workflow modules
+        run: python -m compileall -q app/regulated_workflow_v32_models.py app/regulated_workflow_v32_service.py app/regulated_workflow_v32_routes.py app/regulated_workflow_v32_middleware.py
+      - name: Run regulated workflow acceptance test
+        run: python regulated_workflow_v32_smoke_test.py
+      - name: Verify migration head
+        env:
+          DATABASE_URL: sqlite:////tmp/lucyworks-regulated-v32-migration.db
+          AUTO_CREATE_SCHEMA: "false"
+        run: |
+          rm -f /tmp/lucyworks-regulated-v32-migration.db
+          alembic upgrade head
+          alembic current | grep -q "0025_regulated_workflow_v32"
