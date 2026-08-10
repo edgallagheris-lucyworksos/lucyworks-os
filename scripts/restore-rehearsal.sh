@@ -57,8 +57,8 @@ for table in \
   safetycasev10 referralidentityintakev12 speechcapturev19 speechdraftv19 \
   canonicalcommandv26 configurationreleasev27 speechsessionv28 integrationeventv28 \
   hospitalpilotv29 operationalproofrunv30 \
-  servicepricev32 regulatedestimatev32 aiprovenancerecordv32 \
-  chargeprovenancev32 complaintrecordv32 prescriptionchoicev32; do
+  servicepricev32 estimategovernancev32 aiprovenancev32 \
+  chargeprovenancev32 complaintv32 prescriptionchoicev32; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
   [[ "$exists" == "t" ]] || { echo "restored critical table missing: $table" >&2; exit 1; }
 done
@@ -72,10 +72,10 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'integrationEvents'"'"', (select count(*) from integrationeventv28),
   '"'"'hospitalPilots'"'"', (select count(*) from hospitalpilotv29),
   '"'"'operationalProofRuns'"'"', (select count(*) from operationalproofrunv30),
-  '"'"'regulatedEstimates'"'"', (select count(*) from regulatedestimatev32),
-  '"'"'aiProvenanceRecords'"'"', (select count(*) from aiprovenancerecordv32),
+  '"'"'estimateGovernance'"'"', (select count(*) from estimategovernancev32),
+  '"'"'aiProvenanceRecords'"'"', (select count(*) from aiprovenancev32),
   '"'"'chargeRecords'"'"', (select count(*) from chargeprovenancev32),
-  '"'"'complaints'"'"', (select count(*) from complaintrecordv32),
+  '"'"'complaints'"'"', (select count(*) from complaintv32),
   '"'"'prescriptionChoices'"'"', (select count(*) from prescriptionchoicev32)
 )')"
 
