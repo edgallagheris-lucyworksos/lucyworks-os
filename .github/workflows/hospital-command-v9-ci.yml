@@ -6,34 +6,24 @@ on:
       - "apps/api/app/hospital_command_*.py"
       - "apps/api/hospital_command_v9*_smoke_test.py"
       - "apps/api/migrations/versions/0010_*.py"
-      - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
-      - "apps/web/app/episode-command/**"
       - "apps/web/app/referral-intake/**"
       - "apps/web/components/hospital-command-workspace.tsx"
       - "apps/web/components/referral-intake-workspace.tsx"
-      - "apps/web/app/system-control/**"
-      - "scripts/restore-rehearsal.sh"
       - "docs/validation/HOSPITAL_COMMAND_SPINE_V9_RUNBOOK.md"
       - ".github/workflows/hospital-command-v9-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "apps/api/app/hospital_command_*.py"
       - "apps/api/hospital_command_v9*_smoke_test.py"
       - "apps/api/migrations/versions/0010_*.py"
-      - "apps/api/app/main.py"
       - "apps/api/app/legacy_write_retirement.py"
-      - "apps/web/app/episode-command/**"
       - "apps/web/app/referral-intake/**"
       - "apps/web/components/hospital-command-workspace.tsx"
       - "apps/web/components/referral-intake-workspace.tsx"
-      - "apps/web/app/system-control/**"
-      - "scripts/restore-rehearsal.sh"
       - "docs/validation/HOSPITAL_COMMAND_SPINE_V9_RUNBOOK.md"
       - ".github/workflows/hospital-command-v9-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
 
 jobs:
   api-and-sqlite:
