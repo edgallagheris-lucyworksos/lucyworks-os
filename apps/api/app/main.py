@@ -82,6 +82,7 @@ from app.medication_foundation_v18_routes import router as medication_foundation
 from app.speech_capture_v19_routes import router as speech_capture_v19_router
 from app.regulated_workflow_v32_routes import router as regulated_workflow_v32_router
 from app.regulated_workflow_v32_extension_routes import router as regulated_workflow_v32_extension_router
+from app.regulated_workflow_v32_client_actions import router as regulated_workflow_v32_client_router
 from app.operational_automation_v20_routes import router as operational_automation_v20_router
 from app.recorded_state_automation_v21_routes import (
     generic_guard_router as recorded_state_automation_guard_v21_router,
@@ -208,6 +209,7 @@ app.include_router(medication_foundation_v18_router)
 app.include_router(speech_capture_v19_router)
 app.include_router(regulated_workflow_v32_router)
 app.include_router(regulated_workflow_v32_extension_router)
+app.include_router(regulated_workflow_v32_client_router)
 app.include_router(event_driven_automation_guard_v22_router)
 app.include_router(recorded_state_automation_guard_v21_router)
 app.include_router(recorded_state_automation_v21_router)
