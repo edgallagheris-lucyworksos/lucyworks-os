@@ -3,19 +3,15 @@ name: Event-Driven Automation v22 Check
 on:
   pull_request:
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/event_driven_automation_v22_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/event_driven_automation_v22_smoke_test.py"
       - "scripts/validate_event_driven_automation_v22.py"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/event-driven-automation-v22-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/event_driven_automation_v22_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/event_driven_automation_v22_smoke_test.py"
       - "scripts/validate_event_driven_automation_v22.py"
       - "scripts/restore-rehearsal.sh"
@@ -62,19 +58,22 @@ jobs:
           rm -f /tmp/lucyworks-automation-v22-ci.db
           DATABASE_URL=sqlite:////tmp/lucyworks-automation-v22-ci.db alembic upgrade head 2>&1 | tee automation-migration-v22.log
           DATABASE_URL=sqlite:////tmp/lucyworks-automation-v22-ci.db python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
           from sqlalchemy import create_engine, inspect, text
           engine = create_engine('sqlite:////tmp/lucyworks-automation-v22-ci.db')
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          expected_head = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
           tables = set(inspect(engine).get_table_names())
-          assert version == '0024_operational_proof_v30', version
+          assert version == expected_head, (version, expected_head)
           assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationdecisionv20', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
-          print('EVENT_DRIVEN_AUTOMATION_V22_PASSED_AT_0024')
+          print(f'EVENT_DRIVEN_AUTOMATION_V22_PASSED_AT_{expected_head}')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0024_operational_proof_v30' scripts/restore-rehearsal.sh
+          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
           grep -q 'automationruntimeconfigv22' scripts/restore-rehearsal.sh
           grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
           grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh

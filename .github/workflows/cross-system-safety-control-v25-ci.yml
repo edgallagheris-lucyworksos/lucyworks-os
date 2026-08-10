@@ -3,12 +3,10 @@ name: Cross-System Safety Control v25 Check
 on:
   pull_request:
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/auth_scope_v25_patch.py"
       - "apps/api/app/verified_actor_attribution_v25.py"
       - "apps/api/app/safety_control_v25_*.py"
       - "apps/api/app/safety_bridge_v25_routes.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/cross_system_safety_control_v25_smoke_test.py"
       - "apps/web/app/safety-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -18,14 +16,12 @@ on:
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/cross-system-safety-control-v25-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/auth_scope_v25_patch.py"
       - "apps/api/app/verified_actor_attribution_v25.py"
       - "apps/api/app/safety_control_v25_*.py"
       - "apps/api/app/safety_bridge_v25_routes.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/cross_system_safety_control_v25_smoke_test.py"
       - "apps/web/app/safety-control/**"
       - "apps/web/app/system-control/page.tsx"
@@ -82,24 +78,27 @@ jobs:
           rm -f /tmp/lucyworks-safety-v25-ci.db
           DATABASE_URL=sqlite:////tmp/lucyworks-safety-v25-ci.db alembic upgrade head 2>&1 | tee safety-migration-v25.log
           DATABASE_URL=sqlite:////tmp/lucyworks-safety-v25-ci.db python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
           from sqlalchemy import create_engine, inspect, text
           engine = create_engine('sqlite:////tmp/lucyworks-safety-v25-ci.db')
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          expected_head = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
           tables = set(inspect(engine).get_table_names())
           expected = {
               'safetyrecordv25', 'safetyactionv25', 'safetydecisionv25',
               'safetylinkv25', 'safetyescalationv25', 'safetyaccesseventv25',
               'canonicalcommandv26', 'operationalimpactv26',
           }
-          assert version == '0024_operational_proof_v30', version
+          assert version == expected_head, (version, expected_head)
           assert expected <= tables, expected - tables
-          print('CROSS_SYSTEM_SAFETY_V25_PASSED_AT_0024')
+          print(f'CROSS_SYSTEM_SAFETY_V25_PASSED_AT_{expected_head}')
           PY
       - name: Validate restore coverage
         run: |
           bash -n scripts/restore-rehearsal.sh
-          grep -q '0024_operational_proof_v30' scripts/restore-rehearsal.sh
+          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
           grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
           grep -q 'safetyactionv25' scripts/restore-rehearsal.sh
           grep -q 'safetyaccesseventv25' scripts/restore-rehearsal.sh

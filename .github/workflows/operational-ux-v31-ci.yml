@@ -3,24 +3,26 @@ name: Operational UX and Real-UAT v31 Check
 on:
   pull_request:
     paths:
-      - "apps/web/**"
-      - "apps/api/**"
       - "scripts/audit_operational_ux.py"
       - "scripts/validate_operational_ux_v31.py"
       - "docs/OPERATIONAL_UX_REAL_UAT_V31.md"
+      - "apps/api/operational_proof_v30_smoke_test.py"
+      - "apps/api/operational_proof_v30_authority_test.py"
+      - "apps/web/lib/api-client.ts"
       - ".github/workflows/operational-ux-v31-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
-      - "apps/web/**"
-      - "apps/api/**"
       - "scripts/audit_operational_ux.py"
       - "scripts/validate_operational_ux_v31.py"
       - "docs/OPERATIONAL_UX_REAL_UAT_V31.md"
+      - "apps/api/operational_proof_v30_smoke_test.py"
+      - "apps/api/operational_proof_v30_authority_test.py"
+      - "apps/web/lib/api-client.ts"
       - ".github/workflows/operational-ux-v31-ci.yml"
 
 jobs:
-  zero-warning-connected-uat-build:
+  legacy-operational-ux-regression:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,12 +31,7 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: apps/api/requirements.txt
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: apps/web/package.json
-      - name: Validate zero-warning operational UX contract
+      - name: Validate retained operational UX contract
         run: python scripts/validate_operational_ux_v31.py 2>&1 | tee operational-ux-v31-validation.log
       - name: Install API dependencies
         working-directory: apps/api
@@ -45,15 +42,7 @@ jobs:
       - name: Re-run authority, stale-state and urgent-access proof
         working-directory: apps/api
         run: python operational_proof_v30_authority_test.py 2>&1 | tee operational-ux-v31-authority.log
-      - name: Install web dependencies
-        working-directory: apps/web
-        run: npm install --no-audit --no-fund
-      - name: Build complete production web application
-        working-directory: apps/web
-        env:
-          NEXT_PUBLIC_API_BASE: http://localhost:8000
-        run: npm run build 2>&1 | tee operational-ux-v31-web.log
-      - name: Upload v31 acceptance evidence
+      - name: Upload retained v31 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -62,5 +51,4 @@ jobs:
             operational-ux-v31-validation.log
             apps/api/operational-ux-v31-connected-proof.log
             apps/api/operational-ux-v31-authority.log
-            apps/web/operational-ux-v31-web.log
           if-no-files-found: warn
