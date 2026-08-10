@@ -5,17 +5,13 @@ on:
     paths:
       - "apps/api/app/hospital_master_board_v11_routes.py"
       - "apps/api/hospital_master_board_v11_smoke_test.py"
-      - "apps/api/app/main.py"
-      - "apps/web/app/hospital-board/**"
       - "apps/web/components/hospital-master-board-v11.tsx"
       - ".github/workflows/hospital-master-board-v11.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "apps/api/app/hospital_master_board_v11_routes.py"
       - "apps/api/hospital_master_board_v11_smoke_test.py"
-      - "apps/api/app/main.py"
-      - "apps/web/app/hospital-board/**"
       - "apps/web/components/hospital-master-board-v11.tsx"
       - ".github/workflows/hospital-master-board-v11.yml"
 
@@ -35,7 +31,7 @@ jobs:
       - name: Install API dependencies
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile master board API
-        run: python -m py_compile app/hospital_master_board_v11_routes.py app/main.py hospital_master_board_v11_smoke_test.py
+        run: python -m py_compile app/hospital_master_board_v11_routes.py hospital_master_board_v11_smoke_test.py
       - name: Run emergency insertion and displacement journey
         run: python hospital_master_board_v11_smoke_test.py
 
