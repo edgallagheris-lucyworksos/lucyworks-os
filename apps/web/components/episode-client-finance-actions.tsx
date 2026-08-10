@@ -18,6 +18,8 @@ type EstimateLine = {
   optional: boolean;
 };
 
+type CommunicationResponse = { communication: { evidence_event_ref?: string; communication_ref: string } };
+
 const field: React.CSSProperties = {
   width: "100%",
   minHeight: 42,
@@ -164,22 +166,45 @@ export function EpisodeClientFinanceActions() {
       setError("Medication name is required.");
       return;
     }
-    if (prescriptionOffered && !["hospital_supply", "written_prescription", "declined", "not_applicable"].includes(clientChoice)) return;
-    await run(
-      () => apiJson(`/api/v32/episodes/${encodeURIComponent(episodeRef)}/prescription-choice`, {
+    if (clientChoice === "written_prescription" && !prescriptionOffered) {
+      setError("A written prescription cannot be selected until the option has been explained and offered.");
+      return;
+    }
+    const ownerRef = command.consents?.find(item => item.status === "active" && item.owner_ref)?.owner_ref;
+    await run(async () => {
+      let informationDeliveryRef: string | undefined;
+      if (prescriptionOffered) {
+        const communication = await apiJson<CommunicationResponse>(`/api/v8/episodes/${encodeURIComponent(episodeRef)}/communications`, {
+          method: "POST",
+          body: JSON.stringify({
+            patient_ref: command.episode.patient_ref,
+            owner_ref: ownerRef,
+            audience: "owner",
+            channel: "in_person",
+            direction: "outbound",
+            subject: "Written prescription choice",
+            summary: `Written prescription option and fee information explained for ${medicationName.trim()}.`,
+            outcome: "information supplied",
+            consent_or_authorisation: { writtenPrescriptionOptionExplained: true },
+            reason: "Prescription choice information supplied from episode command",
+          }),
+        });
+        informationDeliveryRef = communication.communication.evidence_event_ref || communication.communication.communication_ref;
+      }
+      return apiJson(`/api/v32/episodes/${encodeURIComponent(episodeRef)}/prescription-choice`, {
         method: "POST",
         body: JSON.stringify({
           patientRef: command.episode.patient_ref,
+          ownerRef,
           medicationName: medicationName.trim(),
           writtenPrescriptionOffered: prescriptionOffered,
           prescriptionFeePence: prescriptionFee ? pence(prescriptionFee) : undefined,
           clientChoice,
-          informationDeliveryRef: prescriptionOffered ? `episode-ui:${episodeRef}:${Date.now()}` : undefined,
+          informationDeliveryRef,
           reason: "Client prescription choice recorded from episode command",
         }),
-      }),
-      "Prescription choice recorded against this episode.",
-    );
+      });
+    }, "Prescription choice and client-information evidence recorded against this episode.");
     setMedicationName("");
   }
 
