@@ -89,6 +89,8 @@ jobs:
         run: python regulated_workflow_v32_smoke_test.py
       - name: Run charge, complaint and prescription journey
         run: python regulated_workflow_v32_extension_smoke_test.py
+      - name: Run transactional client-actions journey
+        run: python regulated_workflow_v32_client_actions_smoke_test.py
       - name: Run speech human-review regression
         run: python speech_capture_v19_smoke_test.py
       - name: Validate recovery script syntax
