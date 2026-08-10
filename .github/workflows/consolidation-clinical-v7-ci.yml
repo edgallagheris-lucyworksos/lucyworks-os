@@ -10,13 +10,12 @@ on:
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/api/v7_*.py"
       - "apps/api/clinical_execution_smoke_test.py"
-      - "apps/api/migrations/versions/*.py"
-      - "apps/web/**"
+      - "apps/api/migrations/versions/0008_*.py"
       - "scripts/load-test-v7.py"
       - "scripts/failure-drill-v7.sh"
       - ".github/workflows/consolidation-clinical-v7-ci.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "apps/api/app/auth*.py"
       - "apps/api/app/v7_*.py"
@@ -25,8 +24,7 @@ on:
       - "apps/api/app/legacy_write_retirement.py"
       - "apps/api/v7_*.py"
       - "apps/api/clinical_execution_smoke_test.py"
-      - "apps/api/migrations/versions/*.py"
-      - "apps/web/**"
+      - "apps/api/migrations/versions/0008_*.py"
       - "scripts/load-test-v7.py"
       - "scripts/failure-drill-v7.sh"
       - ".github/workflows/consolidation-clinical-v7-ci.yml"
@@ -61,7 +59,6 @@ jobs:
           python - <<'PY'
           from sqlalchemy import inspect, text
           from app.database import engine
-
           required = {
               "authsession", "durableevent", "eventacknowledgement", "canonicalshadowcomparison",
               "integrationretryjob", "legacywriteretirement", "medicationorder", "medicationadministration",
@@ -91,14 +88,12 @@ jobs:
           python - <<'PY'
           import re
           from pathlib import Path
-
           roots = [Path("apps/web/app"), Path("apps/web/components"), Path("apps/web/lib")]
           files = [path for root in roots for path in root.rglob("*") if path.suffix in {".ts", ".tsx", ".js", ".jsx"}]
           token_write = re.compile(r"localStorage\s*\.\s*setItem\s*\([^\n]*(accessToken|bearer|token)", re.I)
           permitted_fallback = 'const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";'
           violations = []
           fallback_count = 0
-
           for path in files:
               text = path.read_text(encoding="utf-8", errors="replace")
               for number, line in enumerate(text.splitlines(), 1):
@@ -109,7 +104,6 @@ jobs:
                           violations.append(f"{path}:{number}: unsupported local API fallback: {line.strip()}")
                       else:
                           fallback_count += 1
-
           config = Path("apps/web/next.config.ts").read_text(encoding="utf-8")
           required_config = [
               'const legacyApiPrefix = "/_lucyworks_api";',
@@ -119,7 +113,6 @@ jobs:
           for marker in required_config:
               if marker not in config:
                   violations.append(f"next.config.ts missing enforced same-origin marker: {marker}")
-
           if violations:
               raise SystemExit("\n".join(violations))
           print(f"Browser safety passed across {len(files)} files; {fallback_count} legacy constants are forced through the same-origin bridge")

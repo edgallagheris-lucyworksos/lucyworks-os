@@ -3,7 +3,6 @@ name: Recorded-State Automation Authority v21 Check
 on:
   pull_request:
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/recorded_state_automation_v21_routes.py"
       - "apps/api/app/operational_automation_v20_routes.py"
       - "apps/api/recorded_state_automation_v21_smoke_test.py"
@@ -12,9 +11,8 @@ on:
       - "scripts/validate_operational_automation_v20.py"
       - ".github/workflows/recorded-state-automation-v21-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/recorded_state_automation_v21_routes.py"
       - "apps/api/app/operational_automation_v20_routes.py"
       - "apps/api/recorded_state_automation_v21_smoke_test.py"

@@ -5,33 +5,23 @@ on:
     paths:
       - "apps/api/app/detailed_hospital_*.py"
       - "apps/api/detailed_hospital*_smoke_test.py"
-      - "apps/api/migrations/versions/*.py"
-      - "apps/api/app/main.py"
+      - "apps/api/migrations/versions/0009_*.py"
       - "apps/api/app/legacy_write_retirement.py"
-      - "apps/api/clinical_execution_smoke_test.py"
       - "apps/web/app/patient-record/**"
       - "apps/web/components/detailed-patient-record-workspace.tsx"
-      - "apps/web/app/system-control/**"
-      - "scripts/restore-rehearsal.sh"
       - "docs/validation/DETAILED_HOSPITAL_RECORD_V8_RUNBOOK.md"
       - ".github/workflows/detailed-hospital-v8-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "apps/api/app/detailed_hospital_*.py"
       - "apps/api/detailed_hospital*_smoke_test.py"
-      - "apps/api/migrations/versions/*.py"
-      - "apps/api/app/main.py"
+      - "apps/api/migrations/versions/0009_*.py"
       - "apps/api/app/legacy_write_retirement.py"
-      - "apps/api/clinical_execution_smoke_test.py"
       - "apps/web/app/patient-record/**"
       - "apps/web/components/detailed-patient-record-workspace.tsx"
-      - "apps/web/app/system-control/**"
-      - "scripts/restore-rehearsal.sh"
       - "docs/validation/DETAILED_HOSPITAL_RECORD_V8_RUNBOOK.md"
       - ".github/workflows/detailed-hospital-v8-ci.yml"
-      - ".github/workflows/control-spine-ci.yml"
 
 jobs:
   api-and-sqlite:

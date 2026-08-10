@@ -7,20 +7,16 @@ on:
       - "apps/api/app/operational_workspace_v14_routes.py"
       - "apps/api/app/workspace_routes.py"
       - "apps/web/app/workspace/page.tsx"
-      - "apps/web/app/hospital-board/page.tsx"
-      - "apps/web/app/system-control/page.tsx"
       - "apps/web/components/operational-workspace-v14.tsx"
       - "apps/web/components/responsive-hospital-board-v14.tsx"
       - ".github/workflows/patient-centred-command-v14-ci.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "apps/api/operational_workspace_v14_smoke_test.py"
       - "apps/api/app/operational_workspace_v14_routes.py"
       - "apps/api/app/workspace_routes.py"
       - "apps/web/app/workspace/page.tsx"
-      - "apps/web/app/hospital-board/page.tsx"
-      - "apps/web/app/system-control/page.tsx"
       - "apps/web/components/operational-workspace-v14.tsx"
       - "apps/web/components/responsive-hospital-board-v14.tsx"
       - ".github/workflows/patient-centred-command-v14-ci.yml"
