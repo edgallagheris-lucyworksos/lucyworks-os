@@ -3,9 +3,7 @@ name: Veterinary Speech and Structured Capture v19 Check
 on:
   pull_request:
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/speech_capture_v19_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/speech_capture_v19_smoke_test.py"
       - "apps/web/components/speech-**"
       - "apps/web/app/input/page.tsx"
@@ -16,11 +14,9 @@ on:
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/speech-capture-v19-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/speech_capture_v19_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/speech_capture_v19_smoke_test.py"
       - "apps/web/components/speech-**"
       - "apps/web/app/input/page.tsx"
@@ -104,7 +100,7 @@ jobs:
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
-      - name: Build all patient speech integrations
+      - name: Build patient speech integrations
         working-directory: apps/web
         env:
           NEXT_PUBLIC_API_BASE: http://localhost:8000
