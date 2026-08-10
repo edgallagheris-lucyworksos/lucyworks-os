@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "apps/api/app/regulated_workflow_v32_*.py"
-      - "apps/api/regulated_workflow_v32_smoke_test.py"
+      - "apps/api/regulated_workflow_v32*_smoke_test.py"
       - "apps/api/migrations/versions/0025_regulated_workflow_v32.py"
       - "apps/api/app/main.py"
       - ".github/workflows/regulated-workflow-v32.yml"
@@ -12,7 +12,7 @@ on:
     branches: [main]
     paths:
       - "apps/api/app/regulated_workflow_v32_*.py"
-      - "apps/api/regulated_workflow_v32_smoke_test.py"
+      - "apps/api/regulated_workflow_v32*_smoke_test.py"
       - "apps/api/migrations/versions/0025_regulated_workflow_v32.py"
       - "apps/api/app/main.py"
       - ".github/workflows/regulated-workflow-v32.yml"
@@ -33,14 +33,29 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
       - name: Compile regulated workflow modules
-        run: python -m compileall -q app/regulated_workflow_v32_models.py app/regulated_workflow_v32_service.py app/regulated_workflow_v32_routes.py app/regulated_workflow_v32_middleware.py
-      - name: Run regulated workflow acceptance test
+        run: python -m compileall -q app/regulated_workflow_v32_models.py app/regulated_workflow_v32_extension_models.py app/regulated_workflow_v32_service.py app/regulated_workflow_v32_routes.py app/regulated_workflow_v32_extension_routes.py app/regulated_workflow_v32_middleware.py
+      - name: Run estimate and AI governance acceptance test
         run: python regulated_workflow_v32_smoke_test.py
-      - name: Verify migration head
+      - name: Run charge and client-governance acceptance test
+        run: python regulated_workflow_v32_extension_smoke_test.py
+      - name: Verify migration head and governed tables
         env:
           DATABASE_URL: sqlite:////tmp/lucyworks-regulated-v32-migration.db
           AUTO_CREATE_SCHEMA: "false"
         run: |
           rm -f /tmp/lucyworks-regulated-v32-migration.db
           alembic upgrade head
-          alembic current | grep -q "0025_regulated_workflow_v32"
+          python - <<'PY'
+          from sqlalchemy import create_engine, inspect, text
+          engine = create_engine('sqlite:////tmp/lucyworks-regulated-v32-migration.db')
+          required = {
+              'servicepricev32', 'estimategovernancev32', 'aiprovenancev32',
+              'chargeprovenancev32', 'complaintv32', 'prescriptionchoicev32',
+          }
+          tables = set(inspect(engine).get_table_names())
+          assert not (required - tables), sorted(required - tables)
+          with engine.connect() as connection:
+              version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          assert version == '0025_regulated_workflow_v32', version
+          print('Regulated workflow v32 migration and governed tables verified')
+          PY
