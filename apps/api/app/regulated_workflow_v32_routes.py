@@ -10,8 +10,11 @@ from sqlmodel import Session, select
 
 from app.auth import AuthContext, CLINICAL_ROLES, require_authenticated, require_roles
 from app.database import get_session
+from app.detailed_hospital_models import EstimateLineV8, EstimateV8, PatientClinicalRecordV8
 from app.evidence_service import create_evidence_event
-from app.regulated_workflow_v32_models import AIProvenanceV32, ServicePriceV32
+from app.hospital_ops_models import CanonicalEpisodeState
+from app.regulated_workflow_v32_models import AIProvenanceV32, EstimateGovernanceV32, ServicePriceV32
+from app.regulated_workflow_v32_service import evaluate_estimate_rules
 
 router = APIRouter(prefix="/api/v32", tags=["regulated-workflow-v32"])
 FINANCIAL_ROLES = ("admin", "ops_manager", "hospital_director", "governance_lead")
@@ -71,6 +74,18 @@ def record_event(
     return event.event_ref
 
 
+def require_episode_and_patient(session: Session, episode_ref: str, patient_ref: str) -> CanonicalEpisodeState:
+    episode = session.exec(select(CanonicalEpisodeState).where(CanonicalEpisodeState.episode_ref == episode_ref)).first()
+    if not episode:
+        raise HTTPException(status_code=404, detail="canonical episode not found")
+    if episode.patient_ref and episode.patient_ref != patient_ref:
+        raise HTTPException(status_code=409, detail="estimate patient does not match canonical episode")
+    patient = session.exec(select(PatientClinicalRecordV8).where(PatientClinicalRecordV8.patient_ref == patient_ref)).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="patient record not found")
+    return episode
+
+
 class ServicePriceCreate(BaseModel):
     organisationRef: str = "reference"
     premisesRef: str
@@ -88,6 +103,29 @@ class ServicePriceCreate(BaseModel):
     status: str = "draft"
     effectiveFrom: datetime | None = None
     reason: str
+
+
+class EstimateLineInput(BaseModel):
+    category: str
+    description: str
+    quantity: float = 1
+    lowerUnitPence: int
+    upperUnitPence: int
+    taxRatePercent: float = 20
+    optional: bool = False
+    sourceCatalogueRef: str | None = None
+
+
+class RegulatedEstimateCreate(BaseModel):
+    patientRef: str
+    lines: list[EstimateLineInput]
+    status: str = "draft"
+    authorisedLimitPence: int | None = None
+    ownerAuthorisationRef: str | None = None
+    reasonForChange: str | None = None
+    writtenDeliveryRef: str | None = None
+    ownerAcknowledgementRef: str | None = None
+    reason: str = "Regulated estimate version created"
 
 
 class AIProvenanceCreate(BaseModel):
@@ -194,6 +232,157 @@ def list_service_prices(
     if premises_ref:
         query = query.where(ServicePriceV32.premises_ref == premises_ref)
     rows = session.exec(query.order_by(ServicePriceV32.service_name, ServicePriceV32.version.desc())).all()
+    return {"items": [row_dict(row) for row in rows]}
+
+
+@router.post("/episodes/{episode_ref}/estimates")
+def create_regulated_estimate(
+    episode_ref: str,
+    payload: RegulatedEstimateCreate,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*FINANCIAL_ROLES)),
+) -> dict[str, Any]:
+    require_episode_and_patient(session, episode_ref, payload.patientRef)
+    if not payload.lines:
+        raise HTTPException(status_code=422, detail="estimate requires at least one line")
+    if payload.status not in {"draft", "issued", "approved"}:
+        raise HTTPException(status_code=422, detail="invalid estimate status")
+
+    latest_any = session.exec(
+        select(EstimateV8).where(EstimateV8.episode_ref == episode_ref).order_by(EstimateV8.version.desc())
+    ).first()
+    previous_written = session.exec(
+        select(EstimateV8)
+        .where(EstimateV8.episode_ref == episode_ref, EstimateV8.status.in_(["issued", "approved"]))
+        .order_by(EstimateV8.version.desc())
+    ).first()
+    version = latest_any.version + 1 if latest_any else 1
+
+    lower_total = sum(round(item.quantity * item.lowerUnitPence) for item in payload.lines if not item.optional)
+    upper_total = sum(round(item.quantity * item.upperUnitPence) for item in payload.lines if not item.optional)
+    if lower_total < 0 or upper_total < lower_total:
+        raise HTTPException(status_code=422, detail="invalid estimate totals")
+
+    rules = evaluate_estimate_rules(
+        current_upper_total_pence=upper_total,
+        previous_upper_total_pence=previous_written.upper_total_pence if previous_written else None,
+    )
+    if payload.status in {"issued", "approved"} and not payload.ownerAuthorisationRef:
+        raise HTTPException(status_code=409, detail="issued or approved estimate requires owner authorisation evidence")
+    if payload.status in {"issued", "approved"} and rules.written_estimate_required and not payload.writtenDeliveryRef:
+        raise HTTPException(status_code=409, detail="a £500+ estimate must record written delivery evidence before issue")
+    if payload.status in {"issued", "approved"} and rules.written_update_required:
+        if not (payload.reasonForChange or "").strip():
+            raise HTTPException(status_code=409, detail="material estimate increase requires a reason for change")
+        if not payload.writtenDeliveryRef:
+            raise HTTPException(status_code=409, detail="material estimate increase requires written update delivery evidence")
+
+    row = EstimateV8(
+        estimate_ref=new_ref("estimate"),
+        patient_ref=payload.patientRef,
+        episode_ref=episode_ref,
+        version=version,
+        status=payload.status,
+        lower_total_pence=lower_total,
+        upper_total_pence=upper_total,
+        authorised_limit_pence=payload.authorisedLimitPence,
+        owner_authorisation_ref=payload.ownerAuthorisationRef,
+        reason_for_change=payload.reasonForChange,
+        created_by_subject=auth.subject,
+        approved_by_subject=auth.subject if payload.status == "approved" else None,
+        approved_at=utc_now() if payload.status == "approved" else None,
+    )
+    session.add(row)
+    session.flush()
+
+    line_rows: list[EstimateLineV8] = []
+    for item in payload.lines:
+        if item.lowerUnitPence < 0 or item.upperUnitPence < item.lowerUnitPence:
+            raise HTTPException(status_code=422, detail="invalid estimate line range")
+        if item.sourceCatalogueRef:
+            price = session.exec(select(ServicePriceV32).where(ServicePriceV32.price_ref == item.sourceCatalogueRef)).first()
+            if not price or price.status != "published":
+                raise HTTPException(status_code=409, detail=f"estimate line catalogue source is not a published service price: {item.sourceCatalogueRef}")
+        line = EstimateLineV8(
+            line_ref=new_ref("estimate-line"),
+            estimate_ref=row.estimate_ref,
+            category=item.category,
+            description=item.description,
+            quantity=item.quantity,
+            lower_unit_pence=item.lowerUnitPence,
+            upper_unit_pence=item.upperUnitPence,
+            tax_rate_percent=item.taxRatePercent,
+            optional=item.optional,
+            source_catalogue_ref=item.sourceCatalogueRef,
+        )
+        session.add(line)
+        line_rows.append(line)
+
+    governance = EstimateGovernanceV32(
+        governance_ref=new_ref("estimate-governance"),
+        estimate_ref=row.estimate_ref,
+        previous_estimate_ref=previous_written.estimate_ref if previous_written else None,
+        episode_ref=episode_ref,
+        patient_ref=payload.patientRef,
+        previous_upper_total_pence=rules.previous_upper_total_pence,
+        current_upper_total_pence=rules.current_upper_total_pence,
+        increase_pence=rules.increase_pence,
+        increase_percent=rules.increase_percent,
+        written_estimate_required=rules.written_estimate_required,
+        written_update_required=rules.written_update_required,
+        update_threshold_pence=rules.update_threshold_pence,
+        trigger_reason=rules.trigger_reason,
+        written_delivery_ref=payload.writtenDeliveryRef,
+        owner_acknowledgement_ref=payload.ownerAcknowledgementRef,
+        status="evidenced" if payload.writtenDeliveryRef else "evaluated",
+        evaluated_by_subject=auth.subject,
+    )
+    session.add(governance)
+    session.flush()
+
+    current = {
+        "estimate": row_dict(row),
+        "lines": [row_dict(item) for item in line_rows],
+        "governance": row_dict(governance),
+    }
+    evidence_ref = record_event(
+        session, auth,
+        action="create_version",
+        entity_type="regulated_estimate",
+        entity_ref=row.estimate_ref,
+        episode_ref=episode_ref,
+        patient_ref=payload.patientRef,
+        previous=row_dict(previous_written) if previous_written else None,
+        current=current,
+        reason=payload.reason,
+        risk="amber" if rules.written_update_required else "green",
+    )
+    row.evidence_event_ref = evidence_ref
+    governance.evidence_event_ref = evidence_ref
+    session.add(row)
+    session.add(governance)
+    session.commit()
+    session.refresh(row)
+    session.refresh(governance)
+    return {
+        "estimate": row_dict(row),
+        "lines": [row_dict(item) for item in line_rows],
+        "governance": row_dict(governance),
+        "evidenceEventRef": evidence_ref,
+    }
+
+
+@router.get("/episodes/{episode_ref}/estimate-governance")
+def list_estimate_governance(
+    episode_ref: str,
+    session: Session = Depends(get_session),
+    _: AuthContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    rows = session.exec(
+        select(EstimateGovernanceV32)
+        .where(EstimateGovernanceV32.episode_ref == episode_ref)
+        .order_by(EstimateGovernanceV32.evaluated_at.desc())
+    ).all()
     return {"items": [row_dict(row) for row in rows]}
 
 
