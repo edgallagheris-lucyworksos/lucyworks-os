@@ -20,6 +20,7 @@ on:
       - "apps/web/components/responsive-hospital-board-v15.tsx"
       - "docs/OPERATING_MODEL.md"
       - "scripts/validate_system_ready.py"
+      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/platform-regression.yml"
   push:
     branches: [main]
@@ -32,6 +33,7 @@ on:
       - "apps/web/**"
       - "docs/OPERATING_MODEL.md"
       - "scripts/validate_system_ready.py"
+      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/platform-regression.yml"
 
 concurrency:
