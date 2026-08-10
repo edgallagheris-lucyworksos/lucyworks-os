@@ -13,8 +13,10 @@ on:
       - "apps/web/app/hospital-board/**"
       - "apps/web/app/episode-command/**"
       - "apps/web/components/hospital-value-panel.tsx"
+      - "apps/web/components/episode-command-shell.tsx"
       - "apps/web/components/episode-governance-panel.tsx"
       - "apps/web/components/episode-client-finance-actions.tsx"
+      - "apps/web/components/episode-complaint-control.tsx"
       - "apps/web/components/responsive-hospital-board-v15.tsx"
       - ".github/workflows/platform-regression.yml"
   push:
