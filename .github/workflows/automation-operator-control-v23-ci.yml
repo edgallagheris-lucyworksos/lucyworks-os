@@ -3,32 +3,24 @@ name: Automation Operator Control v23 Check
 on:
   pull_request:
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/automation_operator_control_v23_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/automation_operator_control_v23_smoke_test.py"
       - "apps/web/app/automation-control/**"
       - "apps/web/app/system-control/page.tsx"
       - "apps/web/components/automation-operator-control-v23.tsx"
       - "apps/web/components/automation-board-dock-v23.tsx"
-      - "apps/web/components/operational-workspace-v16.tsx"
-      - "apps/web/components/responsive-hospital-board-v15.tsx"
       - "scripts/validate_automation_operator_control_v23.py"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/automation-operator-control-v23-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/automation_operator_control_v23_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/automation_operator_control_v23_smoke_test.py"
       - "apps/web/app/automation-control/**"
       - "apps/web/app/system-control/page.tsx"
       - "apps/web/components/automation-operator-control-v23.tsx"
       - "apps/web/components/automation-board-dock-v23.tsx"
-      - "apps/web/components/operational-workspace-v16.tsx"
-      - "apps/web/components/responsive-hospital-board-v15.tsx"
       - "scripts/validate_automation_operator_control_v23.py"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/automation-operator-control-v23-ci.yml"
@@ -98,7 +90,7 @@ jobs:
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
-      - name: Build operator, Patient Command and master-board surfaces
+      - name: Build operator-control surfaces
         working-directory: apps/web
         env:
           NEXT_PUBLIC_API_BASE: http://localhost:8000
