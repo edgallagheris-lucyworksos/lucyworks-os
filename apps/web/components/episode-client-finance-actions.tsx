@@ -8,6 +8,8 @@ type CommandView = {
   consents?: Array<{ owner_ref?: string; status?: string }>;
 };
 
+type Identity = { user: { role: string } };
+
 type EstimateLine = {
   category: string;
   description: string;
@@ -19,6 +21,10 @@ type EstimateLine = {
 };
 
 type CommunicationResponse = { communication: { evidence_event_ref?: string; communication_ref: string } };
+
+const FINANCIAL_ROLES = new Set(["admin", "ops_manager", "hospital_director", "governance_lead"]);
+const COMPLAINT_ROLES = new Set(["admin", "ops_manager", "hospital_director", "governance_lead", "clinical_director"]);
+const PRESCRIPTION_ROLES = new Set(["admin", "ops_manager", "clinician", "senior_clinician", "clinical_director"]);
 
 const field: React.CSSProperties = {
   width: "100%",
@@ -44,6 +50,7 @@ function pounds(value: number) {
 export function EpisodeClientFinanceActions() {
   const [episodeRef, setEpisodeRef] = useState("");
   const [command, setCommand] = useState<CommandView | null>(null);
+  const [role, setRole] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -91,7 +98,13 @@ export function EpisodeClientFinanceActions() {
       return;
     }
     try {
-      setCommand(await apiGet<CommandView>(`/api/v9/episodes/${encodeURIComponent(episodeRef)}/command-view`));
+      const [episode, identity] = await Promise.all([
+        apiGet<CommandView>(`/api/v9/episodes/${encodeURIComponent(episodeRef)}/command-view`),
+        apiGet<Identity>("/api/auth/me"),
+      ]);
+      setCommand(episode);
+      setRole(identity.user.role || "");
+      setError("");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to load episode context");
     }
@@ -265,20 +278,24 @@ export function EpisodeClientFinanceActions() {
   }
 
   if (!episodeRef || !command) return null;
+  const canFinance = FINANCIAL_ROLES.has(role);
+  const canComplaint = COMPLAINT_ROLES.has(role);
+  const canPrescription = PRESCRIPTION_ROLES.has(role);
+  if (!canFinance && !canComplaint && !canPrescription) return null;
 
   return (
     <section className="ecfa" aria-label="Client and financial actions">
       <style>{css}</style>
       <header>
         <div><span>Episode actions</span><h2>Client & financial control</h2></div>
-        <p>Normal staff actions; evidence, authority checks and audit records are created underneath.</p>
+        <p>Actions are shown for your role only; evidence, authority checks and audit records are created underneath.</p>
       </header>
 
       {error ? <div className="ecfa-alert error" role="alert">{error}</div> : null}
       {message ? <div className="ecfa-alert success" role="status">{message}</div> : null}
 
       <div className="ecfa-grid">
-        <details open>
+        {canFinance ? <details open>
           <summary>Issue written estimate</summary>
           <div className="form">
             {lines.map((line, index) => (
@@ -299,9 +316,9 @@ export function EpisodeClientFinanceActions() {
             <label className="check"><input type="checkbox" checked={ownerAcknowledged} onChange={event => setOwnerAcknowledged(event.target.checked)} /> Client acknowledged receipt</label>
             <button type="button" className="primary" disabled={busy} onClick={() => void issueEstimate()}>Deliver & issue estimate</button>
           </div>
-        </details>
+        </details> : null}
 
-        <details open>
+        {canFinance ? <details open>
           <summary>Record performed charge</summary>
           <div className="form">
             <div className="row"><label>Category<input style={field} value={chargeCategory} onChange={event => setChargeCategory(event.target.value)} /></label><label>Quantity<input style={field} inputMode="decimal" value={chargeQuantity} onChange={event => setChargeQuantity(event.target.value)} /></label></div>
@@ -310,9 +327,9 @@ export function EpisodeClientFinanceActions() {
             <details className="nested"><summary>Third-party supplier / markup</summary><div className="form compact"><label>Supplier<input style={field} value={externalSupplier} onChange={event => setExternalSupplier(event.target.value)} /></label><div className="row"><label>Supplier cost £<input style={field} inputMode="decimal" value={thirdPartyCost} onChange={event => setThirdPartyCost(event.target.value)} /></label><label>Markup £<input style={field} inputMode="decimal" value={chargeMarkup} onChange={event => setChargeMarkup(event.target.value)} /></label></div></div></details>
             <button type="button" className="primary" disabled={busy} onClick={() => void recordCharge()}>Record charge</button>
           </div>
-        </details>
+        </details> : null}
 
-        <details>
+        {canComplaint ? <details>
           <summary>Record client concern / complaint</summary>
           <div className="form">
             <div className="row"><label>Channel<select style={field} value={complaintChannel} onChange={event => setComplaintChannel(event.target.value)}><option>phone</option><option>email</option><option>portal</option><option>in_person</option></select></label><label>Severity<select style={field} value={complaintSeverity} onChange={event => setComplaintSeverity(event.target.value)}><option value="standard">Standard</option><option value="serious">Serious</option><option value="critical">Critical</option></select></label></div>
@@ -320,9 +337,9 @@ export function EpisodeClientFinanceActions() {
             <label>What has the client raised?<textarea style={{ ...field, minHeight: 90 }} value={complaintSummary} onChange={event => setComplaintSummary(event.target.value)} /></label>
             <button type="button" className="primary" disabled={busy} onClick={() => void recordComplaint()}>Record & assign</button>
           </div>
-        </details>
+        </details> : null}
 
-        <details>
+        {canPrescription ? <details>
           <summary>Record prescription choice</summary>
           <div className="form">
             <label>Medication<input style={field} value={medicationName} onChange={event => setMedicationName(event.target.value)} /></label>
@@ -330,7 +347,7 @@ export function EpisodeClientFinanceActions() {
             <label className="check"><input type="checkbox" checked={prescriptionOffered} onChange={event => setPrescriptionOffered(event.target.checked)} /> Written prescription option explained/offered</label>
             <button type="button" className="primary" disabled={busy} onClick={() => void recordPrescriptionChoice()}>Record client choice</button>
           </div>
-        </details>
+        </details> : null}
       </div>
     </section>
   );
