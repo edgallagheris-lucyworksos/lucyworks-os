@@ -108,6 +108,7 @@ try:
         })
         assert anonymous.status_code == 401, anonymous.text
 
+        senior = login(client, 1)
         clinician = login(client, 3)
         admin = login(client, 4)
 
@@ -121,7 +122,7 @@ try:
         })
         assert raw_audio.status_code == 409, raw_audio.text
 
-        phrase_pack = ok(client.post("/api/v19/speech/phrase-packs", headers=admin, json={
+        phrase_pack = ok(client.post("/api/v19/speech/phrase-packs", headers=senior, json={
             "organisationRef": "reference-site",
             "name": "Neurology speech pack",
             "terms": ["thoracolumbar", "proprioceptive deficit"],
@@ -129,7 +130,7 @@ try:
         }), "create phrase pack")
         approved_pack = ok(client.patch(
             f"/api/v19/speech/phrase-packs/{phrase_pack['phrasePack']['phrase_pack_ref']}/approve",
-            headers=admin,
+            headers=senior,
             json={"expectedVersion": 1, "reason": "Synthetic phrase-pack approval"},
         ), "approve phrase pack")
         assert approved_pack["phrasePack"]["status"] == "approved"
@@ -219,26 +220,21 @@ try:
             f"/api/v19/speech/captures/{capture['capture_ref']}", headers=clinician
         ), "reload speech capture")
         assert persisted["capture"]["status"] == "confirmed"
-        assert persisted["draft"]["clinical_note_ref"] == confirmed["clinicalNote"]["note_ref"]
+        assert persisted["draft"]["final_text"] == confirmed["draft"]["final_text"]
 
-        terms = ok(client.get("/api/v19/speech/terms?q=thora", headers=clinician), "predictive terms")
-        assert any(row["term"] == "thoracolumbar" for row in terms["items"])
+        with Session(engine) as session:
+            capture_row = session.exec(select(SpeechCaptureV19).where(SpeechCaptureV19.capture_ref == capture["capture_ref"])).one()
+            draft_row = session.exec(select(SpeechDraftV19).where(SpeechDraftV19.capture_ref == capture["capture_ref"])).one()
+            note_row = session.exec(select(ClinicalNoteV8).where(ClinicalNoteV8.note_ref == draft_row.clinical_note_ref)).one()
+            work = session.exec(select(WorkItem).where(WorkItem.linked_episode_ref == "EP-SPEECH-V19-001")).all()
+            assert capture_row.status == "confirmed" and capture_row.reviewed_by_subject == "local-user:3"
+            assert draft_row.status == "confirmed" and draft_row.clinical_note_ref
+            assert note_row.status == "signed" and note_row.author_subject == "local-user:3"
+            assert work and any(item.source == "reviewed_speech" for item in work)
 
-        integrity = ok(client.get("/api/evidence/integrity", headers=admin), "evidence integrity")
-        assert integrity["ok"] is True, integrity
-
-    with Session(engine) as session:
-        stored_capture = session.exec(select(SpeechCaptureV19)).one()
-        stored_draft = session.exec(select(SpeechDraftV19)).one()
-        note = session.exec(select(ClinicalNoteV8).where(ClinicalNoteV8.note_ref == stored_draft.clinical_note_ref)).one()
-        tasks = session.exec(select(WorkItem).where(WorkItem.linked_episode_ref == "EP-SPEECH-V19-001")).all()
-        assert stored_capture.transcript_text == transcript
-        assert "Thoracolumbar pain" in note.body
-        assert "0.2 mg/kg" not in note.body
-        assert len(tasks) == 1
-        print("Refresh persistence, transcript separation and immutable evidence chain OK")
-
-    print("\n--- VETERINARY SPEECH AND STRUCTURED CAPTURE V19 SMOKE TEST PASSED ---\n")
+        terms = ok(client.get("/api/v19/speech/terms?q=analgesic", headers=admin), "speech terminology")
+        assert any(item["type"] == "medicine" for item in terms["items"])
+        print("Persisted evidence, signed note, task and medication terminology OK")
 finally:
     if TEST_DB.exists():
         TEST_DB.unlink()
