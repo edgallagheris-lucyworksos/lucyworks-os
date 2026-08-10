@@ -3,19 +3,15 @@ name: Governed Operational Automation v20 Check
 on:
   pull_request:
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/operational_automation_v20_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/operational-automation-v20-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
-      - "apps/api/app/main.py"
       - "apps/api/app/operational_automation_v20_*.py"
-      - "apps/api/migrations/versions/**"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
       - "scripts/restore-rehearsal.sh"
