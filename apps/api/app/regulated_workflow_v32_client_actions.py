@@ -5,18 +5,20 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field as PydanticField
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app.auth import AuthContext, require_roles
+from app.auth import AuthContext, CLINICAL_ROLES, require_roles
 from app.database import get_session
 from app.detailed_hospital_models import CommunicationEventV8, PatientOwnerLinkV8
 from app.evidence_service import create_evidence_event
 from app.hospital_command_models import ConsentAuthorisationV9
+from app.regulated_workflow_v32_extension_routes import PrescriptionChoiceCreate, create_prescription_choice
 from app.regulated_workflow_v32_routes import EstimateLineInput, RegulatedEstimateCreate, create_regulated_estimate
 
 router = APIRouter(prefix="/api/v32", tags=["regulated-workflow-v32"])
 FINANCIAL_ROLES = ("admin", "ops_manager", "hospital_director", "governance_lead")
+PRESCRIPTION_ACTION_ROLES = tuple(sorted(set(CLINICAL_ROLES) | {"admin", "ops_manager"}))
 
 
 def utc_now() -> datetime:
@@ -37,6 +39,20 @@ class DeliverAndIssueEstimate(BaseModel):
     reasonForChange: str | None = None
     deliverySummary: str = "Written estimate supplied to the client."
     reason: str = "Estimate delivered and issued"
+
+
+class DeliverAndRecordPrescriptionChoice(BaseModel):
+    patientRef: str
+    ownerRef: str | None = None
+    medicationName: str
+    medicationRef: str | None = None
+    writtenPrescriptionOffered: bool
+    prescriptionFeePence: int | None = None
+    clientChoice: str
+    channel: str = "in_person"
+    informationSummary: str | None = None
+    ongoingMedicationNoticeRef: str | None = None
+    reason: str = "Prescription information delivered and client choice recorded"
 
 
 def active_authority(session: Session, episode_ref: str, patient_ref: str, owner_ref: str | None) -> tuple[str, str]:
@@ -66,6 +82,74 @@ def active_authority(session: Session, episode_ref: str, patient_ref: str, owner
         return link.owner_ref, link.evidence_event_ref or link.link_ref
 
     raise HTTPException(status_code=409, detail="no active owner decision-authority record is available for this patient")
+
+
+def client_communication_evidence(
+    session: Session,
+    auth: AuthContext,
+    *,
+    episode_ref: str,
+    patient_ref: str,
+    owner_ref: str,
+    channel: str,
+    subject: str,
+    summary: str,
+    outcome: str,
+    authority_ref: str,
+    event_type: str,
+    reason: str,
+    additional_evidence: dict[str, Any],
+) -> CommunicationEventV8:
+    communication = CommunicationEventV8(
+        communication_ref=new_ref("communication"),
+        patient_ref=patient_ref,
+        episode_ref=episode_ref,
+        owner_ref=owner_ref,
+        audience="owner",
+        channel=channel,
+        direction="outbound",
+        subject=subject,
+        summary=summary,
+        outcome=outcome,
+        consent_or_authorisation={"decisionAuthorityRef": authority_ref, **additional_evidence},
+        actor_subject=auth.subject,
+    )
+    session.add(communication)
+    session.flush()
+    event, _ = create_evidence_event(
+        session,
+        event_type=event_type,
+        action="deliver_client_information",
+        actor_id=auth.actor_id or auth.subject,
+        actor_name=auth.actor_name,
+        actor_role=auth.role,
+        actor_auth_source=auth.auth_source,
+        patient_case_id=patient_ref,
+        referral_episode_id=episode_ref,
+        previous_state=None,
+        new_state={
+            "communicationRef": communication.communication_ref,
+            "channel": communication.channel,
+            "ownerRef": owner_ref,
+            "decisionAuthorityRef": authority_ref,
+            **additional_evidence,
+        },
+        reason=reason,
+        justification="Client information delivery and decision-authority evidence",
+        evidence_links=[{"type": "communication", "id": communication.communication_ref}],
+        compliance_domain="client_communication",
+        risk_level="green",
+        source_module="regulated-workflow-v32",
+        source_record_ref=communication.communication_ref,
+        correlation_id=episode_ref,
+        entity_type="communication",
+        entity_id=communication.communication_ref,
+        idempotency_key=f"{event_type}:{communication.communication_ref}",
+    )
+    communication.evidence_event_ref = event.event_ref
+    session.add(communication)
+    session.flush()
+    return communication
 
 
 @router.post("/episodes/{episode_ref}/estimates/deliver-and-issue")
@@ -105,59 +189,21 @@ def deliver_and_issue_estimate(
             },
         )
 
-    communication = CommunicationEventV8(
-        communication_ref=new_ref("communication"),
-        patient_ref=payload.patientRef,
+    communication = client_communication_evidence(
+        session,
+        auth,
         episode_ref=episode_ref,
+        patient_ref=payload.patientRef,
         owner_ref=owner_ref,
-        audience="owner",
         channel=payload.channel,
-        direction="outbound",
         subject="Written treatment estimate",
         summary=payload.deliverySummary.strip() or "Written estimate supplied to the client.",
         outcome="acknowledged" if payload.ownerAcknowledged else "delivered",
-        consent_or_authorisation={
-            "estimateDelivery": True,
-            "ownerAcknowledged": payload.ownerAcknowledged,
-            "decisionAuthorityRef": authority_ref,
-        },
-        actor_subject=auth.subject,
-    )
-    session.add(communication)
-    session.flush()
-    event, _ = create_evidence_event(
-        session,
+        authority_ref=authority_ref,
         event_type="v32_estimate_written_delivery",
-        action="deliver_written_estimate",
-        actor_id=auth.actor_id or auth.subject,
-        actor_name=auth.actor_name,
-        actor_role=auth.role,
-        actor_auth_source=auth.auth_source,
-        patient_case_id=payload.patientRef,
-        referral_episode_id=episode_ref,
-        previous_state=None,
-        new_state={
-            "communicationRef": communication.communication_ref,
-            "channel": communication.channel,
-            "ownerRef": owner_ref,
-            "ownerAcknowledged": payload.ownerAcknowledged,
-            "decisionAuthorityRef": authority_ref,
-        },
         reason=payload.reason,
-        justification="Written estimate delivery and owner-authority evidence",
-        evidence_links=[{"type": "communication", "id": communication.communication_ref}],
-        compliance_domain="financial_consent",
-        risk_level="green",
-        source_module="regulated-workflow-v32",
-        source_record_ref=communication.communication_ref,
-        correlation_id=episode_ref,
-        entity_type="communication",
-        entity_id=communication.communication_ref,
-        idempotency_key=f"v32:estimate-delivery:{communication.communication_ref}",
+        additional_evidence={"estimateDelivery": True, "ownerAcknowledged": payload.ownerAcknowledged},
     )
-    communication.evidence_event_ref = event.event_ref
-    session.add(communication)
-    session.flush()
 
     estimate_payload = RegulatedEstimateCreate(
         patientRef=payload.patientRef,
@@ -166,16 +212,85 @@ def deliver_and_issue_estimate(
         authorisedLimitPence=payload.authorisedLimitPence,
         ownerAuthorisationRef=authority_ref,
         reasonForChange=payload.reasonForChange,
-        writtenDeliveryRef=event.event_ref,
-        ownerAcknowledgementRef=event.event_ref if payload.ownerAcknowledged else None,
+        writtenDeliveryRef=communication.evidence_event_ref,
+        ownerAcknowledgementRef=communication.evidence_event_ref if payload.ownerAcknowledged else None,
         reason=payload.reason,
     )
     result = create_regulated_estimate(episode_ref, estimate_payload, session, auth)
     result["delivery"] = {
         "communicationRef": communication.communication_ref,
-        "evidenceEventRef": event.event_ref,
+        "evidenceEventRef": communication.evidence_event_ref,
         "channel": communication.channel,
         "ownerRef": owner_ref,
         "ownerAcknowledged": payload.ownerAcknowledged,
     }
+    return result
+
+
+@router.post("/episodes/{episode_ref}/prescription-choice/deliver-and-record")
+def deliver_and_record_prescription_choice(
+    episode_ref: str,
+    payload: DeliverAndRecordPrescriptionChoice,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*PRESCRIPTION_ACTION_ROLES)),
+) -> dict[str, Any]:
+    if payload.channel not in {"email", "sms", "portal", "printed", "in_person", "phone"}:
+        raise HTTPException(status_code=422, detail="unsupported prescription-information channel")
+    medication_name = payload.medicationName.strip()
+    if not medication_name:
+        raise HTTPException(status_code=422, detail="medication name is required")
+    if payload.clientChoice == "written_prescription" and not payload.writtenPrescriptionOffered:
+        raise HTTPException(status_code=409, detail="written prescription cannot be selected until that option has been offered")
+
+    owner_ref, authority_ref = active_authority(session, episode_ref, payload.patientRef, payload.ownerRef)
+    communication: CommunicationEventV8 | None = None
+    if payload.writtenPrescriptionOffered:
+        fee_text = (
+            f" The recorded prescription fee is £{payload.prescriptionFeePence / 100:,.2f}."
+            if payload.prescriptionFeePence is not None
+            else ""
+        )
+        communication = client_communication_evidence(
+            session,
+            auth,
+            episode_ref=episode_ref,
+            patient_ref=payload.patientRef,
+            owner_ref=owner_ref,
+            channel=payload.channel,
+            subject="Written prescription choice",
+            summary=payload.informationSummary or f"Written prescription option explained for {medication_name}.{fee_text}",
+            outcome="information supplied",
+            authority_ref=authority_ref,
+            event_type="v32_prescription_choice_information",
+            reason=payload.reason,
+            additional_evidence={
+                "writtenPrescriptionOptionExplained": True,
+                "medicationName": medication_name,
+                "prescriptionFeePence": payload.prescriptionFeePence,
+            },
+        )
+
+    choice_payload = PrescriptionChoiceCreate(
+        patientRef=payload.patientRef,
+        ownerRef=owner_ref,
+        medicationName=medication_name,
+        medicationRef=payload.medicationRef,
+        writtenPrescriptionOffered=payload.writtenPrescriptionOffered,
+        prescriptionFeePence=payload.prescriptionFeePence,
+        clientChoice=payload.clientChoice,
+        informationDeliveryRef=communication.evidence_event_ref if communication else None,
+        ongoingMedicationNoticeRef=payload.ongoingMedicationNoticeRef,
+        reason=payload.reason,
+    )
+    result = create_prescription_choice(episode_ref, choice_payload, session, auth)
+    result["informationDelivery"] = (
+        {
+            "communicationRef": communication.communication_ref,
+            "evidenceEventRef": communication.evidence_event_ref,
+            "channel": communication.channel,
+            "ownerRef": owner_ref,
+        }
+        if communication
+        else None
+    )
     return result
