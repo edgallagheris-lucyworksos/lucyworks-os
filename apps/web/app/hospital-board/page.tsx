@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
+import { HospitalValuePanel } from "@/components/hospital-value-panel";
 import { ResponsiveHospitalBoardV15 } from "@/components/responsive-hospital-board-v15";
 import { StaffLocationGrid } from "@/components/staff-location-grid";
 
@@ -62,9 +63,10 @@ export default function HospitalBoardPage() {
         <div className="hospital-shell__status" role="status">
           <span className="hospital-shell__live" aria-hidden="true" />
           <strong>Operational workspace</strong>
-          <span>Use patient flow for the live hospital picture. Use staff & locations to resolve ownership and capacity.</span>
+          <span>Patient safety first; client clarity, staff flow and commercial capacity are managed from the same live state.</span>
         </div>
 
+        <HospitalValuePanel />
         {view === "operations" ? <ResponsiveHospitalBoardV15 /> : <StaffLocationGrid />}
       </div>
     </AuthGuard>
