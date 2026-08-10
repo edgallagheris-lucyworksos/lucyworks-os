@@ -27,6 +27,10 @@ on:
       - "scripts/restore-rehearsal.sh"
       - ".github/workflows/speech-capture-v19-ci.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   api-and-migration:
     runs-on: ubuntu-latest
