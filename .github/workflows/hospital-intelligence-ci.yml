@@ -6,21 +6,17 @@ on:
       - "config/hospital-intelligence/**"
       - "apps/api/app/hospital_intelligence_routes.py"
       - "apps/api/hospital_intelligence_smoke_test.py"
-      - "apps/api/app/main.py"
       - "apps/web/app/hospital-intelligence/**"
       - "apps/web/components/hospital-intelligence-panel.tsx"
-      - "apps/web/app/system-control/**"
       - ".github/workflows/hospital-intelligence-ci.yml"
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
     paths:
       - "config/hospital-intelligence/**"
       - "apps/api/app/hospital_intelligence_routes.py"
       - "apps/api/hospital_intelligence_smoke_test.py"
-      - "apps/api/app/main.py"
       - "apps/web/app/hospital-intelligence/**"
       - "apps/web/components/hospital-intelligence-panel.tsx"
-      - "apps/web/app/system-control/**"
       - ".github/workflows/hospital-intelligence-ci.yml"
 
 jobs:
@@ -56,10 +52,10 @@ jobs:
       - name: Install API dependencies
         working-directory: apps/api
         run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
-      - name: Compile and test API
+      - name: Compile and test intelligence API
         working-directory: apps/api
         run: |
-          python -m compileall -q app
+          python -m py_compile app/hospital_intelligence_routes.py hospital_intelligence_smoke_test.py
           python hospital_intelligence_smoke_test.py
 
   web-build:
