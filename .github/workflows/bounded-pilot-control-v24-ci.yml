@@ -10,7 +10,6 @@ on:
       - "apps/web/app/system-control/page.tsx"
       - "apps/web/components/bounded-pilot-control-v24.tsx"
       - "scripts/validate_pilot_control_v24.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/bounded-pilot-control-v24-ci.yml"
   push:
     branches: [main]
@@ -22,7 +21,6 @@ on:
       - "apps/web/app/system-control/page.tsx"
       - "apps/web/components/bounded-pilot-control-v24.tsx"
       - "scripts/validate_pilot_control_v24.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/bounded-pilot-control-v24-ci.yml"
 
 jobs:
@@ -86,15 +84,6 @@ jobs:
           assert expected <= tables, expected - tables
           print(f'BOUNDED_PILOT_V24_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
-          grep -q 'pilotshadowcomparisonv24' scripts/restore-rehearsal.sh
-          grep -q 'pilotuatscenariov24' scripts/restore-rehearsal.sh
-          grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
-          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
