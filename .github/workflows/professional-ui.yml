@@ -4,10 +4,14 @@ on:
   pull_request:
     paths:
       - "apps/web/app/hospital-board/**"
+      - "apps/web/app/workspace/**"
+      - "apps/web/app/referral-intake/**"
       - "apps/web/components/responsive-hospital-board-v15.tsx"
       - "apps/web/components/hospital-value-panel.tsx"
       - "apps/web/components/episode-command-shell.tsx"
       - "apps/web/components/auth-guard.tsx"
+      - "apps/web/components/guided-referral-intake-v31.tsx"
+      - "apps/web/components/workspace-professional-shell.tsx"
       - "apps/web/lib/operational-context.ts"
       - "scripts/validate_professional_ui.py"
       - ".github/workflows/professional-ui.yml"
@@ -15,10 +19,14 @@ on:
     branches: [main]
     paths:
       - "apps/web/app/hospital-board/**"
+      - "apps/web/app/workspace/**"
+      - "apps/web/app/referral-intake/**"
       - "apps/web/components/responsive-hospital-board-v15.tsx"
       - "apps/web/components/hospital-value-panel.tsx"
       - "apps/web/components/episode-command-shell.tsx"
       - "apps/web/components/auth-guard.tsx"
+      - "apps/web/components/guided-referral-intake-v31.tsx"
+      - "apps/web/components/workspace-professional-shell.tsx"
       - "apps/web/lib/operational-context.ts"
       - "scripts/validate_professional_ui.py"
       - ".github/workflows/professional-ui.yml"
