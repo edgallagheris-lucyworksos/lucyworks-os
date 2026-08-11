@@ -36,6 +36,28 @@ const workspace = {
   conflicts: [],
 };
 
+const careBrief = {
+  generatedAt: now,
+  episodeRef: "EP-1001",
+  patientName: "Mabel",
+  patientRef: "P-1001",
+  status: "active",
+  urgency: "urgent",
+  phase: "diagnostics",
+  serviceLine: "neurology",
+  recordedControlsReady: true,
+  who: { accountableRole: "clinician", leadName: "Dr Patel", leadRole: "clinician" },
+  what: { currentPhase: "diagnostics", currentOrNextProcedure: "MRI spine", nextAction: "Complete MRI and review findings" },
+  where: { areaRef: "mri-1", areaName: "MRI" },
+  when: { startsAt: now, endsAt: later, nextDeadline: null },
+  how: { gateGaps: [], blockers: [], openTaskCount: 1, criticalTaskCount: 0, openConflictCount: 0, attention: [] },
+  why: { urgency: "urgent", flags: [], conflicts: [] },
+  schedule: [{ blockRef: "block-1", procedureName: "MRI spine", areaName: "MRI", startsAt: now, endsAt: later, status: "planned", riskLevel: "green", leadStaffName: "A. Nurse" }],
+  tasks: [{ id: 7, title: "Review MRI findings", description: "Review images and confirm next clinical action", urgency: "urgent", status: "new", ownerRole: "clinician", area: "MRI", dueAt: later, overdue: false }],
+  links: { patientCommand: "/workspace", hospitalBoard: "/hospital-board", episodeCommand: "/episode-command?episode=EP-1001", patientRecord: "/patient-record?episode=EP-1001", clinicalExecution: "/clinical-execution?episode=EP-1001" },
+  clinicalBoundary: "Clinical decisions remain with the responsible clinician.",
+};
+
 async function mockHospitalApi(page: Page) {
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
@@ -48,6 +70,9 @@ async function mockHospitalApi(page: Page) {
     if (url.pathname === "/api/v14/operational-workspace") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workspace) });
     }
+    if (url.pathname === "/api/v16/care-brief/EP-1001") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(careBrief) });
+    }
     if (["/api/v9/referrals", "/api/v12/identity-intakes", "/api/v12/triage"].includes(url.pathname)) {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }) });
     }
@@ -59,7 +84,7 @@ async function assertProfessionalSurface(page: Page, path: string, expectedHeadi
   await page.goto(path, { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: expectedHeading }).first()).toBeVisible();
   const bodyText = (await page.locator("body").innerText()).toLowerCase();
-  for (const forbidden of ["prototype", "synthetic referral", "patient command v16", "guided referral intake v31", "automation v23"]) {
+  for (const forbidden of ["prototype", "synthetic referral", "patient command v16", "guided referral intake v31", "care brief v16", "automation v23"]) {
     expect(bodyText).not.toContain(forbidden);
   }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -98,6 +123,12 @@ for (const viewport of [
       await assertProfessionalSurface(page, "/workspace", /Patient workspace/i, `workspace-${viewport.name}`);
       await expect(page.getByText("Mabel").first()).toBeVisible();
       await expect(page.getByText("Critical attention")).toBeVisible();
+    });
+
+    test("care brief stays consistent with the professional shell", async ({ page }) => {
+      await assertProfessionalSurface(page, "/care?episode=EP-1001", /Care brief/i, `care-${viewport.name}`);
+      await expect(page.getByRole("heading", { name: "Mabel" })).toBeVisible();
+      await expect(page.getByText("Controls clear")).toBeVisible();
     });
   });
 }
