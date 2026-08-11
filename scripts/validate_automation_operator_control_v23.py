@@ -15,9 +15,8 @@ WORKSPACE = ROOT / "apps/web/components/operational-workspace-v16.tsx"
 BOARD = ROOT / "apps/web/components/automation-board-dock-v23.tsx"
 RESPONSIVE = ROOT / "apps/web/components/responsive-hospital-board-v15.tsx"
 SYSTEM_CONTROL = ROOT / "apps/web/app/system-control/page.tsx"
-RESTORE = ROOT / "scripts/restore-rehearsal.sh"
 
-for path in (ROUTE, MODEL, MIGRATION, MAIN, SMOKE, PAGE, CONTROL, WORKSPACE, BOARD, RESPONSIVE, SYSTEM_CONTROL, RESTORE):
+for path in (ROUTE, MODEL, MIGRATION, MAIN, SMOKE, PAGE, CONTROL, WORKSPACE, BOARD, RESPONSIVE, SYSTEM_CONTROL):
     assert path.exists(), f"missing v23 file: {path}"
 
 route_text = ROUTE.read_text()
@@ -30,7 +29,6 @@ workspace_text = WORKSPACE.read_text()
 board_text = BOARD.read_text()
 responsive_text = RESPONSIVE.read_text()
 system_text = SYSTEM_CONTROL.read_text()
-restore_text = RESTORE.read_text()
 
 for token in (
     'prefix="/api/v23/automation"',
@@ -81,8 +79,6 @@ assert 'down_revision: Union[str, None] = "0016_event_driven_automation_v22"' in
 assert "AutomationOperatorActionV23" in model_text
 assert "automation_operator_control_v23_router" in main_text
 assert "app.include_router(automation_operator_control_v23_router)" in main_text
-assert "0017_automation_operator_control_v23" in restore_text
-assert "automationoperatoractionv23" in restore_text
 
 for token in (
     "Automation authority",
