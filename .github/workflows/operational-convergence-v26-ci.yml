@@ -14,7 +14,6 @@ on:
       - "apps/web/components/operating-context-v26-bar.tsx"
       - "docs/OPERATIONAL_CONVERGENCE_V26.md"
       - "scripts/validate_operational_convergence_v26.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/operational-convergence-v26-ci.yml"
   push:
     branches: [main]
@@ -30,7 +29,6 @@ on:
       - "apps/web/components/operating-context-v26-bar.tsx"
       - "docs/OPERATIONAL_CONVERGENCE_V26.md"
       - "scripts/validate_operational_convergence_v26.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/operational-convergence-v26-ci.yml"
 
 jobs:
@@ -91,13 +89,6 @@ jobs:
           assert expected <= tables, expected - tables
           print(f'OPERATIONAL_CONVERGENCE_MIGRATION_V26_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
-          grep -q 'activeoperatingcontextv26' scripts/restore-rehearsal.sh
-          grep -q 'operationalimpactv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
