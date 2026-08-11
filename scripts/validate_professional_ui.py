@@ -10,11 +10,12 @@ context = (ROOT / "apps/web/lib/operational-context.ts").read_text()
 referral = (ROOT / "apps/web/components/guided-referral-intake-v31.tsx").read_text()
 workspace_shell = (ROOT / "apps/web/components/workspace-professional-shell.tsx").read_text()
 workspace = (ROOT / "apps/web/components/operational-workspace-v16.tsx").read_text()
+care = (ROOT / "apps/web/components/care-brief-v16.tsx").read_text()
 
 required = {
     "one responsive hospital board": "Find patient, procedure, staff or episode" in board,
     "patient-first episode finder": "Find patient or episode" in episode,
-    "site context abstraction": "getOperationalContext" in board and "getOperationalContext" in shell and "getOperationalContext" in referral,
+    "site context abstraction": "getOperationalContext" in board and "getOperationalContext" in shell and "getOperationalContext" in referral and "getOperationalContext" in care,
     "role-aware hospital shell": "user.name" in shell and "user.role" in shell,
     "professional access shell": "Secure hospital access" in auth,
     "operational context persistence": "lucyworks.premisesRef" in context,
@@ -22,6 +23,7 @@ required = {
     "professional referral workflow": "Referral intake" in referral and "Owner & authority" in referral and "Clinical need" in referral,
     "professional patient workspace": "Patient workspace" in workspace_shell and "Find patient, episode or next action" in workspace,
     "workspace focuses on care and ownership": "My attention" in workspace and "Data quality" in workspace,
+    "professional care brief": "Care brief" in care and "Controls clear" in care and "Episode control" in care,
 }
 
 forbidden = {
@@ -33,6 +35,8 @@ forbidden = {
     "workspace version banner": "PATIENT COMMAND V16" in workspace,
     "workspace automation presentation": "Automation evidence" in workspace or "automation failures" in workspace.lower() or "automation mode" in workspace.lower(),
     "workspace synthetic empty state": "synthetic referral" in workspace.lower(),
+    "care version banner": "CARE BRIEF V16" in care,
+    "care oversized demo hero": "clamp(40px,8vw,72px)" in care,
     "visible synthetic wording": '>synthetic<' in shell.lower() or '>synthetic<' in referral.lower(),
     "visible demo wording": '>demo<' in shell.lower() or '>demo<' in referral.lower(),
     "visible prototype wording": '>prototype<' in shell.lower() or '>prototype<' in referral.lower(),
