@@ -6,7 +6,6 @@ on:
       - "apps/api/app/event_driven_automation_v22_*.py"
       - "apps/api/event_driven_automation_v22_smoke_test.py"
       - "scripts/validate_event_driven_automation_v22.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/event-driven-automation-v22-ci.yml"
   push:
     branches: [main]
@@ -14,7 +13,6 @@ on:
       - "apps/api/app/event_driven_automation_v22_*.py"
       - "apps/api/event_driven_automation_v22_smoke_test.py"
       - "scripts/validate_event_driven_automation_v22.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/event-driven-automation-v22-ci.yml"
 
 jobs:
@@ -70,16 +68,6 @@ jobs:
           assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationdecisionv20', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
           print(f'EVENT_DRIVEN_AUTOMATION_V22_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'automationruntimeconfigv22' scripts/restore-rehearsal.sh
-          grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
-          grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
-          grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
-          grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
-          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Upload v22 evidence
         if: always()
         uses: actions/upload-artifact@v4

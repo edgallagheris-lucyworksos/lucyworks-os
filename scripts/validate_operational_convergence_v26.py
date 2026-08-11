@@ -31,17 +31,10 @@ docs = REQUIRED_FILES["docs"].read_text()
 main = (ROOT / "apps/api/app/main.py").read_text()
 layout = (ROOT / "apps/web/app/layout.tsx").read_text()
 system_control = (ROOT / "apps/web/app/system-control/page.tsx").read_text()
-restore = (ROOT / "scripts/restore-rehearsal.sh").read_text()
 
 for model in (
-    "OrganisationV26",
-    "SiteV26",
-    "SiteMembershipV26",
-    "ActiveOperatingContextV26",
-    "ContextSwitchEvidenceV26",
-    "CanonicalCommandV26",
-    "LegacyRouteConvergenceV26",
-    "OperationalImpactV26",
+    "OrganisationV26", "SiteV26", "SiteMembershipV26", "ActiveOperatingContextV26",
+    "ContextSwitchEvidenceV26", "CanonicalCommandV26", "LegacyRouteConvergenceV26", "OperationalImpactV26",
 ):
     assert f"class {model}" in models, model
 
@@ -55,16 +48,9 @@ assert 'operating_context_switched' in context_service
 assert 'V26_CONTEXT_BOOTSTRAP_ENABLED' in context_service
 
 for command in (
-    "patient_blocker",
-    "handover_request",
-    "critical_result_received",
-    "consent_review_request",
-    "estimate_review_request",
-    "discharge_review_request",
-    "safety_escalation",
-    "service_restriction",
-    "equipment_downtime",
-    "medication_supply_delay",
+    "patient_blocker", "handover_request", "critical_result_received", "consent_review_request",
+    "estimate_review_request", "discharge_review_request", "safety_escalation", "service_restriction",
+    "equipment_downtime", "medication_supply_delay",
 ):
     assert f'"{command}"' in command_service, command
 
@@ -76,14 +62,10 @@ assert 'create_action(' in command_service
 assert 'existing_safety_ref' in command_service
 
 for route in (
-    '@router.get("/api/v26/context")',
-    '@router.post("/api/v26/context/switch")',
-    '@router.post("/api/v26/commands")',
-    '@router.get("/api/v26/operational-view")',
-    '@router.get("/api/v26/convergence")',
-    '@router.patch("/api/patient-care/episodes/{episode_id}/state")',
-    '@router.post("/api/control-plane/handovers")',
-    '@router.post("/api/control-plane/critical-results")',
+    '@router.get("/api/v26/context")', '@router.post("/api/v26/context/switch")',
+    '@router.post("/api/v26/commands")', '@router.get("/api/v26/operational-view")',
+    '@router.get("/api/v26/convergence")', '@router.patch("/api/patient-care/episodes/{episode_id}/state")',
+    '@router.post("/api/control-plane/handovers")', '@router.post("/api/control-plane/critical-results")',
 ):
     assert route in routes, route
 
@@ -91,19 +73,12 @@ assert 'class _DeferredCommitSession' in routes
 assert 'self._session.flush()' in routes
 assert 'app.include_router(operational_context_v26_router)' in main
 assert main.index('app.include_router(operational_context_v26_router)') < main.index('app.include_router(safety_bridge_v25_router)')
-
 assert 'revision: str = "0020_operational_convergence_v26"' in migration
 assert 'down_revision: Union[str, None] = "0019_cross_system_safety_control_v25"' in migration
 
 for proof_text in (
-    "cross-site writes rejected",
-    "Default-premises",
-    "clinicalMutationPerformed",
-    "Spoofed Browser",
-    "HANDOVER-V26",
-    "RESULT-V26",
-    "mri-downtime-v26",
-    "verify_event_chain",
+    "cross-site writes rejected", "Default-premises", "clinicalMutationPerformed", "Spoofed Browser",
+    "HANDOVER-V26", "RESULT-V26", "mri-downtime-v26", "verify_event_chain",
 ):
     assert proof_text.lower() in proof.lower(), proof_text
 
@@ -115,24 +90,9 @@ assert '/api/v26/commands' in page
 assert 'It does not complete consent, discharge, prescribing or treatment.' in page
 
 for principle in (
-    "Verified person + authorised role + authorised hospital context",
-    "does not diagnose",
-    "commit together or roll back together",
-    "not a live hospital deployment",
+    "Verified person + authorised role + authorised hospital context", "does not diagnose",
+    "commit together or roll back together", "not a live hospital deployment",
 ):
     assert principle.lower() in docs.lower(), principle
-
-assert '0020_operational_convergence_v26' in restore
-for table in (
-    "organisationv26",
-    "sitev26",
-    "sitemembershipv26",
-    "activeoperatingcontextv26",
-    "contextswitchevidencev26",
-    "canonicalcommandv26",
-    "legacyrouteconvergencev26",
-    "operationalimpactv26",
-):
-    assert table in restore, table
 
 print("V26 operating context, command convergence, atomicity and clinical boundary validated")

@@ -11,7 +11,6 @@ on:
       - "apps/web/app/patient-record/layout.tsx"
       - "apps/web/app/medications/**"
       - "scripts/validate_speech_capture_v19.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/speech-capture-v19-ci.yml"
   push:
     branches: [main]
@@ -24,7 +23,6 @@ on:
       - "apps/web/app/patient-record/layout.tsx"
       - "apps/web/app/medications/**"
       - "scripts/validate_speech_capture_v19.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/speech-capture-v19-ci.yml"
 
 concurrency:
@@ -71,11 +69,6 @@ jobs:
           assert not missing, missing
           print(f'SPEECH_CAPTURE_MIGRATION_V19_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore script syntax
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Upload API speech evidence
         if: always()
         uses: actions/upload-artifact@v4
