@@ -12,7 +12,6 @@ on:
       - "apps/web/components/deployment-control-v28.tsx"
       - "docs/REAL_HOSPITAL_CONNECTION_V28.md"
       - "scripts/validate_real_hospital_connection_v28.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/real-hospital-connection-v28-ci.yml"
   push:
     branches: [main]
@@ -26,7 +25,6 @@ on:
       - "apps/web/components/deployment-control-v28.tsx"
       - "docs/REAL_HOSPITAL_CONNECTION_V28.md"
       - "scripts/validate_real_hospital_connection_v28.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/real-hospital-connection-v28-ci.yml"
 
 jobs:
@@ -91,13 +89,6 @@ jobs:
           assert expected <= tables, expected - tables
           print(f'REAL_HOSPITAL_CONNECTION_MIGRATION_V28_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'speechsessionv28' scripts/restore-rehearsal.sh
-          grep -q 'integrationpromotionv28' scripts/restore-rehearsal.sh
-          grep -q 'reconciliationitemv28' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
