@@ -14,7 +14,7 @@ from app.operational_context_v26_models import SiteMembershipV26
 from app.organisation_onboarding_v27_models import OnboardingSiteV27
 from app.real_hospital_connection_v28_models import IntegrationConnectorV28, ReconciliationItemV28
 
-router = APIRouter(prefix="/api/pilot-release", tags=["pilot-release"])
+router = APIRouter(prefix="/pilot-release", tags=["pilot-release"])
 
 REQUIRED_CONNECTOR_TYPES = {
     "patient_management",
@@ -103,7 +103,7 @@ def evaluate_release_readiness(
         if not healthy:
             blockers.append(f"A tested, active shadow/read-only {connector_type} connector is required.")
 
-    unsafe_write_mode = [item for item in connector_states if item["mode"] not in {"disabled", *ALLOWED_PILOT_CONNECTOR_MODES}]
+    unsafe_write_mode = [item for item in connector_states if item["mode"] not in ({"disabled"} | ALLOWED_PILOT_CONNECTOR_MODES)]
     checks.append({"code": "external_write_back_disabled", "passed": not unsafe_write_mode})
     if unsafe_write_mode:
         blockers.append("External-system write-back is not authorised for the bounded pilot.")
