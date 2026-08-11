@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from app.auth import AuthContext, require_roles
 from app.database import get_session
+from app.pilot_release_readiness import router as pilot_release_router
 from app.production_readiness_service import (
     add_observation,
     control_dict,
@@ -247,3 +248,6 @@ def patch_observation(
     except Exception as exc:
         session.rollback()
         raise translate_error(exc) from exc
+
+
+router.include_router(pilot_release_router)

@@ -7,8 +7,11 @@ on:
       - "apps/api/app/auth*.py"
       - "apps/api/app/*middleware*.py"
       - "apps/api/app/regulated_workflow_v32_*.py"
+      - "apps/api/app/pilot_release_readiness.py"
+      - "apps/api/app/production_readiness_routes.py"
       - "apps/api/migrations/versions/**"
       - "apps/api/regulated_workflow_v32_*_test.py"
+      - "apps/api/pilot_release_readiness_test.py"
       - "apps/api/speech_capture_v19_smoke_test.py"
       - "apps/web/app/hospital-board/**"
       - "apps/web/app/episode-command/**"
@@ -29,7 +32,10 @@ on:
       - "apps/api/app/auth*.py"
       - "apps/api/app/*middleware*.py"
       - "apps/api/app/regulated_workflow_v32_*.py"
+      - "apps/api/app/pilot_release_readiness.py"
+      - "apps/api/app/production_readiness_routes.py"
       - "apps/api/migrations/versions/**"
+      - "apps/api/pilot_release_readiness_test.py"
       - "apps/web/**"
       - "docs/OPERATING_MODEL.md"
       - "scripts/validate_system_ready.py"
@@ -93,6 +99,8 @@ jobs:
         run: python regulated_workflow_v32_extension_smoke_test.py
       - name: Run transactional client-actions journey
         run: python regulated_workflow_v32_client_actions_smoke_test.py
+      - name: Run bounded pilot release gate proof
+        run: python pilot_release_readiness_test.py
       - name: Run speech human-review regression
         run: python speech_capture_v19_smoke_test.py
       - name: Validate recovery script syntax
