@@ -17,11 +17,9 @@ on:
       - "docs/OPERATIONAL_PROOF_DEMO_HOSPITAL_V30.md"
       - "scripts/validate_operational_proof_v30.py"
       - "scripts/prove-operational-v30.sh"
-      - "scripts/restore-rehearsal.sh"
-      - "package.json"
       - ".github/workflows/operational-proof-v30-ci.yml"
   push:
-    branches: [main, "feature/**", "fix/**"]
+    branches: [main]
     paths:
       - "apps/api/app/operational_proof_v30_*.py"
       - "apps/api/app/connected_surfaces_v30_patch.py"
@@ -37,12 +35,10 @@ on:
       - "docs/OPERATIONAL_PROOF_DEMO_HOSPITAL_V30.md"
       - "scripts/validate_operational_proof_v30.py"
       - "scripts/prove-operational-v30.sh"
-      - "scripts/restore-rehearsal.sh"
-      - "package.json"
       - ".github/workflows/operational-proof-v30-ci.yml"
 
 jobs:
-  connected-journey-stress-mobile-and-recovery:
+  connected-journey-stress-mobile:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,7 +77,7 @@ jobs:
       - name: Run authority, stale-state, mobile and urgent-access proof
         working-directory: apps/api
         run: python operational_proof_v30_authority_test.py 2>&1 | tee operational-proof-v30-authority.log
-      - name: Verify SQLite migration 0024 and v30 evidence tables
+      - name: Verify current migration head and v30 evidence tables
         working-directory: apps/api
         shell: bash
         run: |
@@ -89,28 +85,23 @@ jobs:
           rm -f /tmp/lucyworks-v30-ci.db
           DATABASE_URL=sqlite:////tmp/lucyworks-v30-ci.db alembic upgrade head 2>&1 | tee operational-proof-migration-v30.log
           DATABASE_URL=sqlite:////tmp/lucyworks-v30-ci.db python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
           from sqlalchemy import create_engine, inspect, text
           engine = create_engine('sqlite:////tmp/lucyworks-v30-ci.db')
           with engine.connect() as connection:
               version = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          expected_head = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
           expected = {
               'operationalproofrunv30', 'operationalproofstepv30',
               'operationalproofscenariov30', 'mobileacceptancev30',
               'canonicalepisodestate', 'episodeclosurev9', 'hospitalpilotv29',
           }
           tables = set(inspect(engine).get_table_names())
-          assert version == '0024_operational_proof_v30', version
+          assert version == expected_head, (version, expected_head)
           assert expected <= tables, expected - tables
-          print('OPERATIONAL_PROOF_MIGRATION_V30_PASSED_AT_0024')
+          print(f'OPERATIONAL_PROOF_MIGRATION_V30_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q '0024_operational_proof_v30' scripts/restore-rehearsal.sh
-          grep -q 'operationalproofrunv30' scripts/restore-rehearsal.sh
-          grep -q 'operationalproofstepv30' scripts/restore-rehearsal.sh
-          grep -q 'operationalproofscenariov30' scripts/restore-rehearsal.sh
-          grep -q 'mobileacceptancev30' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund

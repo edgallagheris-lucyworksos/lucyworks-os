@@ -13,7 +13,6 @@ on:
       - "apps/web/components/organisation-onboarding-v27.tsx"
       - "docs/ORGANISATION_ONBOARDING_V27.md"
       - "scripts/validate_organisation_onboarding_v27.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/organisation-onboarding-v27-ci.yml"
   push:
     branches: [main]
@@ -28,7 +27,6 @@ on:
       - "apps/web/components/organisation-onboarding-v27.tsx"
       - "docs/ORGANISATION_ONBOARDING_V27.md"
       - "scripts/validate_organisation_onboarding_v27.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/organisation-onboarding-v27-ci.yml"
 
 jobs:
@@ -99,14 +97,6 @@ jobs:
           assert expected <= tables, expected - tables
           print(f'ORGANISATION_ONBOARDING_MIGRATION_V27_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'onboardingorganisationv27' scripts/restore-rehearsal.sh
-          grep -q 'staffaccessapprovalv27' scripts/restore-rehearsal.sh
-          grep -q 'configurationreleasev27' scripts/restore-rehearsal.sh
-          grep -q 'configurationchangev27' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund

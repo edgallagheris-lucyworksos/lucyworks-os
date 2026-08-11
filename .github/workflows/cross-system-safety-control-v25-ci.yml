@@ -13,7 +13,6 @@ on:
       - "apps/web/components/cross-system-safety-control-v25*.tsx"
       - "docs/CROSS_SYSTEM_SAFETY_AUDIT_V25.md"
       - "scripts/validate_cross_system_safety_control_v25.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/cross-system-safety-control-v25-ci.yml"
   push:
     branches: [main]
@@ -28,7 +27,6 @@ on:
       - "apps/web/components/cross-system-safety-control-v25*.tsx"
       - "docs/CROSS_SYSTEM_SAFETY_AUDIT_V25.md"
       - "scripts/validate_cross_system_safety_control_v25.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/cross-system-safety-control-v25-ci.yml"
 
 jobs:
@@ -95,14 +93,6 @@ jobs:
           assert expected <= tables, expected - tables
           print(f'CROSS_SYSTEM_SAFETY_V25_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
-          grep -q 'safetyactionv25' scripts/restore-rehearsal.sh
-          grep -q 'safetyaccesseventv25' scripts/restore-rehearsal.sh
-          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund

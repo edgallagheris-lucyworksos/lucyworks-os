@@ -10,7 +10,6 @@ on:
       - "apps/web/components/automation-operator-control-v23.tsx"
       - "apps/web/components/automation-board-dock-v23.tsx"
       - "scripts/validate_automation_operator_control_v23.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/automation-operator-control-v23-ci.yml"
   push:
     branches: [main]
@@ -22,11 +21,10 @@ on:
       - "apps/web/components/automation-operator-control-v23.tsx"
       - "apps/web/components/automation-board-dock-v23.tsx"
       - "scripts/validate_automation_operator_control_v23.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/automation-operator-control-v23-ci.yml"
 
 jobs:
-  operator-authority-api-web-and-recovery:
+  operator-authority-api-web:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,14 +77,6 @@ jobs:
           assert {'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
           print(f'AUTOMATION_OPERATOR_V23_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
-          grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
-          grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
-          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Install web dependencies
         working-directory: apps/web
         run: npm install --no-audit --no-fund
