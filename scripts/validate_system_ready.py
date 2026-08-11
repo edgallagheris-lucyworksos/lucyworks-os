@@ -51,8 +51,9 @@ require(
 )
 require(
     "apps/web/components/episode-command-shell.tsx",
-    "Patient episode control",
-    "Clinical state, authority, client communication, evidence and financial controls share one patient context.",
+    "Patient episode",
+    "Find patient or episode",
+    "Clinical work",
 )
 
 # Staff-facing actions call high-level governed commands; they do not invent or orchestrate evidence references.
@@ -106,8 +107,10 @@ require(
 
 require(
     "apps/web/components/hospital-value-panel.tsx",
-    "Commercial capacity",
-    "not a claimed profit margin",
+    "Clinical exceptions",
+    "Patients with planned care",
+    "Blocked / unassigned",
+    "Bookable capacity scheduled",
 )
 require(
     "apps/web/components/episode-governance-panel.tsx",
