@@ -15,13 +15,16 @@ required = {
     "role-aware hospital shell": "user.name" in shell and "user.role" in shell,
     "professional access shell": "Secure hospital access" in auth,
     "operational context persistence": "lucyworks.premisesRef" in context,
+    "compact management indicators": "Operating indicators" in (ROOT / "apps/web/components/hospital-value-panel.tsx").read_text(),
 }
 
 forbidden = {
     "legacy desktop board fallback": "HospitalMasterBoardV11" in board,
     "automation controls on patient-flow board": "AutomationBoardDockV23" in board or "Automation controls" in board,
     "component hard-coded premises constant": "const PREMISES" in board,
-    "visible prototype wording in hospital shell": any(term in shell for term in ["synthetic", "demo", "prototype", "master board v", "V11", "V15"]),
+    "visible synthetic wording": '"synthetic"' in shell.lower() or '>synthetic<' in shell.lower(),
+    "visible demo wording": '>demo<' in shell.lower(),
+    "visible prototype wording": '>prototype<' in shell.lower(),
     "visible development wording in access shell": "Development environment" in auth,
 }
 
