@@ -1,0 +1,119 @@
+name: LucyWorks Platform Regression
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/auth*.py"
+      - "apps/api/app/*middleware*.py"
+      - "apps/api/app/regulated_workflow_v32_*.py"
+      - "apps/api/migrations/versions/**"
+      - "apps/api/regulated_workflow_v32_*_test.py"
+      - "apps/api/speech_capture_v19_smoke_test.py"
+      - "apps/web/app/hospital-board/**"
+      - "apps/web/app/episode-command/**"
+      - "apps/web/components/hospital-value-panel.tsx"
+      - "apps/web/components/episode-command-shell.tsx"
+      - "apps/web/components/episode-governance-panel.tsx"
+      - "apps/web/components/episode-client-finance-actions.tsx"
+      - "apps/web/components/episode-complaint-control.tsx"
+      - "apps/web/components/responsive-hospital-board-v15.tsx"
+      - "docs/OPERATING_MODEL.md"
+      - "scripts/validate_system_ready.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/platform-regression.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/app/main.py"
+      - "apps/api/app/auth*.py"
+      - "apps/api/app/*middleware*.py"
+      - "apps/api/app/regulated_workflow_v32_*.py"
+      - "apps/api/migrations/versions/**"
+      - "apps/web/**"
+      - "docs/OPERATING_MODEL.md"
+      - "scripts/validate_system_ready.py"
+      - "scripts/restore-rehearsal.sh"
+      - ".github/workflows/platform-regression.yml"
+
+concurrency:
+  group: platform-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  system-contract:
+    name: System-ready product contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate coherent hospital operating model
+        run: python scripts/validate_system_ready.py
+
+  api-platform:
+    name: API, schema and governed journey
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install API dependencies
+        run: python -m pip install --upgrade pip -q && pip install -q -r requirements.txt
+      - name: Compile application runtime
+        run: python -m compileall -q app
+      - name: Prove Alembic resolves one current head
+        env:
+          DATABASE_URL: sqlite:////tmp/lucyworks-platform-regression.db
+          AUTO_CREATE_SCHEMA: "false"
+        run: |
+          rm -f /tmp/lucyworks-platform-regression.db
+          alembic upgrade head
+          python - <<'PY'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
+          from sqlalchemy import create_engine, text
+          expected = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
+          assert expected, 'Alembic has no current head'
+          with create_engine('sqlite:////tmp/lucyworks-platform-regression.db').connect() as connection:
+              actual = connection.execute(text('select version_num from alembic_version')).scalar_one()
+          assert actual == expected, (actual, expected)
+          print(f'PLATFORM_SCHEMA_HEAD={actual}')
+          PY
+      - name: Run regulated estimate and AI journey
+        run: python regulated_workflow_v32_smoke_test.py
+      - name: Run charge, complaint and prescription journey
+        run: python regulated_workflow_v32_extension_smoke_test.py
+      - name: Run transactional client-actions journey
+        run: python regulated_workflow_v32_client_actions_smoke_test.py
+      - name: Run speech human-review regression
+        run: python speech_capture_v19_smoke_test.py
+      - name: Validate recovery script syntax
+        run: bash -n ../../scripts/restore-rehearsal.sh
+
+  web-platform:
+    name: Professional hospital web build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build hospital application
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build

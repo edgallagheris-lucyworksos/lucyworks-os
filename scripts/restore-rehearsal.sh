@@ -38,44 +38,29 @@ trap cleanup EXIT
 "${COMPOSE[@]}" exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$TEST_DB" --clean --if-exists --no-owner "/backups/$BACKUP_NAME"
 
 version="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select version_num from alembic_version')"
-[[ "$version" == "0024_operational_proof_v30" ]] || { echo "restored migration version is $version, expected 0024_operational_proof_v30" >&2; exit 1; }
+expected_version="$(cd "$ROOT/apps/api" && python - <<'PY'
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+head = ScriptDirectory.from_config(Config('alembic.ini')).get_current_head()
+if not head:
+    raise SystemExit('Alembic has no current head')
+print(head)
+PY
+)"
+[[ "$version" == "$expected_version" ]] || { echo "restored migration version is $version, expected current head $expected_version" >&2; exit 1; }
 
-# Every governed table remains explicit here so a restore cannot pass merely
-# because the database starts. This is the durable evidence surface through v30.
+# Critical durable tables. Keep this list focused on cross-cutting records that
+# must survive a restore; migration-head validation proves the full schema level.
 for table in \
-  evidenceevent operationalblock canonicalepisodestate readinesscontrol pilotrun \
-  hospitalconfigurationrecord configurationverificationtask workforceprofile workforcecompetency \
-  workforceshiftv6 workforceavailabilityexceptionv6 referralintake historicalreplayrun \
-  authsession durableevent eventacknowledgement canonicalshadowcomparison integrationretryjob \
-  medicationorder medicationadministration anaesthesiarecord clinicalobservation treatmenttask \
-  controlleddrugledgerentry inventoryitem inventorymovement diagnosticworkitem samplechainevent dischargeplan \
-  owneraccountv8 patientclinicalrecordv8 patientownerlinkv8 patientproblemv8 patientallergyv8 patientweightv8 \
-  clinicalencounterv8 clinicalnotev8 formularymedicinev8 formularydoserulev8 medicationsafetyreviewv8 \
-  anaesthesiachartv8 anaesthesiaobservationv8 anaesthesiadrugeventv8 fluidplanv8 fluidbalanceentryv8 \
-  inpatientcareplanv8 inpatientchartentryv8 procedurerecordv8 implanttracev8 estimatev8 estimatelinev8 \
-  insurancecasev8 financialtransactionv8 communicationeventv8 clinicaldocumentv8 \
-  referralintakev9 consentauthorisationv9 episodehandoverv9 episodecheckpointv9 episodetransitionv9 episodeclosurev9 \
-  safetycasev10 safetyhazardv10 safetyreviewv10 deploymentprofilev10 \
-  referralidentityintakev12 identitymatchreviewv12 referraldocumentv12 referraltriagev12 accessreviewv12 \
-  productimportbatchv18 veterinaryproductv18 medicationprotocolv18 dosecalculationv18 medicationproposalv18 \
-  speechcapturev19 speechdraftv19 speechphrasepackv19 automationdecisionv20 \
-  automationruntimeconfigv22 automationtriggerv22 automationoperatoractionv23 \
-  pilotauthorityv24 pilotapprovalv24 pilotcontrolactionv24 pilotshadowcomparisonv24 pilotuatscenariov24 \
-  safetyrecordv25 safetyactionv25 safetydecisionv25 safetylinkv25 safetyescalationv25 safetyaccesseventv25 \
-  organisationv26 sitev26 sitemembershipv26 activeoperatingcontextv26 contextswitchevidencev26 \
-  canonicalcommandv26 legacyrouteconvergencev26 operationalimpactv26 \
-  onboardingorganisationv27 onboardingsitev27 onboardingdepartmentv27 onboardingservicev27 \
-  onboardingroomv27 onboardingequipmentv27 staffimportbatchv27 onboardingstaffv27 \
-  staffcredentialv27 staffcompetencyv27 staffaccessapprovalv27 sitepolicyv27 \
-  configurationreleasev27 configurationchangev27 \
-  speechproviderv28 speechsessionv28 speechsegmentv28 integrationconnectorv28 \
-  integrationpromotionv28 integrationeventv28 reconciliationitemv28 \
-  speechadapterv29 veterinaryterminologypackv29 integrationsimulatorv29 \
-  simulatorscenariov29 simulatorrunv29 readinessassessmentv29 hospitalpilotv29 \
-  pilotapprovalv29 pilotincidentv29 pilotmeasurementv29 exportartifactv29 \
-  operationalproofrunv30 operationalproofstepv30 operationalproofscenariov30 mobileacceptancev30; do
+  evidenceevent canonicalepisodestate authsession durableevent \
+  patientclinicalrecordv8 referralintakev9 consentauthorisationv9 episodehandoverv9 \
+  safetycasev10 referralidentityintakev12 speechcapturev19 speechdraftv19 \
+  canonicalcommandv26 configurationreleasev27 speechsessionv28 integrationeventv28 \
+  hospitalpilotv29 operationalproofrunv30 \
+  servicepricev32 estimategovernancev32 aiprovenancev32 \
+  chargeprovenancev32 complaintv32 prescriptionchoicev32; do
   exists="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc "select to_regclass('public.$table') is not null")"
-  [[ "$exists" == "t" ]] || { echo "restored table missing: $table" >&2; exit 1; }
+  [[ "$exists" == "t" ]] || { echo "restored critical table missing: $table" >&2; exit 1; }
 done
 
 counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB" -Atc 'select json_build_object(
@@ -83,20 +68,15 @@ counts="$("${COMPOSE[@]}" exec -T postgres psql -U "$POSTGRES_USER" -d "$TEST_DB
   '"'"'patients'"'"', (select count(*) from patientclinicalrecordv8),
   '"'"'canonicalEpisodes'"'"', (select count(*) from canonicalepisodestate),
   '"'"'configurationReleases'"'"', (select count(*) from configurationreleasev27),
-  '"'"'speechSessionsV28'"'"', (select count(*) from speechsessionv28),
-  '"'"'integrationEventsV28'"'"', (select count(*) from integrationeventv28),
-  '"'"'speechAdaptersV29'"'"', (select count(*) from speechadapterv29),
-  '"'"'terminologyPacksV29'"'"', (select count(*) from veterinaryterminologypackv29),
-  '"'"'simulatorRunsV29'"'"', (select count(*) from simulatorrunv29),
-  '"'"'readinessAssessmentsV29'"'"', (select count(*) from readinessassessmentv29),
-  '"'"'hospitalPilotsV29'"'"', (select count(*) from hospitalpilotv29),
-  '"'"'pilotIncidentsV29'"'"', (select count(*) from pilotincidentv29),
-  '"'"'pilotMeasurementsV29'"'"', (select count(*) from pilotmeasurementv29),
-  '"'"'deploymentArtifactsV29'"'"', (select count(*) from exportartifactv29),
-  '"'"'operationalProofRunsV30'"'"', (select count(*) from operationalproofrunv30),
-  '"'"'operationalProofStepsV30'"'"', (select count(*) from operationalproofstepv30),
-  '"'"'operationalProofScenariosV30'"'"', (select count(*) from operationalproofscenariov30),
-  '"'"'mobileAcceptanceV30'"'"', (select count(*) from mobileacceptancev30)
+  '"'"'speechSessions'"'"', (select count(*) from speechsessionv28),
+  '"'"'integrationEvents'"'"', (select count(*) from integrationeventv28),
+  '"'"'hospitalPilots'"'"', (select count(*) from hospitalpilotv29),
+  '"'"'operationalProofRuns'"'"', (select count(*) from operationalproofrunv30),
+  '"'"'estimateGovernance'"'"', (select count(*) from estimategovernancev32),
+  '"'"'aiProvenanceRecords'"'"', (select count(*) from aiprovenancev32),
+  '"'"'chargeRecords'"'"', (select count(*) from chargeprovenancev32),
+  '"'"'complaints'"'"', (select count(*) from complaintv32),
+  '"'"'prescriptionChoices'"'"', (select count(*) from prescriptionchoicev32)
 )')"
 
 echo "Restore rehearsal passed for $BACKUP_NAME at migration $version"

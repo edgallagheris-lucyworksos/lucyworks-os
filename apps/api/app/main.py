@@ -14,6 +14,7 @@ from app.auth import VerifiedIdentityMiddleware
 from app.verified_actor_attribution_v25 import VerifiedActorAttributionMiddlewareV25
 from app.production_middleware import ProductionProtectionMiddleware
 from app.legacy_write_retirement import LegacyWriteRetirementMiddleware
+from app.regulated_workflow_v32_middleware import RegulatedWorkflowV32BoundaryMiddleware
 from app.auth_routes import router as auth_router
 from app.v3_operational_routes import router as v3_operational_router
 from app.ops_engine_routes import router as ops_engine_router
@@ -79,6 +80,9 @@ from app.hospital_master_board_v11_routes import router as hospital_master_board
 from app.referral_identity_v12_routes import router as referral_identity_v12_router
 from app.medication_foundation_v18_routes import router as medication_foundation_v18_router
 from app.speech_capture_v19_routes import router as speech_capture_v19_router
+from app.regulated_workflow_v32_routes import router as regulated_workflow_v32_router
+from app.regulated_workflow_v32_extension_routes import router as regulated_workflow_v32_extension_router
+from app.regulated_workflow_v32_client_actions import router as regulated_workflow_v32_client_router
 from app.operational_automation_v20_routes import router as operational_automation_v20_router
 from app.recorded_state_automation_v21_routes import (
     generic_guard_router as recorded_state_automation_guard_v21_router,
@@ -122,6 +126,7 @@ app.add_middleware(VerifiedActorAttributionMiddlewareV25)
 if not LEGACY_TEST_BYPASS:
     app.add_middleware(VerifiedIdentityMiddleware)
 app.add_middleware(LegacyWriteRetirementMiddleware)
+app.add_middleware(RegulatedWorkflowV32BoundaryMiddleware)
 app.add_middleware(ProductionProtectionMiddleware)
 
 app.include_router(auth_router)
@@ -202,6 +207,9 @@ app.include_router(hospital_master_board_v11_router)
 app.include_router(referral_identity_v12_router)
 app.include_router(medication_foundation_v18_router)
 app.include_router(speech_capture_v19_router)
+app.include_router(regulated_workflow_v32_router)
+app.include_router(regulated_workflow_v32_extension_router)
+app.include_router(regulated_workflow_v32_client_router)
 app.include_router(event_driven_automation_guard_v22_router)
 app.include_router(recorded_state_automation_guard_v21_router)
 app.include_router(recorded_state_automation_v21_router)
