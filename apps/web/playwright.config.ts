@@ -11,7 +11,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run start -- -H 127.0.0.1 -p 3000",
+    command: "HOSTNAME=127.0.0.1 PORT=3000 node .next/standalone/server.js",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: false,
     timeout: 120_000,
