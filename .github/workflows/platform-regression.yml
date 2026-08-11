@@ -96,8 +96,7 @@ jobs:
       - name: Run speech human-review regression
         run: python speech_capture_v19_smoke_test.py
       - name: Validate recovery script syntax
-        working-directory: ../..
-        run: bash -n scripts/restore-rehearsal.sh
+        run: bash -n ../../scripts/restore-rehearsal.sh
 
   web-platform:
     name: Professional hospital web build
