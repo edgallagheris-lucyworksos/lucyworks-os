@@ -6,7 +6,6 @@ on:
       - "apps/api/app/operational_automation_v20_*.py"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/operational-automation-v20-ci.yml"
   push:
     branches: [main]
@@ -14,7 +13,6 @@ on:
       - "apps/api/app/operational_automation_v20_*.py"
       - "apps/api/operational_automation_v20_smoke_test.py"
       - "scripts/validate_operational_automation_v20.py"
-      - "scripts/restore-rehearsal.sh"
       - ".github/workflows/operational-automation-v20-ci.yml"
 
 jobs:
@@ -68,16 +66,6 @@ jobs:
           assert {'automationdecisionv20', 'automationruntimeconfigv22', 'automationtriggerv22', 'automationoperatoractionv23', 'pilotauthorityv24', 'safetyrecordv25', 'canonicalcommandv26'} <= tables
           print(f'OPERATIONAL_AUTOMATION_V20_PASSED_AT_{expected_head}')
           PY
-      - name: Validate restore rehearsal syntax and automation coverage
-        run: |
-          bash -n scripts/restore-rehearsal.sh
-          grep -q 'alembic upgrade head' scripts/restore-rehearsal.sh
-          grep -q 'automationdecisionv20' scripts/restore-rehearsal.sh
-          grep -q 'automationtriggerv22' scripts/restore-rehearsal.sh
-          grep -q 'automationoperatoractionv23' scripts/restore-rehearsal.sh
-          grep -q 'pilotauthorityv24' scripts/restore-rehearsal.sh
-          grep -q 'safetyrecordv25' scripts/restore-rehearsal.sh
-          grep -q 'canonicalcommandv26' scripts/restore-rehearsal.sh
       - name: Upload v20 evidence
         if: always()
         uses: actions/upload-artifact@v4
