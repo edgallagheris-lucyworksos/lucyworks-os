@@ -1,0 +1,22 @@
+name: Codespace Resume Check
+
+on:
+  pull_request:
+    paths:
+      - "scripts/codespace-autostart.sh"
+      - "scripts/codespace-autostart-smoke-test.sh"
+      - ".github/workflows/codespace-resume-check.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/codespace-autostart.sh"
+      - "scripts/codespace-autostart-smoke-test.sh"
+      - ".github/workflows/codespace-resume-check.yml"
+
+jobs:
+  stale-resume:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Codespace resume startup
+        run: bash scripts/codespace-autostart-smoke-test.sh
