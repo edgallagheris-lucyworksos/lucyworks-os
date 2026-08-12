@@ -8,6 +8,7 @@ PID_DIR="/tmp/lucyworks-pids"
 LOG_FILE="/tmp/lucyworks-codespace.log"
 API_LOG="/tmp/lucyworks-api.log"
 WEB_LOG="/tmp/lucyworks-web.log"
+RUNNING_SHA_FILE="/tmp/lucyworks-running-sha"
 
 mkdir -p "$STATE_DIR" "$PID_DIR"
 cd "$ROOT"
@@ -26,11 +27,16 @@ print_links() {
 LucyWorks OS is running.
 
 Login:        ${WEB_URL}/login
-Control plane:${WEB_URL}/control-plane
+System control:${WEB_URL}/system-control
+Patient command:${WEB_URL}/workspace
+Quick input:  ${WEB_URL}/input
 Hospital board:${WEB_URL}/hospital-board
-Patient care: ${WEB_URL}/patient-care
+Referral intake:${WEB_URL}/referral-intake
+Patient care: ${WEB_URL}/care
 Integrations: ${WEB_URL}/integrations
 API health:   ${API_URL}/api/health
+
+Running commit: $(cat "$RUNNING_SHA_FILE" 2>/dev/null || git rev-parse --short HEAD)
 
 Logs:
   tail -n 100 ${API_LOG}
@@ -41,8 +47,38 @@ Restart:
 EOF
 }
 
-# Do not restart healthy servers every time the Codespace is attached.
-if curl -fsS --max-time 3 http://127.0.0.1:8000/api/health >/dev/null 2>&1 \
+# Codespaces can resume with a healthy but stale server from a previous session.
+# On main, safely fast-forward a clean worktree before deciding whether the
+# existing processes are reusable. Never overwrite local edits or divergent work.
+CURRENT_BRANCH="$(git branch --show-current 2>/dev/null || true)"
+UPDATED=false
+if [[ "$CURRENT_BRANCH" == "main" ]] && git remote get-url origin >/dev/null 2>&1; then
+  if git fetch -q origin main; then
+    LOCAL_SHA="$(git rev-parse HEAD)"
+    REMOTE_SHA="$(git rev-parse origin/main)"
+    if [[ "$LOCAL_SHA" != "$REMOTE_SHA" ]]; then
+      if [[ -z "$(git status --porcelain)" ]] && git merge-base --is-ancestor "$LOCAL_SHA" "$REMOTE_SHA"; then
+        echo "Updating Codespace from ${LOCAL_SHA:0:8} to ${REMOTE_SHA:0:8}..."
+        git merge --ff-only origin/main
+        UPDATED=true
+      else
+        echo "Codespace main is not safely fast-forwardable; leaving local work untouched." >&2
+        echo "Current: ${LOCAL_SHA:0:8}  origin/main: ${REMOTE_SHA:0:8}" >&2
+      fi
+    fi
+  else
+    echo "Could not refresh origin/main; continuing with the checked-out commit." >&2
+  fi
+fi
+
+CHECKED_OUT_SHA="$(git rev-parse HEAD)"
+RUNNING_SHA="$(cat "$RUNNING_SHA_FILE" 2>/dev/null || true)"
+
+# Reuse healthy servers only when they are known to be serving this exact commit.
+# This prevents a resumed Codespace from silently serving an old LucyWorks build.
+if [[ "$UPDATED" == false ]] \
+  && [[ "$RUNNING_SHA" == "$CHECKED_OUT_SHA" ]] \
+  && curl -fsS --max-time 3 http://127.0.0.1:8000/api/health >/dev/null 2>&1 \
   && curl -fsS --max-time 5 http://127.0.0.1:3000/login >/dev/null 2>&1; then
   print_links
   exit 0
@@ -52,6 +88,7 @@ fi
   echo "== LucyWorks OS Codespace startup =="
   echo "Root: $ROOT"
   echo "Started: $(date -Iseconds)"
+  echo "Commit: $CHECKED_OUT_SHA"
   echo "Web URL: $WEB_URL"
   echo "API URL: $API_URL"
 } | tee "$LOG_FILE"
@@ -67,7 +104,8 @@ fi
 AUTH_SECRET="$(cat "$SECRET_FILE")"
 DATABASE_URL="${DATABASE_URL:-sqlite:///$ROOT/apps/api/lucyworks.db}"
 
-# Remove stale listeners that otherwise produce blank previews or 502 errors.
+# Remove stale listeners that otherwise produce blank previews, 502 errors, or
+# an apparently healthy server running an older checkout.
 for port in 3000 8000; do
   if command -v fuser >/dev/null 2>&1; then
     fuser -k "${port}/tcp" >> "$LOG_FILE" 2>&1 || true
@@ -77,7 +115,7 @@ for port in 3000 8000; do
   fi
 done
 
-rm -f "$PID_DIR/api.pid" "$PID_DIR/web.pid"
+rm -f "$PID_DIR/api.pid" "$PID_DIR/web.pid" "$RUNNING_SHA_FILE"
 
 # Keep dependency installation deterministic while allowing repeat starts.
 echo "Installing API dependencies..." | tee -a "$LOG_FILE"
@@ -151,4 +189,5 @@ if [[ "$web_ready" != true ]]; then
   exit 1
 fi
 
+printf '%s\n' "$CHECKED_OUT_SHA" > "$RUNNING_SHA_FILE"
 print_links
