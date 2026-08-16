@@ -123,7 +123,7 @@ for (const viewport of [
     test("hospital operations renders without prototype artefacts or overflow", async ({ page }) => {
       await assertProfessionalSurface(page, "/hospital-board", /Hospital operations/i, `hospital-${viewport.name}`);
       await expect(page.getByRole("heading", { name: "15-minute operating grid" })).toBeVisible();
-      await expect(page.getByText("Bristol Referral Hospital").first()).toBeVisible();
+      await expect(page.locator(".hospital-shell__identity").getByText("Bristol Referral Hospital", { exact: true })).toBeVisible();
       await page.locator('[data-block-ref="block-1"]').click();
       await expect(page.getByRole("heading", { name: "Recorded gates" })).toBeVisible();
       await expect(page.getByRole("button", { name: "−15 min" })).toBeVisible();
@@ -133,7 +133,8 @@ for (const viewport of [
 
     test("referral intake renders as a staff workflow", async ({ page }) => {
       await assertProfessionalSurface(page, "/referral-intake", /Referral intake/i, `referral-${viewport.name}`);
-      await expect(page.getByText("Owner & authority")).toBeVisible();
+      await page.locator(".ri-steps button").nth(1).click();
+      await expect(page.getByRole("heading", { name: "Owner & authority" })).toBeVisible();
     });
 
     test("patient workspace renders care-first", async ({ page }) => {
