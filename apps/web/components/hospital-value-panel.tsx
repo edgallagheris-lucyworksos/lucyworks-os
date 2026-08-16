@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet } from "@/lib/api";
 import { localOperationalDate } from "@/lib/operational-date";
-import { getOperationalContext } from "@/lib/operational-context";
+import { useOperationalContext } from "@/lib/operational-context";
 
 type Area = { areaRef: string; areaType: string; capacity: number };
 type Block = { episodeRef?: string; startsAt: string; endsAt: string; areaRef: string; status: string };
@@ -28,7 +28,7 @@ function pct(value: number) {
 }
 
 export function HospitalValuePanel() {
-  const [{ premisesRef }] = useState(() => getOperationalContext());
+  const { premisesRef } = useOperationalContext();
   const [board, setBoard] = useState<Board | null>(null);
   const [available, setAvailable] = useState(true);
 

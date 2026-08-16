@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiJson } from "@/lib/api-client";
-import { getOperationalContext } from "@/lib/operational-context";
+import { useOperationalContext } from "@/lib/operational-context";
 
 type QueueTab = "new" | "identity" | "triage" | "referrals";
 const steps = ["Patient", "Owner & authority", "Referral source", "Clinical need", "Documents", "Confirm"];
@@ -20,7 +20,7 @@ function emptyForm(premisesRef: string) {
 }
 
 export function GuidedReferralIntakeV31() {
-  const [{ premisesRef, siteName }] = useState(() => getOperationalContext());
+  const { premisesRef, siteName } = useOperationalContext();
   const [tab, setTab] = useState<QueueTab>("new");
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(() => emptyForm(premisesRef));
@@ -29,6 +29,10 @@ export function GuidedReferralIntakeV31() {
   const [triage, setTriage] = useState<any[]>([]);
   const [identityLinks, setIdentityLinks] = useState<Record<string, string>>({});
   const [created, setCreated] = useState<any | null>(null);
+
+  useEffect(() => {
+    setForm(current => current.premisesRef === premisesRef ? current : { ...current, premisesRef });
+  }, [premisesRef]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");

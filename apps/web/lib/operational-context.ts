@@ -1,30 +1,67 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { apiGet } from "@/lib/api-client";
+
 export type OperationalContext = {
+  organisationRef?: string;
+  siteRef?: string;
   premisesRef: string;
   siteName: string;
+  version?: number;
 };
 
-const PREMISES_KEY = "lucyworks.premisesRef";
-const SITE_NAME_KEY = "lucyworks.siteName";
+type AuthorisedContextResponse = {
+  context?: {
+    organisationRef?: string;
+    siteRef?: string;
+    premisesRef?: string;
+    version?: number;
+  };
+  sites?: Array<{
+    siteRef?: string;
+    premisesRef?: string;
+    name?: string;
+  }>;
+};
+
+const fallbackContext: OperationalContext = {
+  premisesRef: process.env.NEXT_PUBLIC_PREMISES_REF || "default-premises",
+  siteName: process.env.NEXT_PUBLIC_SITE_NAME || "Referral Hospital",
+};
 
 export function getOperationalContext(): OperationalContext {
-  if (typeof window === "undefined") {
-    return {
-      premisesRef: process.env.NEXT_PUBLIC_PREMISES_REF || "default-premises",
-      siteName: process.env.NEXT_PUBLIC_SITE_NAME || "Referral Hospital",
-    };
-  }
+  return fallbackContext;
+}
 
-  const params = new URLSearchParams(window.location.search);
-  const premisesFromUrl = params.get("premises")?.trim();
-  const nameFromUrl = params.get("site")?.trim();
-  const savedPremises = window.localStorage.getItem(PREMISES_KEY)?.trim();
-  const savedName = window.localStorage.getItem(SITE_NAME_KEY)?.trim();
+export async function loadOperationalContext(): Promise<OperationalContext> {
+  const payload = await apiGet<AuthorisedContextResponse>("/api/v26/context");
+  const authorised = payload.context;
+  if (!authorised?.premisesRef) throw new Error("No authorised hospital context");
 
-  const premisesRef = premisesFromUrl || savedPremises || process.env.NEXT_PUBLIC_PREMISES_REF || "default-premises";
-  const siteName = nameFromUrl || savedName || process.env.NEXT_PUBLIC_SITE_NAME || "Referral Hospital";
+  const site = (payload.sites || []).find(item =>
+    item.siteRef === authorised.siteRef || item.premisesRef === authorised.premisesRef
+  );
 
-  if (premisesFromUrl) window.localStorage.setItem(PREMISES_KEY, premisesFromUrl);
-  if (nameFromUrl) window.localStorage.setItem(SITE_NAME_KEY, nameFromUrl);
+  return {
+    organisationRef: authorised.organisationRef,
+    siteRef: authorised.siteRef,
+    premisesRef: authorised.premisesRef,
+    siteName: site?.name || fallbackContext.siteName,
+    version: authorised.version,
+  };
+}
 
-  return { premisesRef, siteName };
+export function useOperationalContext(): OperationalContext {
+  const [context, setContext] = useState<OperationalContext>(fallbackContext);
+
+  useEffect(() => {
+    let active = true;
+    loadOperationalContext()
+      .then(value => { if (active) setContext(value); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  return context;
 }

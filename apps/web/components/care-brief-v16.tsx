@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "@/lib/api";
-import { getOperationalContext } from "@/lib/operational-context";
+import { useOperationalContext } from "@/lib/operational-context";
 
 type Brief = {
   generatedAt: string;
@@ -46,7 +46,7 @@ function tone(value: string) {
 
 export function CareBriefV16() {
   const params = useSearchParams();
-  const [{ siteName }] = useState(() => getOperationalContext());
+  const { siteName } = useOperationalContext();
   const [episodeRef, setEpisodeRef] = useState(params.get("episode") || "");
   const [data, setData] = useState<Brief | null>(null);
   const [status, setStatus] = useState("Select a patient episode");

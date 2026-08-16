@@ -6,22 +6,24 @@ const later = new Date(Date.now() + 60 * 60_000).toISOString();
 const hospitalBoard = {
   generatedAt: now,
   operationalDate: now.slice(0, 10),
+  boardVersion: "11.0",
+  premises: { premisesRef: "bvs-bristol", name: "Bristol Referral Hospital" },
   areas: [
-    { areaRef: "theatre-1", areaType: "theatre", capacity: 1 },
-    { areaRef: "mri-1", areaType: "imaging", capacity: 1 },
+    { areaRef: "theatre-1", name: "Theatre 1", areaType: "theatre", department: "Surgery", capacity: 1, turnoverMinutes: 20 },
+    { areaRef: "mri-1", name: "MRI", areaType: "imaging", department: "Diagnostic imaging", capacity: 1, turnoverMinutes: 15 },
   ],
   blocks: [
-    { blockRef: "block-1", episodeRef: "EP-1001", patientName: "Mabel", procedureName: "MRI spine", areaRef: "mri-1", areaName: "MRI", startsAt: now, endsAt: later, status: "planned", riskLevel: "green", leadStaffName: "A. Nurse" },
-    { blockRef: "block-2", episodeRef: "EP-1002", patientName: "Oscar", procedureName: "Surgical review", areaRef: "theatre-1", areaName: "Theatre 1", startsAt: later, endsAt: new Date(Date.now() + 2 * 60 * 60_000).toISOString(), status: "planned", riskLevel: "amber", leadStaffName: "Dr Patel" },
+    { blockRef: "block-1", episodeRef: "EP-1001", patientRef: "P-1001", patientName: "Mabel", procedureName: "MRI spine", blockType: "diagnostic", areaRef: "mri-1", areaName: "MRI", startsAt: now, endsAt: later, status: "planned", riskLevel: "green", priority: 50, leadStaffRef: "staff-1", leadStaffName: "A. Nurse", leadStaffRole: "nurse", assistantRefs: [], equipmentRefs: [], requiredSkills: [], blockers: [], gates: {}, version: 1 },
+    { blockRef: "block-2", episodeRef: "EP-1002", patientRef: "P-1002", patientName: "Oscar", procedureName: "Surgical review", blockType: "procedure", areaRef: "theatre-1", areaName: "Theatre 1", startsAt: later, endsAt: new Date(Date.now() + 2 * 60 * 60_000).toISOString(), status: "planned", riskLevel: "amber", priority: 40, leadStaffRef: "staff-2", leadStaffName: "Dr Patel", leadStaffRole: "clinician", assistantRefs: [], equipmentRefs: [], requiredSkills: ["surgical"], blockers: [], gates: {}, version: 1 },
   ],
   episodes: [
-    { episodeRef: "EP-1001", patientName: "Mabel", phase: "diagnostics", urgency: "urgent", ownerRole: "clinician", nextAction: "MRI spine", status: "active" },
-    { episodeRef: "EP-1002", patientName: "Oscar", phase: "pre_op", urgency: "routine", ownerRole: "nurse", nextAction: "Prepare for theatre", status: "active" },
-    { episodeRef: "EP-1003", patientName: "Luna", phase: "referral_received", urgency: "urgent", ownerRole: "reception", nextAction: "Clinical triage", status: "active" },
+    { episodeRef: "EP-1001", patientRef: "P-1001", patientName: "Mabel", phase: "diagnostics", urgency: "urgent", ownerRole: "clinician", currentAreaRef: "mri-1", nextAction: "MRI spine", status: "active", version: 1 },
+    { episodeRef: "EP-1002", patientRef: "P-1002", patientName: "Oscar", phase: "pre_op", urgency: "routine", ownerRole: "nurse", currentAreaRef: "theatre-1", nextAction: "Prepare for theatre", status: "active", version: 1 },
+    { episodeRef: "EP-1003", patientRef: "P-1003", patientName: "Luna", phase: "referral_received", urgency: "urgent", ownerRole: "reception", nextAction: "Clinical triage", status: "active", version: 1 },
   ],
   conflicts: [],
-  summary: { blocks: 2, episodes: 3, redConflicts: 0, amberConflicts: 0, unassignedBlocks: 0, blockedBlocks: 0 },
-  liveWindow: { blocks: [{ blockRef: "block-1", episodeRef: "EP-1001", patientName: "Mabel", procedureName: "MRI spine", areaRef: "mri-1", areaName: "MRI", startsAt: now, endsAt: later, status: "planned", riskLevel: "green", leadStaffName: "A. Nurse" }] },
+  summary: { blocks: 2, episodes: 3, redConflicts: 0, amberConflicts: 0, unassignedBlocks: 0, blockedBlocks: 0, lastChangeId: 1 },
+  liveWindow: { from: now, to: later, blocks: [] },
 };
 
 const workspace = {
@@ -64,8 +66,21 @@ async function mockHospitalApi(page: Page) {
     if (url.pathname === "/api/auth/me") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: "ui-test", subject: "ui-test", name: "Alex Morgan", role: "ops_manager", verified: true } }) });
     }
+    if (url.pathname === "/api/v26/context") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          context: { organisationRef: "bvs", siteRef: "bvs-bristol", premisesRef: "bvs-bristol", version: 1 },
+          sites: [{ organisationRef: "bvs", siteRef: "bvs-bristol", premisesRef: "bvs-bristol", name: "Bristol Referral Hospital", role: "ops_manager", isPrimary: true }],
+        }),
+      });
+    }
     if (url.pathname === "/api/v11/master-board/day") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(hospitalBoard) });
+    }
+    if (url.pathname === "/api/v9/episodes/EP-1001/command-view") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ episode: hospitalBoard.episodes[0], nextTransitions: {} }) });
     }
     if (url.pathname === "/api/v14/operational-workspace") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workspace) });
@@ -102,16 +117,17 @@ for (const viewport of [
 
     test.beforeEach(async ({ page }) => {
       await mockHospitalApi(page);
-      await page.addInitScript(() => {
-        window.localStorage.setItem("lucyworks.premisesRef", "hospital-main");
-        window.localStorage.setItem("lucyworks.siteName", "Bristol Referral Hospital");
-      });
     });
 
     test("hospital operations renders without prototype artefacts or overflow", async ({ page }) => {
       await assertProfessionalSurface(page, "/hospital-board", /Hospital operations/i, `hospital-${viewport.name}`);
-      await expect(page.getByText("Mabel").first()).toBeVisible();
+      await expect(page.getByRole("heading", { name: "15-minute operating grid" })).toBeVisible();
       await expect(page.getByText("Bristol Referral Hospital").first()).toBeVisible();
+      await page.locator('[data-block-ref="block-1"]').click();
+      await expect(page.getByRole("heading", { name: "Recorded gates" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "−15 min" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Save assignment" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Preview consequences" })).toBeVisible();
     });
 
     test("referral intake renders as a staff workflow", async ({ page }) => {

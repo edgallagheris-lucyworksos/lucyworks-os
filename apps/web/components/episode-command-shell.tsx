@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiGet } from "@/lib/api";
 import { localOperationalDate } from "@/lib/operational-date";
-import { getOperationalContext } from "@/lib/operational-context";
+import { useOperationalContext } from "@/lib/operational-context";
 
 type EpisodeHit = { episodeRef: string; patientName: string; phase: string; urgency: string; ownerRole: string };
 type Board = { episodes: EpisodeHit[] };
 
 export function EpisodeCommandShell({ children }: { children: ReactNode }) {
-  const [{ premisesRef, siteName }] = useState(() => getOperationalContext());
+  const { premisesRef, siteName } = useOperationalContext();
   const [episodeRef, setEpisodeRef] = useState("");
   const [query, setQuery] = useState("");
   const [episodes, setEpisodes] = useState<EpisodeHit[]>([]);

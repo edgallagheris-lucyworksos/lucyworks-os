@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
-import { getOperationalContext } from "@/lib/operational-context";
+import { type ReactNode } from "react";
+import { useOperationalContext } from "@/lib/operational-context";
 
 export function WorkspaceProfessionalShell({ children }: { children: ReactNode }) {
-  const [{ siteName }] = useState(() => getOperationalContext());
+  const { siteName } = useOperationalContext();
   return <div className="workspace-shell"><style>{css}</style>
     <header className="workspace-shell__header">
       <div className="workspace-shell__identity"><Link href="/hospital-board" className="workspace-shell__mark">LW</Link><div><h1>Patient workspace</h1><span>{siteName}</span></div></div>

@@ -6,14 +6,14 @@ import { AuthGuard } from "@/components/auth-guard";
 import { HospitalValuePanel } from "@/components/hospital-value-panel";
 import { ResponsiveHospitalBoardV15 } from "@/components/responsive-hospital-board-v15";
 import { StaffLocationGrid } from "@/components/staff-location-grid";
-import { getOperationalContext } from "@/lib/operational-context";
+import { useOperationalContext } from "@/lib/operational-context";
 
 const allowedRoles = ["admin", "clinician", "clinical_director", "hospital_director", "nurse", "ops_manager", "senior_clinician", "supervisor"];
 type BoardView = "operations" | "staffing";
 
 export default function HospitalBoardPage() {
   const [view, setView] = useState<BoardView>("operations");
-  const [{ siteName }] = useState(() => getOperationalContext());
+  const { siteName } = useOperationalContext();
 
   return (
     <AuthGuard allowedRoles={allowedRoles}>

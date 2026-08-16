@@ -11,7 +11,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "HOSTNAME=127.0.0.1 PORT=3000 node .next/standalone/server.js",
+    command: "mkdir -p .next/standalone/apps/web/.next/static .next/standalone/apps/web/public && cp -R .next/static/. .next/standalone/apps/web/.next/static/ && cp -R public/. .next/standalone/apps/web/public/ && HOSTNAME=127.0.0.1 PORT=3000 node .next/standalone/apps/web/server.js",
     url: "http://127.0.0.1:3000",
     reuseExistingServer: false,
     timeout: 120_000,

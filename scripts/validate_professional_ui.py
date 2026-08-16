@@ -14,11 +14,13 @@ care = (ROOT / "apps/web/components/care-brief-v16.tsx").read_text()
 
 required = {
     "one responsive hospital board": "Find patient, procedure, staff or episode" in board,
+    "15-minute operational grid": "15-minute operating grid" in board and "DAY_START" in board and "gridBlock" in board,
+    "governed board controls": all(value in board for value in ["MoveOperationalBlock", "Save assignment", "Recorded gates", "/delay-preview", "Preview consequences", "Insert emergency"]),
     "patient-first episode finder": "Find patient or episode" in episode,
-    "site context abstraction": "getOperationalContext" in board and "getOperationalContext" in shell and "getOperationalContext" in referral and "getOperationalContext" in care,
+    "site context abstraction": all("useOperationalContext" in value for value in [board, shell, referral, care]),
     "role-aware hospital shell": "user.name" in shell and "user.role" in shell,
     "professional access shell": "Secure hospital access" in auth,
-    "operational context persistence": "lucyworks.premisesRef" in context,
+    "server-authorised operational context": "/api/v26/context" in context and "apiGet" in context,
     "compact management indicators": "Operating indicators" in (ROOT / "apps/web/components/hospital-value-panel.tsx").read_text(),
     "professional referral workflow": "Referral intake" in referral and "Owner & authority" in referral and "Clinical need" in referral,
     "professional patient workspace": "Patient workspace" in workspace_shell and "Find patient, episode or next action" in workspace,
@@ -30,6 +32,7 @@ forbidden = {
     "legacy desktop board fallback": "HospitalMasterBoardV11" in board,
     "automation controls on patient-flow board": "AutomationBoardDockV23" in board or "Automation controls" in board,
     "component hard-coded premises constant": "const PREMISES" in board,
+    "client-controlled premises context": "localStorage" in context or "URLSearchParams" in context,
     "hard-coded referral premises": 'premisesRef: "default-premises"' in referral,
     "visible referral version banner": "GUIDED REFERRAL INTAKE V31" in referral,
     "workspace version banner": "PATIENT COMMAND V16" in workspace,
