@@ -63,10 +63,11 @@ const careBrief = {
 async function mockHospitalApi(page: Page) {
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
-    if (url.pathname === "/api/auth/me") {
+    const pathname = url.pathname.replace(/^\/_lucyworks_api/, "");
+    if (pathname === "/api/auth/me") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: "ui-test", subject: "ui-test", name: "Alex Morgan", role: "ops_manager", verified: true } }) });
     }
-    if (url.pathname === "/api/v26/context") {
+    if (pathname === "/api/v26/context") {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -76,19 +77,19 @@ async function mockHospitalApi(page: Page) {
         }),
       });
     }
-    if (url.pathname === "/api/v11/master-board/day") {
+    if (pathname === "/api/v11/master-board/day") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(hospitalBoard) });
     }
-    if (url.pathname === "/api/v9/episodes/EP-1001/command-view") {
+    if (pathname === "/api/v9/episodes/EP-1001/command-view") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ episode: hospitalBoard.episodes[0], nextTransitions: {} }) });
     }
-    if (url.pathname === "/api/v14/operational-workspace") {
+    if (pathname === "/api/v14/operational-workspace") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workspace) });
     }
-    if (url.pathname === "/api/v16/care-brief/EP-1001") {
+    if (pathname === "/api/v16/care-brief/EP-1001") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(careBrief) });
     }
-    if (["/api/v9/referrals", "/api/v12/identity-intakes", "/api/v12/triage"].includes(url.pathname)) {
+    if (["/api/v9/referrals", "/api/v12/identity-intakes", "/api/v12/triage"].includes(pathname)) {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }) });
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });

@@ -3,10 +3,17 @@ import { expect, test, type Page } from "@playwright/test";
 async function mockApi(page: Page) {
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
-    if (url.pathname === "/api/auth/me") {
+    const pathname = url.pathname.replace(/^\/_lucyworks_api/, "");
+    if (pathname === "/api/auth/me") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: "clinical-ui", subject: "clinical-ui", name: "Alex Morgan", role: "clinician", verified: true } }) });
     }
-    if (url.pathname === "/api/clinical-execution/governed/dashboard") {
+    if (pathname === "/api/v26/context") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        context: { contextRef: "context-ui", organisationRef: "bvs", siteRef: "bvs-bristol", premisesRef: "bvs-bristol", version: 1 },
+        sites: [{ organisationRef: "bvs", siteRef: "bvs-bristol", premisesRef: "bvs-bristol", name: "Bristol Referral Hospital", configurationState: "ready", role: "clinician" }],
+      }) });
+    }
+    if (pathname === "/api/clinical-execution/governed/dashboard") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
         summary: { dueAdministrations: 1, activeAnaesthesia: 0, redObservations: 0, openTasks: 2, pendingDiagnostics: 1 },
         medicationOrders: [], administrations: [], anaesthesia: [], observations: [], tasks: [], diagnostics: [], dischargePlans: [], inventory: [], inventoryMovements: [], controlledDrugEntries: [],
