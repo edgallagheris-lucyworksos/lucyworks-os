@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalShell } from "@/components/hospital-shell";
+import { SpeechAuthorityBanner } from "@/components/speech-authority-banner";
 import { SpeechCaptureV19 } from "@/components/speech-capture-v19";
 import { apiPost } from "@/lib/api";
 
@@ -83,6 +84,7 @@ function InputInner() {
         <div aria-live="polite">{status ? <p style={{ color: "#86efac", margin: 0 }}>{status}</p> : null}{error ? <p style={{ color: "#fca5a5", margin: 0 }}>{error}</p> : null}</div>
       </section>
 
+      <SpeechAuthorityBanner returnTo="/input" />
       <SpeechCaptureV19 episodeRef={episode.trim()} mode="voice_command" createClinicalNote={false} />
     </div>
   </HospitalShell>;
