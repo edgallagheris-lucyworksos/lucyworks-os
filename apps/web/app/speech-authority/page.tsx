@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { useOperationalContext } from "@/lib/operational-context";
 import { saveSpeechAuthority, SPEECH_NOTICE_VERSION } from "@/lib/speech-authority";
@@ -17,10 +16,13 @@ function safeReturnTo(value: string | null) {
 
 function SpeechAuthorityInner({ user }: { user: SessionUser }) {
   const { premisesRef, siteName } = useOperationalContext();
-  const search = useSearchParams();
-  const returnTo = safeReturnTo(search.get("returnTo"));
+  const [returnTo, setReturnTo] = useState("/input");
   const [confirmed, setConfirmed] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setReturnTo(safeReturnTo(new URLSearchParams(window.location.search).get("returnTo")));
+  }, []);
 
   function confirm() {
     if (!confirmed || !premisesRef) return;
