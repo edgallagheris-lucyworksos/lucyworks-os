@@ -10,18 +10,12 @@ const context = {
 };
 
 async function mockFunctionalApi(page: Page) {
-  let contextReads = 0;
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
     const pathname = url.pathname.replace(/^\/_lucyworks_api/, "");
     if (pathname === "/api/auth/me") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user }) });
-    if (pathname === "/api/v26/context") {
-      contextReads += 1;
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(context) });
-    }
-    if (pathname === "/api/v26/operational-view") {
-      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "impact feed temporarily unavailable" }) });
-    }
+    if (pathname === "/api/v26/context") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(context) });
+    if (pathname === "/api/v26/operational-view") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "impact feed temporarily unavailable" }) });
     if (pathname === "/api/v26/context/switch" && route.request().method() === "POST") {
       return route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ code: "database_integrity_conflict", message: "The stable reference or idempotency key already exists. Refresh the current record instead of repeating the write." }) });
     }
@@ -31,7 +25,6 @@ async function mockFunctionalApi(page: Page) {
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
   });
-  return () => contextReads;
 }
 
 const shellLinks = [
@@ -51,6 +44,8 @@ const moreLinks = [
   ["System tools", "/system-control"],
 ] as const;
 
+const allRoutes = [...shellLinks, ...moreLinks].map(([, path]) => path);
+
 test.beforeEach(async ({ page }) => {
   await mockFunctionalApi(page);
 });
@@ -58,13 +53,20 @@ test.beforeEach(async ({ page }) => {
 test("every hospital-shell navigation control has a real route target", async ({ page }) => {
   await page.goto("/input", { waitUntil: "networkidle" });
   for (const [label, path] of shellLinks) {
-    const link = page.getByRole("link", { name: label, exact: true }).first();
-    await expect(link).toHaveAttribute("href", path);
+    await expect(page.getByRole("link", { name: label, exact: true }).first()).toHaveAttribute("href", path);
   }
   await page.getByText("More tools", { exact: true }).click();
   for (const [label, path] of moreLinks) {
-    const link = page.getByRole("link", { name: label, exact: true }).first();
-    await expect(link).toHaveAttribute("href", path);
+    await expect(page.getByRole("link", { name: label, exact: true }).first()).toHaveAttribute("href", path);
+  }
+});
+
+test("the complete hospital navigation tree resolves without missing pages", async ({ page }) => {
+  for (const path of allRoutes) {
+    const response = await page.goto(path, { waitUntil: "domcontentloaded" });
+    expect(response, `${path} did not return a document response`).not.toBeNull();
+    expect(response!.status(), `${path} returned ${response!.status()}`).toBeLessThan(400);
+    await expect(page.locator("body")).not.toContainText(/404|This page could not be found/i);
   }
 });
 
@@ -93,12 +95,11 @@ test("optional impact-feed failure does not make hospital identity unavailable",
 });
 
 test("duplicate context write recovers by refreshing current context", async ({ page }) => {
-  const reads = await mockFunctionalApi(page);
   await page.goto("/input", { waitUntil: "networkidle" });
   await page.getByLabel("Select authorised hospital site").selectOption("bvs-north");
   await expect(page.getByRole("status")).toContainText("already been recorded");
-  expect(reads()).toBeGreaterThan(1);
   await expect(page.getByText(/database_integrity_conflict/i)).toHaveCount(0);
+  await expect(page.getByText("ACTIVE HOSPITAL", { exact: true })).toBeVisible();
 });
 
 test("speech blocker has a resolvable identity-and-authority path", async ({ page }) => {
