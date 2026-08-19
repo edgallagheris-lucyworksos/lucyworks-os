@@ -457,10 +457,97 @@ def create_episode(session: Session, payload: dict[str, Any], auth: AuthContext)
     return row, command, True
 
 
+def patch_episode_operational(session: Session, episode_ref: str, payload: dict[str, Any], auth: AuthContext) -> tuple[CanonicalEpisodeState, OperationalCommand]:
+    row = session.exec(select(CanonicalEpisodeState).where(CanonicalEpisodeState.episode_ref == episode_ref)).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="episode not found")
+
+    idempotency_key = payload.get("idempotencyKey")
+    if idempotency_key:
+        existing_command = session.exec(select(OperationalCommand).where(OperationalCommand.idempotency_key == idempotency_key)).first()
+        if existing_command:
+            if existing_command.command_type != "UpdateEpisodeOperational" or existing_command.target_ref != episode_ref:
+                raise HTTPException(status_code=409, detail="idempotency key belongs to another command")
+            return row, existing_command
+
+    expected_version = payload.get("expectedVersion")
+    _assert_version(row.version, expected_version, "episode")
+    supplied = {key for key in ("ownerRole", "ownerSubject", "currentAreaRef", "nextAction") if key in payload}
+    if not supplied:
+        raise HTTPException(status_code=400, detail="at least one operational field is required")
+
+    command, _ = _command(
+        session,
+        command_type="UpdateEpisodeOperational",
+        target_type="episode",
+        target_ref=episode_ref,
+        expected_version=expected_version,
+        payload=payload,
+        auth=auth,
+        idempotency_key=idempotency_key,
+    )
+    before = episode_dict(row)
+    if "ownerRole" in payload:
+        row.owner_role = str(payload["ownerRole"]).strip()
+        if not row.owner_role:
+            raise HTTPException(status_code=422, detail="ownerRole cannot be blank")
+        row.owner_subject = str(payload.get("ownerSubject") or auth.subject)
+    elif "ownerSubject" in payload:
+        row.owner_subject = str(payload["ownerSubject"]).strip() or None
+    if "currentAreaRef" in payload:
+        row.current_area_ref = str(payload["currentAreaRef"]).strip() or None
+    if "nextAction" in payload:
+        row.next_action = str(payload["nextAction"]).strip()
+        if not row.next_action:
+            raise HTTPException(status_code=422, detail="nextAction cannot be blank")
+
+    row.version += 1
+    row.last_command_ref = command.command_ref
+    row.updated_at = utc_now()
+    session.add(row)
+    after = episode_dict(row)
+    evidence_ref = _evidence(
+        session,
+        command=command,
+        auth=auth,
+        event_type="episode_operational_update",
+        action="episode owner, location or next action updated",
+        before=before,
+        after=after,
+        premises_ref=row.premises_ref,
+        operational_date=utc_now().date(),
+        risk_level="amber",
+        reason=str(payload.get("reason") or "operational coordination update"),
+        entity_type="canonical_episode",
+        entity_id=episode_ref,
+        referral_episode_id=episode_ref,
+    )
+    _complete_command(command, {"episode": after}, evidence_ref)
+    _emit_change(
+        session,
+        premises_ref=row.premises_ref,
+        operational_date=utc_now().date(),
+        event_type="episode_operational_update",
+        entity_type="episode",
+        entity_ref=episode_ref,
+        entity_version=row.version,
+        command_ref=command.command_ref,
+        payload=after,
+    )
+    return row, command
+
+
 def transition_episode(session: Session, episode_ref: str, payload: dict[str, Any], auth: AuthContext) -> tuple[CanonicalEpisodeState, OperationalCommand]:
     row = session.exec(select(CanonicalEpisodeState).where(CanonicalEpisodeState.episode_ref == episode_ref)).first()
     if not row:
         raise HTTPException(status_code=404, detail="episode not found")
+    idempotency_key = payload.get("idempotencyKey")
+    if idempotency_key:
+        existing_command = session.exec(select(OperationalCommand).where(OperationalCommand.idempotency_key == idempotency_key)).first()
+        if existing_command:
+            if existing_command.command_type != "TransitionEpisode" or existing_command.target_ref != episode_ref:
+                raise HTTPException(status_code=409, detail="idempotency key belongs to another command")
+            return row, existing_command
     expected_version = payload.get("expectedVersion")
     _assert_version(row.version, expected_version, "episode")
     target_phase = str(payload.get("phase") or "")
