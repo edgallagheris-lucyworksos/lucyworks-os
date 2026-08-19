@@ -10,20 +10,39 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from app.auth import AuthContext, require_authenticated, require_roles
+from app.clinical_execution_models import ClinicalObservation, DiagnosticWorkItem, TreatmentTask
+from app.control_plane_models import AccountableHandover, CriticalResultAcknowledgement
 from app.database import get_session
+from app.evidence_service import create_evidence_event
 from app.operating_context_v26_service import OperatingContext, resolve_context
-from app.hospital_ops_models import OperationalArea, OperationalBlock, OperationalCommand
+from app.hospital_ops_models import CanonicalEpisodeState, OperationalArea, OperationalBlock, OperationalCommand
 from app.hospital_ops_service import (
     block_dict,
     board_snapshot,
     create_block,
     detect_constraints,
+    episode_dict,
+    json_text,
     normalise_dt,
     parse_json,
     patch_block,
+    patch_episode_operational,
 )
 
 router = APIRouter(prefix="/api/v11/master-board", tags=["hospital-master-board-v11"])
+COORDINATION_WRITE_ROLES = (
+    "admin",
+    "clinician",
+    "clinical_director",
+    "hospital_director",
+    "nurse",
+    "ops_manager",
+    "senior_clinician",
+    "supervisor",
+)
+CRITICAL_RESULT_ROLES = ("clinical_director", "hospital_director", "senior_clinician", "clinician")
+SENIOR_COORDINATION_ROLES = {"clinical_director", "hospital_director", "ops_manager", "senior_clinician", "supervisor"}
+
 WRITE_ROLES = (
     "clinical_director",
     "hospital_director",
@@ -75,6 +94,41 @@ class EmergencyApplyPayload(EmergencyPreviewPayload):
     expectedVersions: dict[str, int] = Field(default_factory=dict)
     reason: str
     idempotencyKey: str
+
+
+class EpisodeOperationalPatch(BaseModel):
+    premisesRef: str = "default-premises"
+    expectedVersion: int
+    ownerRole: str | None = None
+    ownerSubject: str | None = None
+    currentAreaRef: str | None = None
+    nextAction: str | None = None
+    reason: str
+    idempotencyKey: str
+
+
+class HandoverCreateV11(BaseModel):
+    premisesRef: str = "default-premises"
+    toActor: str | None = None
+    toRole: str
+    summary: str
+    clinicalRisks: list[str] = Field(default_factory=list)
+    outstandingActions: list[dict[str, Any] | str] = Field(default_factory=list)
+    escalationThreshold: str | None = None
+    dueAt: datetime | None = None
+    idempotencyKey: str
+
+
+class HandoverDecisionV11(BaseModel):
+    premisesRef: str = "default-premises"
+    decision: str
+    note: str | None = None
+
+
+class CriticalResultDecisionV11(BaseModel):
+    premisesRef: str = "default-premises"
+    actionTaken: str
+    note: str | None = None
 
 
 def _round_up_quarter(value: datetime) -> datetime:
@@ -260,6 +314,348 @@ def get_day(
     board["requestedBy"] = auth.subject
     session.commit()
     return board
+
+
+def _episode_for_context(session: Session, episode_ref: str, context: OperatingContext) -> CanonicalEpisodeState:
+    episode = session.exec(select(CanonicalEpisodeState).where(CanonicalEpisodeState.episode_ref == episode_ref)).first()
+    if not episode:
+        raise HTTPException(status_code=404, detail="episode not found")
+    if episode.premises_ref != context.premises_ref:
+        raise HTTPException(status_code=403, detail={"code": "site_not_authorised", "activePremisesRef": context.premises_ref})
+    return episode
+
+
+def _handover_dict(row: AccountableHandover) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "handoverRef": row.handover_ref,
+        "episodeRef": row.referral_episode_id,
+        "fromActor": row.from_actor,
+        "fromRole": row.from_role,
+        "toActor": row.to_actor,
+        "toRole": row.to_role,
+        "status": row.status,
+        "summary": row.summary,
+        "clinicalRisks": parse_json(row.clinical_risks_json, []),
+        "outstandingActions": parse_json(row.outstanding_actions_json, []),
+        "escalationThreshold": row.escalation_threshold,
+        "dueAt": row.due_at.isoformat() if row.due_at else None,
+        "acceptedBy": row.accepted_by,
+        "acceptedByRole": row.accepted_by_role,
+        "acceptedAt": row.accepted_at.isoformat() if row.accepted_at else None,
+        "decisionNote": row.decision_note,
+        "createdAt": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+def _critical_result_dict(row: CriticalResultAcknowledgement) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "resultRef": row.result_ref,
+        "episodeRef": row.referral_episode_id,
+        "resultType": row.result_type,
+        "severity": row.severity,
+        "summary": row.summary,
+        "status": row.status,
+        "assignedTo": row.assigned_to,
+        "assignedRole": row.assigned_role,
+        "dueAt": row.due_at.isoformat() if row.due_at else None,
+        "acknowledgedBy": row.acknowledged_by,
+        "acknowledgedAt": row.acknowledged_at.isoformat() if row.acknowledged_at else None,
+        "actionTaken": row.action_taken,
+        "createdAt": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+@router.get("/coordination")
+def get_coordination(
+    premises_ref: str = "default-premises",
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    context = authorised_context(session, auth, premises_ref)
+    episode_refs = [
+        row.episode_ref
+        for row in session.exec(
+            select(CanonicalEpisodeState).where(
+                CanonicalEpisodeState.premises_ref == context.premises_ref,
+                CanonicalEpisodeState.status == "active",
+            )
+        ).all()
+    ]
+    if not episode_refs:
+        return {
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "handovers": [],
+            "criticalResults": [],
+            "diagnostics": [],
+            "tasks": [],
+            "observations": [],
+            "summary": {"pendingHandovers": 0, "unacknowledgedCriticalResults": 0, "overdueTasks": 0, "redObservations": 0},
+        }
+
+    handovers = session.exec(
+        select(AccountableHandover)
+        .where(AccountableHandover.referral_episode_id.in_(episode_refs))
+        .order_by(AccountableHandover.created_at.desc())
+    ).all()
+    results = session.exec(
+        select(CriticalResultAcknowledgement)
+        .where(CriticalResultAcknowledgement.referral_episode_id.in_(episode_refs))
+        .order_by(CriticalResultAcknowledgement.created_at.desc())
+    ).all()
+    diagnostics = session.exec(
+        select(DiagnosticWorkItem)
+        .where(DiagnosticWorkItem.episode_ref.in_(episode_refs))
+        .order_by(DiagnosticWorkItem.requested_test)
+    ).all()
+    tasks = session.exec(
+        select(TreatmentTask)
+        .where(TreatmentTask.episode_ref.in_(episode_refs))
+        .order_by(TreatmentTask.due_at)
+    ).all()
+    observations = session.exec(
+        select(ClinicalObservation)
+        .where(ClinicalObservation.episode_ref.in_(episode_refs))
+        .order_by(ClinicalObservation.recorded_at.desc())
+    ).all()
+    now = datetime.now(timezone.utc)
+    task_rows = [{
+        "taskRef": row.task_ref,
+        "episodeRef": row.episode_ref,
+        "title": row.title,
+        "status": row.status,
+        "dueAt": row.due_at.isoformat(),
+        "priority": row.priority,
+        "assignedRole": row.assigned_role,
+        "version": row.version,
+    } for row in tasks]
+    observation_rows = [{
+        "observationRef": row.observation_ref,
+        "episodeRef": row.episode_ref,
+        "type": row.observation_type,
+        "concernLevel": row.concern_level,
+        "escalationStatus": row.escalation_status,
+        "recordedAt": row.recorded_at.isoformat(),
+    } for row in observations]
+    diagnostic_rows = [{
+        "workRef": row.work_ref,
+        "episodeRef": row.episode_ref,
+        "modality": row.modality,
+        "requestedTest": row.requested_test,
+        "urgency": row.urgency,
+        "status": row.status,
+        "assignedService": row.assigned_service,
+        "acquiredAt": row.acquired_at.isoformat() if row.acquired_at else None,
+        "reportedAt": row.reported_at.isoformat() if row.reported_at else None,
+        "reportSummary": row.report_summary,
+        "criticalResult": row.critical_result,
+        "version": row.version,
+    } for row in diagnostics]
+    return {
+        "generatedAt": now.isoformat(),
+        "handovers": [_handover_dict(row) for row in handovers],
+        "criticalResults": [_critical_result_dict(row) for row in results],
+        "diagnostics": diagnostic_rows,
+        "tasks": task_rows,
+        "observations": observation_rows,
+        "summary": {
+            "pendingHandovers": len([row for row in handovers if row.status == "pending"]),
+            "unacknowledgedCriticalResults": len([row for row in results if row.status == "awaiting_acknowledgement"]),
+            "overdueTasks": len([row for row in tasks if row.status != "completed" and normalise_dt(row.due_at) < now]),
+            "redObservations": len([row for row in observations if row.concern_level == "red" and row.escalation_status == "pending"]),
+        },
+    }
+
+
+@router.patch("/episodes/{episode_ref}/operational")
+def update_episode_operational(
+    episode_ref: str,
+    payload: EpisodeOperationalPatch,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*COORDINATION_WRITE_ROLES)),
+) -> dict[str, Any]:
+    context = authorised_context(session, auth, payload.premisesRef)
+    _episode_for_context(session, episode_ref, context)
+    row, command = patch_episode_operational(session, episode_ref, payload.model_dump(exclude_none=True), auth)
+    session.commit()
+    session.refresh(row)
+    return {"episode": episode_dict(row), "commandRef": command.command_ref}
+
+
+@router.post("/episodes/{episode_ref}/handovers")
+def create_episode_handover(
+    episode_ref: str,
+    payload: HandoverCreateV11,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*COORDINATION_WRITE_ROLES)),
+) -> dict[str, Any]:
+    context = authorised_context(session, auth, payload.premisesRef)
+    episode = _episode_for_context(session, episode_ref, context)
+    handover_ref = "handover-v11-" + hashlib.sha256(payload.idempotencyKey.encode("utf-8")).hexdigest()[:24]
+    existing = session.exec(select(AccountableHandover).where(AccountableHandover.handover_ref == handover_ref)).first()
+    if existing:
+        if existing.referral_episode_id != episode_ref:
+            raise HTTPException(status_code=409, detail="idempotency key belongs to another handover")
+        return {"handover": _handover_dict(existing), "created": False}
+
+    row = AccountableHandover(
+        handover_ref=handover_ref,
+        patient_case_id=episode.patient_ref,
+        referral_episode_id=episode_ref,
+        from_actor=auth.actor_name,
+        from_role=auth.role,
+        to_actor=payload.toActor,
+        to_role=payload.toRole,
+        status="pending",
+        summary=payload.summary,
+        clinical_risks_json=json_text(payload.clinicalRisks),
+        outstanding_actions_json=json_text(payload.outstandingActions),
+        escalation_threshold=payload.escalationThreshold,
+        due_at=payload.dueAt,
+    )
+    session.add(row)
+    session.flush()
+    event, _ = create_evidence_event(
+        session,
+        event_type="handover_created",
+        action="accountable handover created",
+        patient_case_id=episode.patient_ref,
+        referral_episode_id=episode_ref,
+        actor_id=auth.subject,
+        actor_name=auth.actor_name,
+        actor_role=auth.role,
+        actor_auth_source=auth.auth_source,
+        new_state=_handover_dict(row),
+        reason="responsibility transfer requires explicit acceptance",
+        evidence_links=[{"type": "handover", "id": handover_ref}],
+        compliance_domain="clinical_governance",
+        risk_level="red" if payload.clinicalRisks else "amber",
+        source_module="hospital-master-board-v11",
+        source_record_ref=handover_ref,
+        entity_type="handover",
+        entity_id=handover_ref,
+        idempotency_key=f"v11:{payload.idempotencyKey}",
+    )
+    row.evidence_event_ref = event.event_ref
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return {"handover": _handover_dict(row), "created": True}
+
+
+@router.patch("/handovers/{handover_id}/decision")
+def decide_episode_handover(
+    handover_id: int,
+    payload: HandoverDecisionV11,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*COORDINATION_WRITE_ROLES)),
+) -> dict[str, Any]:
+    context = authorised_context(session, auth, payload.premisesRef)
+    query = select(AccountableHandover).where(AccountableHandover.id == handover_id)
+    if session.get_bind().dialect.name == "postgresql":
+        query = query.with_for_update()
+    row = session.exec(query).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="handover not found")
+    _episode_for_context(session, row.referral_episode_id, context)
+    if row.status != "pending":
+        raise HTTPException(status_code=409, detail="handover already decided")
+    if auth.role != row.to_role and auth.role not in SENIOR_COORDINATION_ROLES:
+        raise HTTPException(status_code=403, detail="handover must be decided by the receiving role or a senior coordinator")
+    decision = payload.decision.lower().strip()
+    if decision not in {"accepted", "rejected", "escalated"}:
+        raise HTTPException(status_code=422, detail="decision must be accepted, rejected or escalated")
+
+    previous = _handover_dict(row)
+    row.status = decision
+    row.accepted_by = auth.actor_name
+    row.accepted_by_role = auth.role
+    row.accepted_at = datetime.now(timezone.utc)
+    row.decision_note = payload.note
+    event, _ = create_evidence_event(
+        session,
+        event_type="handover_decision",
+        action=f"handover {decision}",
+        patient_case_id=row.patient_case_id,
+        referral_episode_id=row.referral_episode_id,
+        actor_id=auth.subject,
+        actor_name=auth.actor_name,
+        actor_role=auth.role,
+        actor_auth_source=auth.auth_source,
+        previous_state=previous,
+        new_state=_handover_dict(row),
+        reason="named recipient decision",
+        justification=payload.note,
+        evidence_links=[{"type": "handover", "id": row.handover_ref}],
+        compliance_domain="clinical_governance",
+        risk_level="green" if decision == "accepted" else "red",
+        source_module="hospital-master-board-v11",
+        source_record_ref=row.handover_ref,
+        causation_event_ref=row.evidence_event_ref,
+        entity_type="handover",
+        entity_id=row.handover_ref,
+    )
+    row.evidence_event_ref = event.event_ref
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return {"handover": _handover_dict(row)}
+
+
+@router.patch("/critical-results/{result_id}/acknowledge")
+def acknowledge_critical_result(
+    result_id: int,
+    payload: CriticalResultDecisionV11,
+    session: Session = Depends(get_session),
+    auth: AuthContext = Depends(require_roles(*CRITICAL_RESULT_ROLES)),
+) -> dict[str, Any]:
+    context = authorised_context(session, auth, payload.premisesRef)
+    query = select(CriticalResultAcknowledgement).where(CriticalResultAcknowledgement.id == result_id)
+    if session.get_bind().dialect.name == "postgresql":
+        query = query.with_for_update()
+    row = session.exec(query).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="critical result not found")
+    _episode_for_context(session, row.referral_episode_id, context)
+    if row.status != "awaiting_acknowledgement":
+        raise HTTPException(status_code=409, detail="critical result already acknowledged")
+    action_taken = payload.actionTaken.strip()
+    if not action_taken:
+        raise HTTPException(status_code=422, detail="actionTaken is required")
+
+    previous = _critical_result_dict(row)
+    row.status = "acknowledged"
+    row.acknowledged_by = auth.actor_name
+    row.acknowledged_at = datetime.now(timezone.utc)
+    row.action_taken = action_taken
+    event, _ = create_evidence_event(
+        session,
+        event_type="critical_result_acknowledged",
+        action="critical result acknowledged and action recorded",
+        patient_case_id=row.patient_case_id,
+        referral_episode_id=row.referral_episode_id,
+        actor_id=auth.subject,
+        actor_name=auth.actor_name,
+        actor_role=auth.role,
+        actor_auth_source=auth.auth_source,
+        previous_state=previous,
+        new_state=_critical_result_dict(row),
+        reason=row.summary,
+        justification=payload.note or action_taken,
+        compliance_domain="diagnostics",
+        risk_level="green",
+        source_module="hospital-master-board-v11",
+        source_record_ref=row.result_ref,
+        causation_event_ref=row.evidence_event_ref,
+        entity_type="critical_result",
+        entity_id=row.result_ref,
+    )
+    row.evidence_event_ref = event.event_ref
+    session.add(row)
+    session.commit()
+    session.refresh(row)
+    return {"result": _critical_result_dict(row)}
 
 
 @router.post("/emergency/preview")

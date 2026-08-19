@@ -51,7 +51,7 @@ ROOM_ROWS = [
     ("Prep", "Prep Bay 4", "prep"),
     ("Anaesthesia", "Anaesthesia Induction 1", "anaesthesia"),
     ("Anaesthesia", "Anaesthesia Induction 2", "anaesthesia"),
-    *[("Theatres", f"Theatre {i}", "theatre") for i in range(3, 12)],
+    *[("Theatres", f"Theatre {i}", "theatre") for i in range(3, 5)],
     ("Recovery", "Recovery Bay 1", "recovery"),
     ("Recovery", "Recovery Bay 2", "recovery"),
     ("Recovery", "Recovery Bay 3", "recovery"),
@@ -260,12 +260,12 @@ def seed_hospital_scale(session: Session) -> None:
     cases = [
         ("Atlas", "Dog", "Owner A", "EP-2001", "Theatres", "Theatre 3", "procedure", "TPLO", "Theatre 3", 8),
         ("Juno", "Dog", "Owner B", "EP-2002", "Theatres", "Theatre 4", "procedure", "Fracture repair", "Theatre 4", 8),
-        ("Mabel", "Dog", "Owner C", "EP-2003", "Theatres", "Theatre 5", "procedure", "Foreign body surgery", "Theatre 5", 9),
+        ("Mabel", "Dog", "Owner C", "EP-2003", "Theatres", "Theatre 1", "procedure", "Foreign body surgery", "Theatre 1", 9),
         ("Scout", "Dog", "Owner D", "EP-2004", "Imaging", "MRI", "imaging", "MRI scan", "MRI", 10),
         ("Cleo", "Cat", "Owner E", "EP-2005", "Imaging", "CT", "imaging", "CT scan", "CT", 11),
         ("Nell", "Dog", "Owner F", "EP-2006", "ICU", "ICU Bay 1", "critical_care", "Initial ECC stabilisation", "Resus Bay", 7),
         ("Bert", "Dog", "Owner G", "EP-2007", "Wards", "Surgical Ward", "overnight", "Discharge consultation", "Discharge Consult Room", 12),
-        ("Tilly", "Cat", "Owner H", "EP-2008", "Wards", "Cat Ward", "overnight", "Dental extraction block", "Theatre 6", 13),
+        ("Tilly", "Cat", "Owner H", "EP-2008", "Wards", "Cat Ward", "overnight", "Dental extraction block", "Theatre 2", 13),
     ]
     for patient_name, species, owner, ref, section, room, phase, proc, proc_room, hour in cases:
         ep = ensure_patient_episode(session, patient_name, species, owner, ref, section, room, phase)
@@ -300,10 +300,10 @@ def seed_hospital_scale(session: Session) -> None:
             session.add(WorkItem(title=f"Overnight inpatient plan: {ref}", input_type="overnight_care", source="inpatient", category="overnight", description=notes, urgency="red" if acuity == "critical" else "amber", owner_role="icu_nurse" if acuity == "critical" else "ward_nurse", section_name="ICU" if acuity == "critical" else "Wards", room_name=room, patient_location_label=bed, linked_episode_ref=ref, status="new"))
     session.commit()
 
-    for room in ["MRI", "CT", "X-ray", "Ultrasound", "Theatre 3", "Theatre 4", "Theatre 5", "Theatre 6", "ICU Bay 1", "Surgical Ward", "High Dependency Ward", "Dog Ward", "Cat Ward", "Dispensary", "Insurance / Estimate Desk"]:
+    for room in ["MRI", "CT", "X-ray", "Ultrasound", "Theatre 1", "Theatre 2", "Theatre 3", "Theatre 4", "ICU Bay 1", "Surgical Ward", "High Dependency Ward", "Dog Ward", "Cat Ward", "Dispensary", "Insurance / Estimate Desk"]:
         state = session.exec(select(RoomState).where(RoomState.room_name == room)).first()
         if state:
-            state.state = "occupied" if room in {"MRI", "CT", "Theatre 3", "Theatre 4", "Theatre 5", "ICU Bay 1", "Surgical Ward", "High Dependency Ward", "Dog Ward", "Cat Ward"} else "active"
+            state.state = "occupied" if room in {"MRI", "CT", "Theatre 1", "Theatre 2", "Theatre 3", "Theatre 4", "ICU Bay 1", "Surgical Ward", "High Dependency Ward", "Dog Ward", "Cat Ward"} else "active"
             session.add(state)
     for item in [
         StockItem(name="TPLO plate set", category="implant", location="Theatre Stock", current_quantity=1, reorder_threshold=2, authorised_supplier="NVS", compliance_note="Implant availability affects orthopaedic theatre flow"),

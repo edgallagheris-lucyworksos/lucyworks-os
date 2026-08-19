@@ -26,6 +26,26 @@ const hospitalBoard = {
   liveWindow: { from: now, to: later, blocks: [] },
 };
 
+const patientCoordination = {
+  generatedAt: now,
+  handovers: [
+    { id: 21, handoverRef: "handover-21", episodeRef: "EP-1001", fromActor: "Dr Patel", fromRole: "clinician", toActor: "A. Nurse", toRole: "nurse", status: "pending", summary: "Monitor after MRI", clinicalRisks: ["post-sedation airway risk"], outstandingActions: ["repeat observations"], dueAt: later },
+  ],
+  criticalResults: [
+    { id: 31, resultRef: "result-31", episodeRef: "EP-1001", resultType: "potassium", severity: "red", summary: "Critical potassium", status: "awaiting_acknowledgement", assignedTo: "Dr Patel", assignedRole: "clinician", dueAt: later },
+  ],
+  diagnostics: [
+    { workRef: "diagnostic-31", episodeRef: "EP-1001", modality: "laboratory", requestedTest: "potassium", urgency: "urgent", status: "reported", assignedService: "laboratory", reportSummary: "Critical potassium", criticalResult: true, version: 2 },
+  ],
+  tasks: [
+    { taskRef: "task-31", episodeRef: "EP-1001", title: "Repeat observations", status: "due", dueAt: now, priority: "red", assignedRole: "nurse", version: 1 },
+  ],
+  observations: [
+    { observationRef: "observation-31", episodeRef: "EP-1001", type: "respiratory_rate", concernLevel: "red", escalationStatus: "pending", recordedAt: now },
+  ],
+  summary: { pendingHandovers: 1, unacknowledgedCriticalResults: 1, overdueTasks: 1, redObservations: 1 },
+};
+
 const workspace = {
   generatedAt: now,
   summary: { activePatients: 3, scheduledPatients: 2, unscheduledPatients: 1, unlinkedTasks: 0 },
@@ -60,6 +80,38 @@ const careBrief = {
   clinicalBoundary: "Clinical decisions remain with the responsible clinician.",
 };
 
+const workforceDashboard = {
+  workforce: [
+    { staffRef: "staff-1", displayName: "A. Nurse", employmentStatus: "active", primaryRoleRef: "nurse", departmentRef: "diagnostic_imaging", gradeOrTrainingLevel: "senior", onCallEligible: true, sourceStatus: "verified" },
+    { staffRef: "staff-2", displayName: "Dr Patel", employmentStatus: "active", primaryRoleRef: "clinician", departmentRef: "surgery", gradeOrTrainingLevel: "specialist", onCallEligible: true, sourceStatus: "verified" },
+  ],
+  competencies: [
+    { staffRef: "staff-1", competencyRef: "mri_safety", scopeRef: "mri-1", level: "independent", status: "verified", validUntil: null },
+    { staffRef: "staff-2", competencyRef: "surgical", scopeRef: "theatre-1", level: "independent", status: "verified", validUntil: null },
+  ],
+  summary: { workforceProfiles: 2, provisionalCompetencies: 0 },
+};
+
+const workforceRoster = {
+  shifts: [
+    { shiftRef: "shift-1", staffRef: "staff-1", departmentRef: "diagnostic_imaging", areaRef: "mri-1", startsAt: now, endsAt: later, shiftType: "standard", status: "active", onCall: false, sourceStatus: "verified" },
+  ],
+  availabilityExceptions: [],
+};
+
+const workforceAssessment = {
+  assessedAt: now,
+  activeShiftCount: 1,
+  approvedExceptionCount: 0,
+  gapCount: 0,
+  safeToOperate: true,
+  requirements: [
+    { requirement: { requirementRef: "coverage-mri", serviceRef: "diagnostic_imaging", areaRef: "mri-1", roleRef: "nurse", competencyRef: "mri_safety", minimumCount: 1 }, eligibleStaffRefs: ["staff-1"], eligibleCount: 1, excluded: [], gap: 0, status: "met" },
+  ],
+  staffRisks: {},
+  unprofiledShifts: [],
+};
+
 async function mockHospitalApi(page: Page) {
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
@@ -79,6 +131,18 @@ async function mockHospitalApi(page: Page) {
     }
     if (pathname === "/api/v11/master-board/day") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(hospitalBoard) });
+    }
+    if (pathname === "/api/v11/master-board/coordination") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(patientCoordination) });
+    }
+    if (pathname === "/api/bvs-v6/dashboard") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workforceDashboard) });
+    }
+    if (pathname === "/api/bvs-v6/rota") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workforceRoster) });
+    }
+    if (pathname === "/api/bvs-v6/rota/assessment") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workforceAssessment) });
     }
     if (pathname === "/api/v9/episodes/EP-1001/command-view") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ episode: hospitalBoard.episodes[0], nextTransitions: {} }) });
@@ -122,6 +186,21 @@ for (const viewport of [
 
     test("hospital operations renders without prototype artefacts or overflow", async ({ page }) => {
       await assertProfessionalSurface(page, "/hospital-board", /Hospital operations/i, `hospital-${viewport.name}`);
+      await expect(page.getByRole("heading", { name: "Today’s operating position" })).toBeVisible();
+      await expect(page.getByText("Source: authenticated v11 hospital master board")).toBeVisible();
+      await page.getByRole("button", { name: "Patient flow" }).first().click();
+      await expect(page.getByRole("heading", { name: "Active patients" })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Mabel/i })).toBeVisible();
+      await expect(page.getByText("Source: authenticated v11 master board and coordination projection")).toBeVisible();
+      await page.getByRole("button", { name: "Manage" }).first().click();
+      await expect(page.getByRole("dialog").getByRole("heading", { name: "Mabel" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Create accountable handover" })).toBeVisible();
+      await expect(page.getByText("Critical potassium").first()).toBeVisible();
+      await page.getByRole("button", { name: "Close patient coordination" }).click();
+      await page.getByRole("button", { name: "Workforce" }).click();
+      await expect(page.getByRole("heading", { name: "Workforce and safe coverage" })).toBeVisible();
+      await expect(page.getByText("Source: authenticated workforce, rota and coverage services")).toBeVisible();
+      await page.getByRole("button", { name: "Resource grid" }).first().click();
       await expect(page.getByRole("heading", { name: "15-minute operating grid" })).toBeVisible();
       await expect(page.locator(".hospital-shell__identity").getByText("Bristol Referral Hospital", { exact: true })).toBeVisible();
       await page.locator('[data-block-ref="block-1"]').click();
