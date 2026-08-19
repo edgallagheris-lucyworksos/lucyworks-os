@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/auth-guard";
 import { HospitalCommandOverview } from "@/components/hospital-command-overview";
 import { HospitalPatientFlow } from "@/components/hospital-patient-flow";
@@ -11,10 +11,24 @@ import { useOperationalContext } from "@/lib/operational-context";
 
 const allowedRoles = ["admin", "clinician", "clinical_director", "hospital_director", "nurse", "ops_manager", "senior_clinician", "supervisor"];
 type BoardView = "overview" | "patients" | "resources" | "workforce";
+const boardViews = new Set<BoardView>(["overview", "patients", "resources", "workforce"]);
 
 export default function HospitalBoardPage() {
   const [view, setView] = useState<BoardView>("overview");
   const { siteName } = useOperationalContext();
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("view") as BoardView | null;
+    if (requested && boardViews.has(requested)) setView(requested);
+  }, []);
+
+  function selectView(next: BoardView) {
+    setView(next);
+    const url = new URL(window.location.href);
+    if (next === "overview") url.searchParams.delete("view");
+    else url.searchParams.set("view", next);
+    window.history.replaceState({}, "", url);
+  }
 
   return (
     <AuthGuard allowedRoles={allowedRoles}>
@@ -27,10 +41,10 @@ export default function HospitalBoardPage() {
               <div><h1>Hospital operations</h1><span>{siteName}</span></div>
             </div>
             <nav className="hospital-shell__views" aria-label="Hospital board views">
-              <button type="button" className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}>Overview</button>
-              <button type="button" className={view === "patients" ? "active" : ""} onClick={() => setView("patients")}>Patient flow</button>
-              <button type="button" className={view === "resources" ? "active" : ""} onClick={() => setView("resources")}>Resource grid</button>
-              <button type="button" className={view === "workforce" ? "active" : ""} onClick={() => setView("workforce")}>Workforce</button>
+              <button type="button" className={view === "overview" ? "active" : ""} onClick={() => selectView("overview")}>Overview</button>
+              <button type="button" className={view === "patients" ? "active" : ""} onClick={() => selectView("patients")}>Patient flow</button>
+              <button type="button" className={view === "resources" ? "active" : ""} onClick={() => selectView("resources")}>Resource grid</button>
+              <button type="button" className={view === "workforce" ? "active" : ""} onClick={() => selectView("workforce")}>Workforce</button>
             </nav>
             <nav className="hospital-shell__links" aria-label="Hospital navigation">
               <Link className="primary" href="/referral-intake">New referral</Link>
@@ -42,11 +56,11 @@ export default function HospitalBoardPage() {
           <main>
             {view === "overview" ? (
               <HospitalCommandOverview
-                onOpenPatientFlow={() => setView("patients")}
-                onOpenResourceGrid={() => setView("resources")}
+                onOpenPatientFlow={() => selectView("patients")}
+                onOpenResourceGrid={() => selectView("resources")}
               />
             ) : view === "patients" ? (
-              <HospitalPatientFlow onOpenResourceGrid={() => setView("resources")} />
+              <HospitalPatientFlow onOpenResourceGrid={() => selectView("resources")} />
             ) : view === "resources" ? (
               <ResponsiveHospitalBoardV15 />
             ) : (
