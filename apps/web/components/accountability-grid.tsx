@@ -17,6 +17,7 @@ const departmentFilters = [
 ] as const;
 
 type FilterKey = typeof departmentFilters[number]["key"];
+type BoardMode = "patients" | "schedule";
 
 function toTarget(block: ScheduledWorkBlock): OperationalTarget {
   return { id: block.id, label: `${block.time} / ${block.subject || block.what}`, type: "scheduled_work_block", lane: block.lane, source: "accountability-grid", ownerRole: block.assignedRole || block.who, blocker: block.blocker, nextAction: block.next, route: block.route };
@@ -49,9 +50,29 @@ export function AccountabilityGrid() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
   const [compact, setCompact] = useState(true);
+  const [mode, setMode] = useState<BoardMode>("patients");
   const rows = useMemo(() => [...blocks]
     .filter((block) => matches(block, filter, query))
     .sort((a, b) => a.time.localeCompare(b.time) || (a.subject || a.what).localeCompare(b.subject || b.what)), [blocks, filter, query]);
+
+  const patientRows = useMemo(() => {
+    const grouped = new Map<string, ScheduledWorkBlock[]>();
+    for (const block of rows) {
+      const key = block.episodeRef || block.subject || block.id;
+      grouped.set(key, [...(grouped.get(key) || []), block]);
+    }
+    return [...grouped.entries()].map(([key, work]) => {
+      const ordered = [...work].sort((a, b) => a.time.localeCompare(b.time));
+      const blocker = ordered.find((block) => block.blocker !== "none");
+      const current = blocker || ordered[0];
+      const next = ordered.find((block) => block.time > current.time) || ordered[ordered.length - 1];
+      const risk = blocker?.status || ordered.find((block) => block.status === "red" || block.status === "amber")?.status || current.status;
+      return { key, patient: current.subject || "Hospital work", episodeRef: current.episodeRef || key, current, next, blocker, risk, workCount: work.length };
+    }).sort((a, b) => {
+      const rank = { red: 0, amber: 1, blue: 2, green: 3 };
+      return rank[a.risk] - rank[b.risk] || a.current.time.localeCompare(b.current.time) || a.patient.localeCompare(b.patient);
+    });
+  }, [rows]);
 
   const activePatients = new Set(blocks.map((block) => block.subject).filter(Boolean)).size;
   const unowned = blocks.filter((block) => !block.assignedStaffName && !block.assignedRole && !block.who).length;
@@ -76,9 +97,9 @@ export function AccountabilityGrid() {
     </section>
 
     <section className="controls">
-      <div className="filters" role="group" aria-label="Department filter">
+      <div className="filterStack"><div className="modeSwitch" role="group" aria-label="Board display"><button className={mode === "patients" ? "active" : ""} onClick={() => setMode("patients")}>Patient flow</button><button className={mode === "schedule" ? "active" : ""} onClick={() => setMode("schedule")}>Work schedule</button></div><div className="filters" role="group" aria-label="Department filter">
         {departmentFilters.map((item) => <button key={item.key} className={filter === item.key ? "active" : ""} onClick={() => setFilter(item.key)}>{item.label}</button>)}
-      </div>
+      </div></div>
       <label><span className="srOnly">Search hospital work</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search patient, owner, room or blocker" /></label>
       <div className="viewActions"><button aria-pressed={compact} onClick={() => setCompact((value) => !value)}>{compact ? "Comfortable rows" : "Compact rows"}</button><button className="reset" onClick={resetBlocks}>Reset local changes</button></div>
     </section>
@@ -87,9 +108,20 @@ export function AccountabilityGrid() {
 
     <section className="operations">
       <div className="patientBoard">
-        <header><div><h2>Live patient flow</h2><p>{rows.length} work blocks shown · select a row to act without leaving the board</p></div><strong>{filter === "all" ? "Whole hospital" : departmentFilters.find((item) => item.key === filter)?.label}</strong></header>
+        <header><div><h2>Live patient flow</h2><p>{mode === "patients" ? patientRows.length + " patients" : rows.length + " work blocks"} shown · select a row to act without leaving the board</p></div><strong>{filter === "all" ? "Whole hospital" : departmentFilters.find((item) => item.key === filter)?.label}</strong></header>
         <div className="tableWrap">
-          <table>
+          {mode === "patients" ? <table className="patientTable">
+            <thead><tr><th>Priority</th><th>Patient / episode</th><th>Current stage</th><th>Next timed work</th><th>Accountable owner</th><th>Blocker / action</th><th><span className="srOnly">Open</span></th></tr></thead>
+            <tbody>{patientRows.map((row) => <tr key={row.key} onClick={() => setSelected(toTarget(row.current))} data-status={row.risk}>
+              <td><span className={`state ${row.risk}`}>${row.risk}</span></td>
+              <td><b>{row.patient}</b><small>{row.episodeRef} · {row.workCount} scheduled items</small></td>
+              <td><b>{row.current.what}</b><small>{row.current.time} · {row.current.where}</small></td>
+              <td><b>{row.next.what}</b><small>{row.next.time} · {row.next.where}</small></td>
+              <td><b>{row.current.assignedStaffName || row.current.assignedRole || row.current.who || "Unowned"}</b><small>{row.current.how}</small></td>
+              <td className={row.blocker ? "blocked" : ""}><b>{row.blocker?.blocker || "No active blocker"}</b><small>{row.blocker ? `Next: ${row.blocker.next}` : row.next.next}</small></td>
+              <td><button className="openRow" onClick={(event) => { event.stopPropagation(); setSelected(toTarget(row.current)); }}>Open</button></td>
+            </tr>)}</tbody>
+          </table> : <table className="scheduleTable">
             <thead><tr><th>Time</th><th>Patient / episode</th><th>Stage & location</th><th>Accountable owner</th><th>Blocker / next action</th><th>State</th><th><span className="srOnly">Open</span></th></tr></thead>
             <tbody>{rows.map((block) => <tr key={block.id} onClick={() => setSelected(toTarget(block))} data-status={block.status}>
               <td className="time">{block.time}</td>
@@ -99,7 +131,7 @@ export function AccountabilityGrid() {
               <td className={block.blocker !== "none" ? "blocked" : ""}><b>{block.blocker === "none" ? block.next : block.blocker}</b><small>{block.blocker === "none" ? "ready to progress" : `Next: ${block.next}`}</small></td>
               <td><span className={`state ${block.status}`}>{block.status}</span></td><td><button className="openRow" onClick={(event) => { event.stopPropagation(); setSelected(toTarget(block)); }}>Open</button></td>
             </tr>)}</tbody>
-          </table>
+          </table>}
         </div>
       </div>
 
@@ -127,8 +159,8 @@ const css = `
 .commandStrip{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:7px}
 .commandStrip>div{display:grid;grid-template-columns:1fr auto;align-items:end;gap:2px 8px;padding:9px 11px;background:#fff;border:1px solid #d8e0e8;border-radius:9px}
 .commandStrip span{color:#66778a;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}.commandStrip b{grid-row:1/3;grid-column:2;font-size:25px;color:#15344e}.commandStrip small{font-size:10px;color:#788798}.commandStrip .risk{border-left:4px solid #c23b3b}.commandStrip .warn{border-left:4px solid #d68a16}
-.controls{display:grid;grid-template-columns:1fr minmax(240px,380px) auto;gap:8px;align-items:center;background:#fff;border:1px solid #d8e0e8;border-radius:9px;padding:7px}.filters{display:flex;gap:4px;overflow-x:auto}.controls button{min-height:32px;padding:6px 9px;border:1px solid #d5dee7;border-radius:6px;background:#f7f9fb;color:#45596d;font-size:11px;font-weight:750;white-space:nowrap}.controls button.active{background:#173f5f;color:#fff;border-color:#173f5f}.viewActions{display:flex;gap:4px;justify-content:flex-end}.controls input{min-height:34px;padding:7px 9px;border:1px solid #cad5df;border-radius:6px;background:#fff;color:#172033;font-size:12px}.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-.operations{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:10px;align-items:start}.patientBoard,.resourceRail section{background:#fff;border:1px solid #d8e0e8;border-radius:10px;overflow:hidden}.patientBoard>header,.resourceRail header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid #e1e7ed}.patientBoard h2,.resourceRail h2{margin:0;font-size:14px;color:#17344e}.patientBoard p{margin:2px 0 0;color:#718092;font-size:10px}.patientBoard header strong,.resourceRail header span{color:#657588;font-size:10px}.tableWrap{max-height:68vh;overflow:auto}table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px}th{position:sticky;top:0;z-index:2;text-align:left;padding:7px 8px;background:#edf2f6;color:#617286;border-bottom:1px solid #d8e0e8;font-size:9px;text-transform:uppercase;letter-spacing:.04em}td{padding:9px 8px;border-bottom:1px solid #e7ebef;vertical-align:top;background:#fff}.isCompact td{padding-top:6px;padding-bottom:6px}.isCompact td b{font-size:10px}.isCompact td small{font-size:8px}tr:hover td{background:#f3f7fa;cursor:pointer}tr[data-status=red] td:first-child{border-left:4px solid #c83c3c}tr[data-status=amber] td:first-child{border-left:4px solid #d58a18}td b{display:block;color:#20364a;font-size:11px}td small{display:block;margin-top:2px;color:#758497;font-size:9px}.time{font-weight:850;color:#244c69;white-space:nowrap}.openRow{min-height:28px!important;padding:4px 8px!important;border:1px solid #c8d4de!important;border-radius:5px!important;background:#fff!important;color:#244c69!important;font-size:9px!important;font-weight:800!important}.blocked b{color:#a53030}.state{display:inline-block;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:900;text-transform:uppercase}.state.red{background:#f9dddd;color:#9d2525}.state.amber{background:#fff0cf;color:#8a5900}.state.green{background:#dcf3e5;color:#17653a}.state.blue{background:#dcecf8;color:#245b82}
+.filterStack{display:grid;gap:4px}.modeSwitch{display:flex;gap:4px}.modeSwitch button{font-weight:850}.controls{display:grid;grid-template-columns:1fr minmax(240px,380px) auto;gap:8px;align-items:center;background:#fff;border:1px solid #d8e0e8;border-radius:9px;padding:7px}.filters{display:flex;gap:4px;overflow-x:auto}.controls button{min-height:32px;padding:6px 9px;border:1px solid #d5dee7;border-radius:6px;background:#f7f9fb;color:#45596d;font-size:11px;font-weight:750;white-space:nowrap}.controls button.active{background:#173f5f;color:#fff;border-color:#173f5f}.viewActions{display:flex;gap:4px;justify-content:flex-end}.controls input{min-height:34px;padding:7px 9px;border:1px solid #cad5df;border-radius:6px;background:#fff;color:#172033;font-size:12px}.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.operations{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:10px;align-items:start}.patientBoard,.resourceRail section{background:#fff;border:1px solid #d8e0e8;border-radius:10px;overflow:hidden}.patientBoard>header,.resourceRail header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid #e1e7ed}.patientBoard h2,.resourceRail h2{margin:0;font-size:14px;color:#17344e}.patientBoard p{margin:2px 0 0;color:#718092;font-size:10px}.patientBoard header strong,.resourceRail header span{color:#657588;font-size:10px}.tableWrap{max-height:68vh;overflow:auto}.patientTable{min-width:980px}.scheduleTable{min-width:860px}table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px}th{position:sticky;top:0;z-index:2;text-align:left;padding:7px 8px;background:#edf2f6;color:#617286;border-bottom:1px solid #d8e0e8;font-size:9px;text-transform:uppercase;letter-spacing:.04em}td{padding:9px 8px;border-bottom:1px solid #e7ebef;vertical-align:top;background:#fff}.isCompact td{padding-top:6px;padding-bottom:6px}.isCompact td b{font-size:10px}.isCompact td small{font-size:8px}tr:hover td{background:#f3f7fa;cursor:pointer}tr[data-status=red] td:first-child{border-left:4px solid #c83c3c}tr[data-status=amber] td:first-child{border-left:4px solid #d58a18}td b{display:block;color:#20364a;font-size:11px}td small{display:block;margin-top:2px;color:#758497;font-size:9px}.time{font-weight:850;color:#244c69;white-space:nowrap}.openRow{min-height:28px!important;padding:4px 8px!important;border:1px solid #c8d4de!important;border-radius:5px!important;background:#fff!important;color:#244c69!important;font-size:9px!important;font-weight:800!important}.blocked b{color:#a53030}.state{display:inline-block;padding:3px 6px;border-radius:999px;font-size:8px;font-weight:900;text-transform:uppercase}.state.red{background:#f9dddd;color:#9d2525}.state.amber{background:#fff0cf;color:#8a5900}.state.green{background:#dcf3e5;color:#17653a}.state.blue{background:#dcecf8;color:#245b82}
 .resourceRail{display:grid;gap:10px}.resourceRail section>button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;border:0;border-bottom:1px solid #e7ebef;background:#fff;color:#20364a;text-align:left}.resourceRail section>button:hover{background:#f3f7fa}.resourceRail button span{display:grid;gap:2px}.resourceRail button b{font-size:11px}.resourceRail button small{font-size:9px;color:#768596}.resourceRail em{font-size:9px;font-style:normal;color:#52687c}.resourceRail em.bad{color:#a53030;font-weight:800}.safetyRule{padding:9px 11px;border:1px solid #cdd8e2;border-radius:8px;background:#f8fafc;color:#657588;font-size:10px}
 @media(max-width:1050px){.commandStrip{grid-template-columns:repeat(3,1fr)}.operations{grid-template-columns:1fr}.resourceRail{grid-template-columns:1fr 1fr}.controls{grid-template-columns:1fr}.controls .reset{justify-self:start}}
 @media(max-width:650px){.command{padding:8px}.commandStrip{grid-template-columns:1fr 1fr}.commandStrip>div:last-child{display:none}.resourceRail{grid-template-columns:1fr}.tableWrap{max-height:none}table{min-width:760px}.patientBoard>header{align-items:flex-start}.controls label{order:-1}}
