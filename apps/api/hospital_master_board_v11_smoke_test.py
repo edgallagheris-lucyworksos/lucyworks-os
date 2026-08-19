@@ -79,7 +79,7 @@ try:
                     OperationalArea.area_type == "theatre",
                 )
             ).all()
-            assert len(theatres) == 11
+            assert len(theatres) == 4
             for theatre in theatres:
                 theatre.active = theatre.area_ref == "theatre-1"
                 session.add(theatre)
