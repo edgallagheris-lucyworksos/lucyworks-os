@@ -60,7 +60,7 @@ export default function HospitalBoardPage() {
                 onOpenResourceGrid={() => selectView("resources")}
               />
             ) : view === "patients" ? (
-              <HospitalPatientFlow onOpenResourceGrid={() => selectView("resources")} />
+              <HospitalPatientFlow userRole={user.role} onOpenResourceGrid={() => selectView("resources")} />
             ) : view === "resources" ? (
               <ResponsiveHospitalBoardV15 />
             ) : (
