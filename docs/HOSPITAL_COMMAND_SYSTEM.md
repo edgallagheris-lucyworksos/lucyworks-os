@@ -45,9 +45,10 @@ The previous `/staff` and `/hospital-ops` screens redirect to the corresponding 
 4. The constraint engine checks room capacity, staff overlap, required skills, gates, equipment and blockers.
 5. Overview, patient flow, resource and workforce views project the same server state for different staff decisions.
 6. A permitted user previews consequences, submits a versioned command and supplies a reason when required.
-7. The server validates authority and current versions in a transaction.
-8. The change, conflicts and evidence are stored.
-9. Live projections refresh for other staff.
+7. Handovers require an explicit receiving-role decision; critical results require a clinician to record the action taken.
+8. The server validates site authority, role authority and current versions in a transaction.
+9. The change, conflicts and evidence are stored with the verified actor.
+10. Live projections refresh for other staff.
 
 ## Capacity contract
 
@@ -99,6 +100,10 @@ Implemented on the hospital-command evolution branch:
 - one-row-per-patient flow;
 - 15-minute resource grid integration;
 - workforce and safe-coverage view;
+- governed patient owner, location and next-action updates;
+- accountable handover creation, acceptance and escalation using verified identities;
+- ward/ICU overdue-care and escalated-observation projection;
+- diagnostic work, critical-result tracking and clinician acknowledgement with action recorded;
 - direct links to each command view;
 - retirement of the duplicate staff-load and operations pages;
 - four-theatre canonical defaults and fixtures;
