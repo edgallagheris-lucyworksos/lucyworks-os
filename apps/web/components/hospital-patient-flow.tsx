@@ -127,7 +127,7 @@ export function HospitalPatientFlow({ onOpenResourceGrid }: { onOpenResourceGrid
           <td><b>{row.current?.leadStaffName || row.current?.leadStaffRole || row.episode.ownerRole || "Unowned"}</b><small>accountable now</small></td>
           <td><b>{row.next?.procedureName || row.episode.nextAction || "Next action not recorded"}</b><small>{row.next ? `${displayTime(row.next.startsAt)} · ${row.next.areaName}` : "untimed"}</small></td>
           <td className={row.blocked ? "blocked" : ""}><b>{row.conflicts[0]?.conflictType || (row.blocked ? "Operational blocker" : "Clear")}</b><small>{row.conflicts[0]?.explanation || row.episode.nextAction || "No active conflict"}</small></td>
-          <td><Link href={`/patient-record?episode=${encodeURIComponent(row.episode.episodeRef)}`}>Open</Link></td>
+          <td><Link aria-label={`Open patient record for ${row.episode.patientName}`} href={`/patient-record?episode=${encodeURIComponent(row.episode.episodeRef)}`}>Open</Link></td>
         </tr>)}</tbody>
       </table>
       {!visible.length ? <p className="empty">No active patients match the current filters.</p> : null}
