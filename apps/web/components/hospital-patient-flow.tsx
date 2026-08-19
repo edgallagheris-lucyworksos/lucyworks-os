@@ -40,7 +40,7 @@ function normalRisk(value: string): "red" | "amber" | "green" {
   return risk === "red" ? "red" : risk === "amber" ? "amber" : "green";
 }
 
-export function HospitalPatientFlow({ onOpenResourceGrid }: { onOpenResourceGrid: () => void }) {
+export function HospitalPatientFlow({ onOpenResourceGrid, userRole }: { onOpenResourceGrid: () => void; userRole: string }) {
   const { premisesRef, siteName } = useOperationalContext();
   const [board, setBoard] = useState<Board | null>(null);
   const [coordination, setCoordination] = useState<Coordination | null>(null);
@@ -158,7 +158,7 @@ export function HospitalPatientFlow({ onOpenResourceGrid }: { onOpenResourceGrid
     </section>
 
     <footer><span>Generated {new Date(board.generatedAt).toLocaleString()}</span><b>Source: authenticated v11 master board and coordination projection</b></footer>
-    {selected ? <HospitalPatientCoordination episode={selected.episode} areas={board.areas} coordination={coordination} premisesRef={premisesRef} onClose={() => setSelectedEpisodeRef(null)} onChanged={refresh} /> : null}
+    {selected ? <HospitalPatientCoordination episode={selected.episode} areas={board.areas} coordination={coordination} premisesRef={premisesRef} userRole={userRole} onClose={() => setSelectedEpisodeRef(null)} onChanged={refresh} /> : null}
   </main>;
 }
 
