@@ -42,8 +42,8 @@ try:
     with TestClient(app) as client:
         response = client.post("/api/hospital-ops/bootstrap?premises_ref=default-premises", headers=headers)
         assert response.status_code == 200, response.text
-        assert response.json()["areas"] >= 25
-        print("Hospital premises and 11-theatre area catalogue OK")
+        assert response.json()["areas"] == 20
+        print("Hospital premises, four theatres and diagnostic area catalogue OK")
 
         response = client.post("/api/hospital-ops/episodes", headers=headers, json={
             "episodeRef": "episode-v3-1",
@@ -157,17 +157,17 @@ try:
         print("End-to-end referral episode state machine OK")
 
         response = client.post("/api/hospital-ops/simulation/run", headers=headers, json={
-            "scenarioName": "forty-case-eleven-theatre-test",
+            "scenarioName": "hundred-case-four-theatre-test",
             "premisesRef": "simulation-premises",
             "operationalDate": DAY,
             "seed": 42,
-            "caseCount": 40,
+            "caseCount": 100,
             "commit": False,
         })
         assert response.status_code == 200, response.text
         metrics = response.json()["metrics"]
-        assert metrics["caseCount"] == 40
-        assert metrics["target"]["theatres"] == 11
+        assert metrics["caseCount"] == 100
+        assert metrics["target"]["theatres"] == 4
         print("Hospital simulation and shadow scenario metrics OK")
 
         csv_payload = "patientName,procedureName,areaRef,startsAt,endsAt\nImport Patient,CT,ct,2026-07-20T12:00:00Z,2026-07-20T13:00:00Z\nBroken Patient,MRI,unknown,not-a-date,also-bad"
