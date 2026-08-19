@@ -124,7 +124,10 @@ for (const viewport of [
       await assertProfessionalSurface(page, "/hospital-board", /Hospital operations/i, `hospital-${viewport.name}`);
       await expect(page.getByRole("heading", { name: "Today’s operating position" })).toBeVisible();
       await expect(page.getByText("Source: authenticated v11 hospital master board")).toBeVisible();
-      await page.getByRole("button", { name: "Live board" }).click();
+      await page.getByRole("button", { name: "Patient flow" }).first().click();
+      await expect(page.getByRole("heading", { name: "Active patients" })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Mabel/i })).toBeVisible();
+      await page.getByRole("button", { name: "Resource grid" }).first().click();
       await expect(page.getByRole("heading", { name: "15-minute operating grid" })).toBeVisible();
       await expect(page.locator(".hospital-shell__identity").getByText("Bristol Referral Hospital", { exact: true })).toBeVisible();
       await page.locator('[data-block-ref="block-1"]').click();
