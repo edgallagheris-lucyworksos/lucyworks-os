@@ -60,6 +60,38 @@ const careBrief = {
   clinicalBoundary: "Clinical decisions remain with the responsible clinician.",
 };
 
+const workforceDashboard = {
+  workforce: [
+    { staffRef: "staff-1", displayName: "A. Nurse", employmentStatus: "active", primaryRoleRef: "nurse", departmentRef: "diagnostic_imaging", gradeOrTrainingLevel: "senior", onCallEligible: true, sourceStatus: "verified" },
+    { staffRef: "staff-2", displayName: "Dr Patel", employmentStatus: "active", primaryRoleRef: "clinician", departmentRef: "surgery", gradeOrTrainingLevel: "specialist", onCallEligible: true, sourceStatus: "verified" },
+  ],
+  competencies: [
+    { staffRef: "staff-1", competencyRef: "mri_safety", scopeRef: "mri-1", level: "independent", status: "verified", validUntil: null },
+    { staffRef: "staff-2", competencyRef: "surgical", scopeRef: "theatre-1", level: "independent", status: "verified", validUntil: null },
+  ],
+  summary: { workforceProfiles: 2, provisionalCompetencies: 0 },
+};
+
+const workforceRoster = {
+  shifts: [
+    { shiftRef: "shift-1", staffRef: "staff-1", departmentRef: "diagnostic_imaging", areaRef: "mri-1", startsAt: now, endsAt: later, shiftType: "standard", status: "active", onCall: false, sourceStatus: "verified" },
+  ],
+  availabilityExceptions: [],
+};
+
+const workforceAssessment = {
+  assessedAt: now,
+  activeShiftCount: 1,
+  approvedExceptionCount: 0,
+  gapCount: 0,
+  safeToOperate: true,
+  requirements: [
+    { requirement: { requirementRef: "coverage-mri", serviceRef: "diagnostic_imaging", areaRef: "mri-1", roleRef: "nurse", competencyRef: "mri_safety", minimumCount: 1 }, eligibleStaffRefs: ["staff-1"], eligibleCount: 1, excluded: [], gap: 0, status: "met" },
+  ],
+  staffRisks: {},
+  unprofiledShifts: [],
+};
+
 async function mockHospitalApi(page: Page) {
   await page.route("**/api/**", async route => {
     const url = new URL(route.request().url());
@@ -79,6 +111,15 @@ async function mockHospitalApi(page: Page) {
     }
     if (pathname === "/api/v11/master-board/day") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(hospitalBoard) });
+    }
+    if (pathname === "/api/bvs-v6/dashboard") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workforceDashboard) });
+    }
+    if (pathname === "/api/bvs-v6/rota") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workforceRoster) });
+    }
+    if (pathname === "/api/bvs-v6/rota/assessment") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workforceAssessment) });
     }
     if (pathname === "/api/v9/episodes/EP-1001/command-view") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ episode: hospitalBoard.episodes[0], nextTransitions: {} }) });
@@ -127,6 +168,9 @@ for (const viewport of [
       await page.getByRole("button", { name: "Patient flow" }).first().click();
       await expect(page.getByRole("heading", { name: "Active patients" })).toBeVisible();
       await expect(page.getByRole("link", { name: /Mabel/i })).toBeVisible();
+      await page.getByRole("button", { name: "Workforce" }).click();
+      await expect(page.getByRole("heading", { name: "Workforce and safe coverage" })).toBeVisible();
+      await expect(page.getByText("Source: authenticated workforce, rota and coverage services")).toBeVisible();
       await page.getByRole("button", { name: "Resource grid" }).first().click();
       await expect(page.getByRole("heading", { name: "15-minute operating grid" })).toBeVisible();
       await expect(page.locator(".hospital-shell__identity").getByText("Bristol Referral Hospital", { exact: true })).toBeVisible();
