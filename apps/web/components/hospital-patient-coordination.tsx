@@ -101,6 +101,7 @@ export function HospitalPatientCoordination({
   areas,
   coordination,
   premisesRef,
+  userRole,
   onClose,
   onChanged,
 }: {
@@ -108,6 +109,7 @@ export function HospitalPatientCoordination({
   areas: Area[];
   coordination: Coordination;
   premisesRef: string;
+  userRole: string;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
@@ -129,6 +131,8 @@ export function HospitalPatientCoordination({
   const diagnostics = useMemo(() => coordination.diagnostics.filter((item) => item.episodeRef === episode.episodeRef), [coordination.diagnostics, episode.episodeRef]);
   const tasks = useMemo(() => coordination.tasks.filter((item) => item.episodeRef === episode.episodeRef && item.status !== "completed"), [coordination.tasks, episode.episodeRef]);
   const observations = useMemo(() => coordination.observations.filter((item) => item.episodeRef === episode.episodeRef && (item.concernLevel === "red" || item.escalationStatus === "pending")), [coordination.observations, episode.episodeRef]);
+  const seniorRoles = new Set(["clinical_director", "hospital_director", "ops_manager", "senior_clinician", "supervisor"]);
+  const criticalResultRoles = new Set(["clinical_director", "hospital_director", "senior_clinician", "clinician"]);
 
   async function run(label: string, action: () => Promise<unknown>) {
     setBusy(label);
@@ -232,7 +236,7 @@ export function HospitalPatientCoordination({
         <div className="records">
           {handovers.map((item) => <article key={item.handoverRef} className={item.status === "pending" ? "attention" : ""}>
             <div><b>{item.summary}</b><small>{item.fromActor} → {item.toActor || readable(item.toRole)} · {item.status} · {when(item.dueAt)}</small></div>
-            {item.status === "pending" ? <div className="recordActions"><button disabled={Boolean(busy)} onClick={() => void decideHandover(item.id, "accepted")}>Accept</button><button disabled={Boolean(busy)} onClick={() => void decideHandover(item.id, "escalated")}>Escalate</button></div> : null}
+            {item.status === "pending" && (userRole === item.toRole || seniorRoles.has(userRole)) ? <div className="recordActions"><button disabled={Boolean(busy)} onClick={() => void decideHandover(item.id, "accepted")}>Accept</button><button disabled={Boolean(busy)} onClick={() => void decideHandover(item.id, "escalated")}>Escalate</button></div> : item.status === "pending" ? <small>Awaiting receiving role</small> : null}
           </article>)}
           {!handovers.length ? <p className="empty">No handover recorded for this episode.</p> : null}
         </div>
@@ -253,7 +257,7 @@ export function HospitalPatientCoordination({
           {diagnostics.map((item) => <article className={item.criticalResult ? "critical" : ""} key={item.workRef}><div><b>{readable(item.modality)} · {item.requestedTest}</b><small>{item.status} · {item.assignedService || "service unassigned"}{item.reportSummary ? ` · ${item.reportSummary}` : ""}</small></div></article>)}
           {criticalResults.map((item) => <article className={item.status === "awaiting_acknowledgement" ? "critical result" : "result"} key={item.resultRef}>
             <div><b>{item.resultType} · {item.summary}</b><small>{item.status} · {item.assignedTo} · due {when(item.dueAt)}</small></div>
-            {item.status === "awaiting_acknowledgement" ? <div className="acknowledge"><input aria-label={`Action taken for ${item.resultType}`} value={criticalActions[item.id] || ""} onChange={(event) => setCriticalActions((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Clinical action taken" /><button disabled={Boolean(busy)} onClick={() => void acknowledgeResult(item.id)}>Acknowledge</button></div> : null}
+            {item.status === "awaiting_acknowledgement" && criticalResultRoles.has(userRole) ? <div className="acknowledge"><input aria-label={`Action taken for ${item.resultType}`} value={criticalActions[item.id] || ""} onChange={(event) => setCriticalActions((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Clinical action taken" /><button disabled={Boolean(busy)} onClick={() => void acknowledgeResult(item.id)}>Acknowledge</button></div> : item.status === "awaiting_acknowledgement" ? <small>Clinician acknowledgement required</small> : null}
           </article>)}
           {!diagnostics.length && !criticalResults.length ? <p className="empty">No diagnostic work or critical results recorded.</p> : null}
         </div>
