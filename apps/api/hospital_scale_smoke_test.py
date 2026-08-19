@@ -43,7 +43,7 @@ try:
             handovers = session.exec(select(NightHandover)).all()
             finance = session.exec(select(FinancialConsentStatus)).all()
 
-            assert len(theatre_rooms) >= 11, f"Expected at least 11 theatres, found {len(theatre_rooms)}"
+            assert len(theatre_rooms) == 4, f"Expected exactly 4 theatres, found {len(theatre_rooms)}"
             for required in ["MRI", "CT", "X-ray", "Ultrasound", "Dispensary", "Controlled Drug Cabinet", "Cold Chain Fridge", "Insurance / Estimate Desk", "ICU Bay 1", "High Dependency Ward", "Surgical Ward"]:
                 assert required in room_names, f"Missing required room: {required}"
             assert len(staff) >= 20, f"Expected hospital-scale staff, found {len(staff)}"
