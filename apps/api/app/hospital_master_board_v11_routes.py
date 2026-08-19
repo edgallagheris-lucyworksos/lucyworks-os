@@ -15,12 +15,13 @@ from app.control_plane_models import AccountableHandover, CriticalResultAcknowle
 from app.database import get_session
 from app.evidence_service import create_evidence_event
 from app.operating_context_v26_service import OperatingContext, resolve_context
-from app.hospital_ops_models import OperationalArea, OperationalBlock, OperationalCommand
+from app.hospital_ops_models import CanonicalEpisodeState, OperationalArea, OperationalBlock, OperationalCommand
 from app.hospital_ops_service import (
     block_dict,
     board_snapshot,
     create_block,
     detect_constraints,
+    episode_dict,
     json_text,
     normalise_dt,
     parse_json,
