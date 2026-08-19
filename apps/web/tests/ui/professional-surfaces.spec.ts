@@ -26,6 +26,26 @@ const hospitalBoard = {
   liveWindow: { from: now, to: later, blocks: [] },
 };
 
+const patientCoordination = {
+  generatedAt: now,
+  handovers: [
+    { id: 21, handoverRef: "handover-21", episodeRef: "EP-1001", fromActor: "Dr Patel", fromRole: "clinician", toActor: "A. Nurse", toRole: "nurse", status: "pending", summary: "Monitor after MRI", clinicalRisks: ["post-sedation airway risk"], outstandingActions: ["repeat observations"], dueAt: later },
+  ],
+  criticalResults: [
+    { id: 31, resultRef: "result-31", episodeRef: "EP-1001", resultType: "potassium", severity: "red", summary: "Critical potassium", status: "awaiting_acknowledgement", assignedTo: "Dr Patel", assignedRole: "clinician", dueAt: later },
+  ],
+  diagnostics: [
+    { workRef: "diagnostic-31", episodeRef: "EP-1001", modality: "laboratory", requestedTest: "potassium", urgency: "urgent", status: "reported", assignedService: "laboratory", reportSummary: "Critical potassium", criticalResult: true, version: 2 },
+  ],
+  tasks: [
+    { taskRef: "task-31", episodeRef: "EP-1001", title: "Repeat observations", status: "due", dueAt: now, priority: "red", assignedRole: "nurse", version: 1 },
+  ],
+  observations: [
+    { observationRef: "observation-31", episodeRef: "EP-1001", type: "respiratory_rate", concernLevel: "red", escalationStatus: "pending", recordedAt: now },
+  ],
+  summary: { pendingHandovers: 1, unacknowledgedCriticalResults: 1, overdueTasks: 1, redObservations: 1 },
+};
+
 const workspace = {
   generatedAt: now,
   summary: { activePatients: 3, scheduledPatients: 2, unscheduledPatients: 1, unlinkedTasks: 0 },
@@ -112,6 +132,9 @@ async function mockHospitalApi(page: Page) {
     if (pathname === "/api/v11/master-board/day") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(hospitalBoard) });
     }
+    if (pathname === "/api/v11/master-board/coordination") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(patientCoordination) });
+    }
     if (pathname === "/api/bvs-v6/dashboard") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(workforceDashboard) });
     }
@@ -168,6 +191,12 @@ for (const viewport of [
       await page.getByRole("button", { name: "Patient flow" }).first().click();
       await expect(page.getByRole("heading", { name: "Active patients" })).toBeVisible();
       await expect(page.getByRole("link", { name: /Mabel/i })).toBeVisible();
+      await expect(page.getByText("Source: authenticated v11 master board and coordination projection")).toBeVisible();
+      await page.getByRole("button", { name: "Manage" }).first().click();
+      await expect(page.getByRole("dialog").getByRole("heading", { name: "Mabel" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Create accountable handover" })).toBeVisible();
+      await expect(page.getByText("Critical potassium").first()).toBeVisible();
+      await page.getByRole("button", { name: "Close patient coordination" }).click();
       await page.getByRole("button", { name: "Workforce" }).click();
       await expect(page.getByRole("heading", { name: "Workforce and safe coverage" })).toBeVisible();
       await expect(page.getByText("Source: authenticated workforce, rota and coverage services")).toBeVisible();
