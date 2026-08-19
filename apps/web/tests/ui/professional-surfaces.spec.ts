@@ -122,6 +122,9 @@ for (const viewport of [
 
     test("hospital operations renders without prototype artefacts or overflow", async ({ page }) => {
       await assertProfessionalSurface(page, "/hospital-board", /Hospital operations/i, `hospital-${viewport.name}`);
+      await expect(page.getByRole("heading", { name: "Today’s operating position" })).toBeVisible();
+      await expect(page.getByText("Source: authenticated v11 hospital master board")).toBeVisible();
+      await page.getByRole("button", { name: "Live board" }).click();
       await expect(page.getByRole("heading", { name: "15-minute operating grid" })).toBeVisible();
       await expect(page.locator(".hospital-shell__identity").getByText("Bristol Referral Hospital", { exact: true })).toBeVisible();
       await page.locator('[data-block-ref="block-1"]').click();
