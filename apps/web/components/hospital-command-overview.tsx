@@ -33,7 +33,7 @@ function isBlocked(block: Block) {
   return block.status.toLowerCase() === "blocked" || block.blockers.length > 0;
 }
 
-export function HospitalCommandOverview({ onOpenLiveBoard }: { onOpenLiveBoard: () => void }) {
+export function HospitalCommandOverview({ onOpenPatientFlow, onOpenResourceGrid }: { onOpenPatientFlow: () => void; onOpenResourceGrid: () => void }) {
   const { premisesRef, siteName } = useOperationalContext();
   const [board, setBoard] = useState<Board | null>(null);
   const [status, setStatus] = useState("Loading live hospital state");
@@ -77,7 +77,7 @@ export function HospitalCommandOverview({ onOpenLiveBoard }: { onOpenLiveBoard: 
     <style>{css}</style>
     <header className="overviewTitle">
       <div><span>Hospital command overview</span><h2>Today’s operating position</h2><p>{board.premises.name} · {board.operationalDate} · one authenticated master-board projection</p></div>
-      <div className="overviewActions"><span className={status === "Live" ? "live" : "warning"}>{status}</span><button onClick={() => void refresh()}>Refresh</button><button className="primary" onClick={onOpenLiveBoard}>Open live board</button></div>
+      <div className="overviewActions"><span className={status === "Live" ? "live" : "warning"}>{status}</span><button onClick={() => void refresh()}>Refresh</button><button className="primary" onClick={onOpenPatientFlow}>Open patient flow</button><button onClick={onOpenResourceGrid}>Resource grid</button></div>
     </header>
 
     {configurationWarning ? <section className="configurationWarning"><b>Configuration mismatch</b><span>{configurationWarning}</span></section> : null}
@@ -92,7 +92,7 @@ export function HospitalCommandOverview({ onOpenLiveBoard }: { onOpenLiveBoard: 
 
     <section className="primaryGrid">
       <article className="panel priorities">
-        <header><div><h3>Priority interventions</h3><p>Highest operational risk first</p></div><button onClick={onOpenLiveBoard}>View in board</button></header>
+        <header><div><h3>Priority interventions</h3><p>Highest operational risk first</p></div><button onClick={onOpenPatientFlow}>View patients</button></header>
         <div className="priorityHead"><span>Time</span><span>Patient / work</span><span>Location</span><span>Owner</span></div>
         {priorities.length ? priorities.map((block) => <div className="priorityRow" data-risk={block.riskLevel} key={block.blockRef}>
           <time>{time(block.startsAt)}</time>
