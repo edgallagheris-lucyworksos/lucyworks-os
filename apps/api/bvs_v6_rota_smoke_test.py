@@ -20,8 +20,10 @@ os.environ.update({
 })
 
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Session
 
+from app.bvs_v6_models import WorkforceProfile
+from app.bvs_v6_rota_models import WorkforceShiftV6
 from app.database import engine
 from app.main import app
 
@@ -92,6 +94,40 @@ try:
         assert current.status_code == 200, current.text
         current_data = current.json()["shift"]
 
+        with Session(engine) as session:
+            for index in range(1, 101):
+                staff_ref = f"scale-staff-{index:03d}"
+                session.add(WorkforceProfile(
+                    premises_ref="bvs-bristol",
+                    staff_ref=staff_ref,
+                    display_name=f"Scale Staff {index:03d}",
+                    primary_role_ref="admin",
+                    department_ref="hospital-operations",
+                    employment_status="active",
+                    source_status="verified",
+                    updated_by_actor_id="scale-test",
+                    updated_by_actor_name="Scale Test",
+                ))
+                session.add(WorkforceShiftV6(
+                    premises_ref="bvs-bristol",
+                    shift_ref=f"scale-shift-{index:03d}",
+                    staff_ref=staff_ref,
+                    department_ref="hospital-operations",
+                    area_ref="hospital",
+                    starts_at=current_start,
+                    ends_at=current_end,
+                    status="active",
+                    source_status="verified",
+                    updated_by_actor_id="scale-test",
+                    updated_by_actor_name="Scale Test",
+                ))
+            session.commit()
+
+        dashboard = client.get("/api/bvs-v6/dashboard", headers=ops)
+        assert dashboard.status_code == 200, dashboard.text
+        assert len(dashboard.json()["workforce"]) >= 100
+        print("One hundred workforce profiles are available through the authenticated projection")
+
         overlap = client.put(
             "/api/bvs-v6/rota/shifts/shift-overlap",
             headers=ops,
@@ -110,6 +146,7 @@ try:
         assessment = client.get(assessment_url, headers=ops)
         assert assessment.status_code == 200, assessment.text
         assessed = assessment.json()
+        assert assessed["activeShiftCount"] >= 101
         icu = next(item for item in assessed["requirements"] if item["requirement"]["requirementRef"] == "coverage.icu.nurse.24h")
         assert icu["status"] == "met", icu
         assert assessed["staffRisks"]["nurse-icu-rota-001"][0]["type"] == "short_rest"
@@ -133,9 +170,9 @@ try:
 
         roster = client.get(f"/api/bvs-v6/rota?startsAt={quote(iso(now - timedelta(days=1)))}&endsAt={quote(iso(now + timedelta(days=1)))}", headers=ops)
         assert roster.status_code == 200, roster.text
-        assert len(roster.json()["shifts"]) == 2
+        assert len(roster.json()["shifts"]) >= 102
         assert len(roster.json()["availabilityExceptions"]) == 1
-        print("Rota and availability register query OK")
+        print("One hundred-person rota and availability register query OK")
 
     print("\n--- BVS V6 ROTA SAFE STAFFING SMOKE TEST PASSED ---\n")
 finally:
