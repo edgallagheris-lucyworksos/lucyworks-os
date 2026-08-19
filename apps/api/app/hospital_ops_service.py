@@ -268,7 +268,7 @@ def ensure_default_premises_and_areas(session: Session, premises_ref: str = "def
         return premises, existing
 
     definitions: list[tuple[str, str, str, str, int, int, list[str]]] = []
-    for number in range(1, 12):
+    for number in range(1, 5):
         definitions.append((f"theatre-{number}", f"Theatre {number}", "theatre", "Surgery", 1, 20, ["surgical", "anaesthesia"]));
     definitions.extend([
         ("mri", "MRI", "imaging", "Diagnostic imaging", 1, 20, ["mri", "anaesthesia"]),
@@ -1122,7 +1122,7 @@ def run_scenario(session: Session, payload: dict[str, Any], auth: AuthContext) -
         "unapprovedConsent": len([item for item in simulated if item["gates"].get("consent") != "approved"]),
         "unapprovedEstimate": len([item for item in simulated if item["gates"].get("estimate") != "approved"]),
         "committed": commit,
-        "target": {"theatres": 11, "dailyEpisodes": case_count},
+        "target": {"theatres": 4, "dailyEpisodes": case_count},
     }
     run.status = "completed"
     run.metrics_json = json_text(metrics)
