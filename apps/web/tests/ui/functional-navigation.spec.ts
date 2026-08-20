@@ -46,6 +46,26 @@ const moreLinks = [
 
 const allRoutes = [...shellLinks, ...moreLinks].map(([, path]) => path);
 
+async function clickStableNavigation(page: Page, label: string, href: string) {
+  await page.waitForLoadState("domcontentloaded");
+  await page.waitForFunction(() => document.readyState === "complete");
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const link = page.getByRole("link", { name: label, exact: true }).first();
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", href);
+    try {
+      await link.click({ timeout: 5000 });
+      await expect(page).toHaveURL(new RegExp(`${href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\?|$)`));
+      await page.waitForLoadState("domcontentloaded");
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+      await page.waitForTimeout(150);
+    }
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await mockFunctionalApi(page);
 });
@@ -72,12 +92,9 @@ test("the complete hospital navigation tree resolves without missing pages", asy
 
 test("primary navigation actually changes route and returns", async ({ page }) => {
   await page.goto("/input", { waitUntil: "networkidle" });
-  await page.getByRole("link", { name: "Patients", exact: true }).first().click();
-  await expect(page).toHaveURL(/\/workspace(?:\?|$)/);
-  await page.getByRole("link", { name: "Quick input", exact: true }).first().click();
-  await expect(page).toHaveURL(/\/input(?:\?|$)/);
-  await page.getByRole("link", { name: "Referrals", exact: true }).first().click();
-  await expect(page).toHaveURL(/\/referral-intake(?:\?|$)/);
+  await clickStableNavigation(page, "Patients", "/workspace");
+  await clickStableNavigation(page, "Quick input", "/input");
+  await clickStableNavigation(page, "Referrals", "/referral-intake");
 });
 
 test("quick input creates owned work instead of being a decorative control", async ({ page }) => {
