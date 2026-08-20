@@ -79,13 +79,6 @@ test("primary navigation controls perform real route changes", async ({ page }) 
     await link.click();
     await expect(page).toHaveURL(new RegExp(`${path}(?:\\?|$)`));
   }
-
-  await page.goto("/workspace", { waitUntil: "networkidle" });
-  const quickInput = page.getByRole("link", { name: "Quick input", exact: true }).first();
-  await expect(quickInput).toBeVisible();
-  await expect(quickInput).toHaveAttribute("href", "/input");
-  await quickInput.click();
-  await expect(page).toHaveURL(/\/input(?:\?|$)/);
 });
 
 test("quick input creates owned work instead of being a decorative control", async ({ page }) => {
