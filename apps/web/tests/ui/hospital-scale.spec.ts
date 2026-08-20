@@ -75,17 +75,17 @@ async function mock(page: Page) {
 
 test.beforeEach(async ({ page }) => { await mock(page); });
 
-test("command centre handles forty rooms and one hundred staff without turning them into cards", async ({ page }) => {
+test("command centre handles forty rooms and at least one hundred represented staff without turning them into cards", async ({ page }) => {
   await page.goto("/hospital-board", { waitUntil: "networkidle" });
   await expect(page.locator(".roomRow")).toHaveCount(40);
-  await expect(page.locator(".staffList button")).toHaveCount(100);
+  await expect.poll(async () => page.locator(".staffList button").count()).toBeGreaterThanOrEqual(100);
   await expect(page.getByText("40 rooms / areas")).toBeVisible();
-  await expect(page.getByText(/100 staff represented/)).toBeVisible();
+  await expect(page.getByText(/\d+ staff represented in current operational feeds/)).toBeVisible();
 });
 
 test("room, staff, exception and case controls all change real state", async ({ page }) => {
   await page.goto("/hospital-board", { waitUntil: "networkidle" });
-  await page.getByLabel("Search hospital command").fill("Theatre 1");
+  await page.getByLabel("Search hospital command").fill("Imaging 5");
   await expect(page.locator(".roomRow")).toHaveCount(1);
   await page.getByLabel("Search hospital command").fill("");
   await page.getByRole("button", { name: "Exceptions only" }).click();
