@@ -9,7 +9,7 @@ export function WorkspaceProfessionalShell({ children }: { children: ReactNode }
   return <div className="workspace-shell"><style>{css}</style>
     <header className="workspace-shell__header">
       <div className="workspace-shell__identity"><Link href="/hospital-board" className="workspace-shell__mark">LW</Link><div><h1>Patient workspace</h1><span>{siteName}</span></div></div>
-      <nav><Link className="primary" href="/referral-intake">New referral</Link><Link href="/hospital-board">Hospital</Link><Link href="/system-control">System</Link></nav>
+      <nav aria-label="Patient workspace navigation"><Link className="primary" href="/referral-intake">New referral</Link><Link href="/hospital-board">Hospital</Link><Link href="/input">Quick input</Link><Link href="/system-control">System</Link></nav>
     </header>
     {children}
   </div>;
