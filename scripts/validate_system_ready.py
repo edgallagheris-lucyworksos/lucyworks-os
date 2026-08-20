@@ -36,10 +36,20 @@ require(
 require(
     "apps/web/app/hospital-board/page.tsx",
     "Hospital operations",
-    "HospitalValuePanel",
-    "Patient flow",
-    "Staff & locations",
+    "HospitalCommandCentre",
+    "Command centre",
+    "Schedule control",
+    "Staff detail",
     "StaffLocationGrid",
+)
+require(
+    "apps/web/components/hospital-command-centre.tsx",
+    "rooms / areas",
+    "Staff load",
+    "Exceptions only",
+    "Patient record",
+    "Patient work",
+    "Episode command",
 )
 require(
     "apps/web/app/episode-command/page.tsx",
