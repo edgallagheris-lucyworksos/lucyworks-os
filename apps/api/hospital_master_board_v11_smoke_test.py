@@ -40,12 +40,13 @@ nurse_token, _ = issue_local_token(
 ops_headers = {"Authorization": f"Bearer {ops_token}"}
 nurse_headers = {"Authorization": f"Bearer {nurse_token}"}
 DAY = "2026-07-27"
+PREMISES = "bvs-bristol"
 
 
 def block_payload(block_ref: str, patient: str, start: str, end: str) -> dict:
     return {
         "blockRef": block_ref,
-        "premisesRef": "default-premises",
+        "premisesRef": PREMISES,
         "patientName": patient,
         "procedureName": "Planned referral procedure",
         "blockType": "procedure",
@@ -66,7 +67,7 @@ def block_payload(block_ref: str, patient: str, start: str, end: str) -> dict:
 try:
     with TestClient(app) as client:
         response = client.post(
-            "/api/hospital-ops/bootstrap?premises_ref=default-premises",
+            f"/api/hospital-ops/bootstrap?premises_ref={PREMISES}",
             headers=ops_headers,
         )
         assert response.status_code == 200, response.text
@@ -74,7 +75,7 @@ try:
         with Session(engine) as session:
             theatres = session.exec(
                 select(OperationalArea).where(
-                    OperationalArea.premises_ref == "default-premises",
+                    OperationalArea.premises_ref == PREMISES,
                     OperationalArea.area_type == "theatre",
                 )
             ).all()
@@ -99,7 +100,7 @@ try:
         print("Canonical planned theatre sequence created")
 
         emergency_request = {
-            "premisesRef": "default-premises",
+            "premisesRef": PREMISES,
             "operationalDate": DAY,
             "patientName": "Emergency Patient",
             "procedureName": "Emergency laparotomy",
@@ -206,16 +207,25 @@ try:
         print("Emergency insertion and transactional displacement OK")
 
         response = client.get(
-            f"/api/v11/master-board/day?premises_ref=default-premises&operational_date={DAY}",
+            f"/api/v11/master-board/day?premises_ref={PREMISES}&operational_date={DAY}",
             headers=ops_headers,
         )
         assert response.status_code == 200, response.text
         board = response.json()
         assert board["boardVersion"] == "v11"
+        assert board["operatingContext"]["premisesRef"] == PREMISES
         emergency_blocks = [item for item in board["blocks"] if item["blockType"] == "emergency"]
         assert len(emergency_blocks) == 1
         versions_before_replay = {item["blockRef"]: item["version"] for item in board["blocks"]}
         print("Master board v11 day view OK")
+
+        response = client.get(
+            f"/api/v11/master-board/day?premises_ref=another-hospital&operational_date={DAY}",
+            headers=ops_headers,
+        )
+        assert response.status_code == 403, response.text
+        assert response.json()["detail"]["code"] == "site_not_authorised"
+        print("Cross-premises board access rejected")
 
         response = client.post(
             "/api/v11/master-board/emergency/apply",
@@ -227,7 +237,7 @@ try:
         assert replay["createCommandRef"] == applied["createCommandRef"]
 
         response = client.get(
-            f"/api/v11/master-board/day?premises_ref=default-premises&operational_date={DAY}",
+            f"/api/v11/master-board/day?premises_ref={PREMISES}&operational_date={DAY}",
             headers=ops_headers,
         )
         assert response.status_code == 200, response.text

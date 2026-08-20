@@ -32,25 +32,38 @@ type OperationalView = {
   };
 };
 
+function errorText(caught: unknown) {
+  return caught instanceof Error ? caught.message : String(caught || "Operating context unavailable");
+}
+
+function isRecoverableContextConflict(caught: unknown) {
+  const message = errorText(caught).toLowerCase();
+  return message.includes("database_integrity_conflict") || message.includes("idempotency key already exists") || message.includes("stable reference");
+}
+
 export function OperatingContextV26Bar() {
   const pathname = usePathname();
   const [data, setData] = useState<ContextPayload | null>(null);
   const [view, setView] = useState<OperationalView | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [switching, setSwitching] = useState(false);
 
   async function load() {
     if (pathname.startsWith("/login")) return;
     try {
-      const [context, operational] = await Promise.all([
-        apiGet<ContextPayload>("/api/v26/context"),
-        apiGet<OperationalView>("/api/v26/operational-view"),
-      ]);
+      const context = await apiGet<ContextPayload>("/api/v26/context");
       setData(context);
-      setView(operational);
       setError("");
+      try {
+        const operational = await apiGet<OperationalView>("/api/v26/operational-view");
+        setView(operational);
+      } catch {
+        // The active hospital identity remains usable even when optional live-impact data is unavailable.
+        setView(null);
+      }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Operating context unavailable");
+      setError(errorText(caught));
     }
   }
 
@@ -62,7 +75,7 @@ export function OperatingContextV26Bar() {
   if (!data) {
     return error ? (
       <div role="alert" style={{ padding: "7px 12px", background: "#7f1d1d", color: "white", fontWeight: 800 }}>
-        Hospital context unavailable: {error}
+        Hospital context unavailable: {error} <button type="button" onClick={() => void load()} style={{ marginLeft: 8, minHeight: 32 }}>Refresh context</button>
       </div>
     ) : null;
   }
@@ -71,6 +84,8 @@ export function OperatingContextV26Bar() {
     if (!data || !siteRef || siteRef === data.context.siteRef) return;
     const expectedVersion = data.context.version;
     setSwitching(true);
+    setError("");
+    setNotice("");
     try {
       await apiPost("/api/v26/context/switch", {
         siteRef,
@@ -78,8 +93,14 @@ export function OperatingContextV26Bar() {
         reason: "User selected a different authorised hospital site.",
       });
       await load();
+      setNotice("Hospital context changed.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Site switch failed");
+      if (isRecoverableContextConflict(caught)) {
+        await load();
+        setNotice("That context change had already been recorded. Current hospital context refreshed.");
+      } else {
+        setError(errorText(caught));
+      }
     } finally {
       setSwitching(false);
     }
@@ -106,9 +127,11 @@ export function OperatingContextV26Bar() {
       <span style={{ color: "#cbd5e1" }}>Org: {data.context.organisationRef}</span>
       <span style={{ color: "#cbd5e1" }}>Context v{data.context.version}</span>
       <span style={{ marginLeft: "auto", fontWeight: 800 }}>
-        {counts?.activeImpacts || 0} active impacts · {counts?.affectedPatients || 0} affected patients · {counts?.openCommands || 0} open commands
+        {counts ? `${counts.activeImpacts || 0} active impacts · ${counts.affectedPatients || 0} affected patients · ${counts.openCommands || 0} open commands` : "Live impact summary unavailable"}
       </span>
       {(critical > 0 || red > 0) && <strong style={{ color: "#fecaca" }}>{critical} critical · {red} red</strong>}
+      {notice ? <span role="status" style={{ color: "#bbf7d0", fontWeight: 800 }}>{notice}</span> : null}
+      {error ? <span role="alert" style={{ color: "#fecaca", fontWeight: 800 }}>{error}</span> : null}
       <Link href="/operating-context" style={{ color: "#5eead4", fontWeight: 900 }}>Open context control →</Link>
     </aside>
   );

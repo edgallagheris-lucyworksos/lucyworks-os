@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 
 from app.auth import AuthContext, require_authenticated, require_roles
 from app.database import get_session
+from app.operating_context_v26_service import OperatingContext, resolve_context
 from app.hospital_ops_models import OperationalArea, OperationalBlock, OperationalCommand
 from app.hospital_ops_service import (
     block_dict,
@@ -30,6 +31,20 @@ WRITE_ROLES = (
     "senior_clinician",
     "supervisor",
 )
+
+
+def authorised_context(
+    session: Session,
+    auth: AuthContext,
+    requested_premises_ref: str | None = None,
+) -> OperatingContext:
+    context = resolve_context(session, auth)
+    if requested_premises_ref not in {None, "", "default-premises", context.premises_ref}:
+        raise HTTPException(status_code=403, detail={
+            "code": "site_not_authorised",
+            "activePremisesRef": context.premises_ref,
+        })
+    return context
 
 
 class EmergencyPreviewPayload(BaseModel):
@@ -226,7 +241,8 @@ def get_day(
     session: Session = Depends(get_session),
     auth: AuthContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
-    board = board_snapshot(session, premises_ref, operational_date)
+    context = authorised_context(session, auth, premises_ref)
+    board = board_snapshot(session, context.premises_ref, operational_date)
     now = datetime.now(timezone.utc)
     horizon = now + timedelta(minutes=90)
     live_blocks = [
@@ -240,6 +256,7 @@ def get_day(
         "blocks": sorted(live_blocks, key=lambda item: item["startsAt"]),
     }
     board["boardVersion"] = "v11"
+    board["operatingContext"] = context.as_dict()
     board["requestedBy"] = auth.subject
     session.commit()
     return board
@@ -249,8 +266,10 @@ def get_day(
 def preview_emergency(
     payload: EmergencyPreviewPayload,
     session: Session = Depends(get_session),
-    _: AuthContext = Depends(require_roles(*WRITE_ROLES)),
+    auth: AuthContext = Depends(require_roles(*WRITE_ROLES)),
 ) -> dict[str, Any]:
+    context = authorised_context(session, auth, payload.premisesRef)
+    payload = payload.model_copy(update={"premisesRef": context.premises_ref})
     options = emergency_options(session, payload)
     return {
         "request": payload.model_dump(mode="json"),
@@ -266,6 +285,8 @@ def apply_emergency(
     session: Session = Depends(get_session),
     auth: AuthContext = Depends(require_roles(*WRITE_ROLES)),
 ) -> dict[str, Any]:
+    context = authorised_context(session, auth, payload.premisesRef)
+    payload = payload.model_copy(update={"premisesRef": context.premises_ref})
     existing = session.exec(
         select(OperationalCommand).where(OperationalCommand.idempotency_key == payload.idempotencyKey)
     ).first()

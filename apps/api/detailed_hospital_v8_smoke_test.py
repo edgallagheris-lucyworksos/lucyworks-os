@@ -233,20 +233,31 @@ try:
         })
         assert implant["implant"]["lot_number"] == "LOT-2026-001"
 
-        unauthorised_estimate = client.post("/api/v8/episodes/EP-V8-001/estimates", headers=ops, json={
-            "patient_ref": "PAT-V8-001", "status": "issued", "lines": [{
+        retired_estimate = client.post("/api/v8/episodes/EP-V8-001/estimates", headers=ops, json={
+            "patient_ref": "PAT-V8-001", "status": "draft", "lines": [{
                 "category": "procedure", "description": "Surgery", "quantity": 1,
                 "lower_unit_pence": 300000, "upper_unit_pence": 450000,
-            }], "reason": "Estimate without owner authority",
+            }], "reason": "Legacy estimate boundary check",
         })
-        assert unauthorised_estimate.status_code == 409
-        estimate = post(client, "/api/v8/episodes/EP-V8-001/estimates", ops, {
-            "patient_ref": "PAT-V8-001", "status": "issued", "authorised_limit_pence": 500000,
-            "owner_authorisation_ref": linked["link"]["evidence_event_ref"],
+        assert retired_estimate.status_code == 410, retired_estimate.text
+        assert retired_estimate.json()["replacement"] == "/api/v32/episodes/EP-V8-001/estimates"
+
+        unauthorised_estimate = client.post("/api/v32/episodes/EP-V8-001/estimates", headers=ops, json={
+            "patientRef": "PAT-V8-001", "status": "issued", "lines": [{
+                "category": "procedure", "description": "Surgery", "quantity": 1,
+                "lowerUnitPence": 300000, "upperUnitPence": 450000,
+            }], "writtenDeliveryRef": "written-estimate-v8-smoke",
+            "reason": "Estimate without owner authority",
+        })
+        assert unauthorised_estimate.status_code == 409, unauthorised_estimate.text
+        estimate = post(client, "/api/v32/episodes/EP-V8-001/estimates", ops, {
+            "patientRef": "PAT-V8-001", "status": "issued", "authorisedLimitPence": 500000,
+            "ownerAuthorisationRef": linked["link"]["evidence_event_ref"],
+            "writtenDeliveryRef": "written-estimate-v8-smoke",
             "lines": [
-                {"category": "imaging", "description": "MRI", "quantity": 1, "lower_unit_pence": 180000, "upper_unit_pence": 220000},
-                {"category": "procedure", "description": "Surgery", "quantity": 1, "lower_unit_pence": 300000, "upper_unit_pence": 450000},
-            ], "reason": "Owner-authorised estimate",
+                {"category": "imaging", "description": "MRI", "quantity": 1, "lowerUnitPence": 180000, "upperUnitPence": 220000},
+                {"category": "procedure", "description": "Surgery", "quantity": 1, "lowerUnitPence": 300000, "upperUnitPence": 450000},
+            ], "reason": "Owner-authorised regulated estimate",
         })
         assert estimate["estimate"]["lower_total_pence"] == 480000
         assert estimate["estimate"]["upper_total_pence"] == 670000
