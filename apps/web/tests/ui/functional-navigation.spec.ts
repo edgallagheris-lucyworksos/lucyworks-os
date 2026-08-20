@@ -46,26 +46,6 @@ const moreLinks = [
 
 const allRoutes = [...shellLinks, ...moreLinks].map(([, path]) => path);
 
-async function clickStableNavigation(page: Page, label: string, href: string) {
-  await page.waitForLoadState("domcontentloaded");
-  await page.waitForFunction(() => document.readyState === "complete");
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const link = page.getByRole("link", { name: label, exact: true }).first();
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", href);
-    try {
-      await link.click({ timeout: 5000 });
-      await expect(page).toHaveURL(new RegExp(`${href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\?|$)`));
-      await page.waitForLoadState("domcontentloaded");
-      return;
-    } catch (error) {
-      if (attempt === 3) throw error;
-      await page.waitForTimeout(150);
-    }
-  }
-}
-
 test.beforeEach(async ({ page }) => {
   await mockFunctionalApi(page);
 });
@@ -90,11 +70,22 @@ test("the complete hospital navigation tree resolves without missing pages", asy
   }
 });
 
-test("primary navigation actually changes route and returns", async ({ page }) => {
-  await page.goto("/input", { waitUntil: "networkidle" });
-  await clickStableNavigation(page, "Patients", "/workspace");
-  await clickStableNavigation(page, "Quick input", "/input");
-  await clickStableNavigation(page, "Referrals", "/referral-intake");
+test("primary navigation controls perform real route changes", async ({ page }) => {
+  for (const [label, path] of [["Patients", "/workspace"], ["Referrals", "/referral-intake"]] as const) {
+    await page.goto("/input", { waitUntil: "networkidle" });
+    const link = page.getByRole("link", { name: label, exact: true }).first();
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", path);
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`${path}(?:\\?|$)`));
+  }
+
+  await page.goto("/workspace", { waitUntil: "networkidle" });
+  const quickInput = page.getByRole("link", { name: "Quick input", exact: true }).first();
+  await expect(quickInput).toBeVisible();
+  await expect(quickInput).toHaveAttribute("href", "/input");
+  await quickInput.click();
+  await expect(page).toHaveURL(/\/input(?:\?|$)/);
 });
 
 test("quick input creates owned work instead of being a decorative control", async ({ page }) => {
