@@ -34,27 +34,15 @@ const blocks = areas.slice(0, 32).map((area, i) => ({
 }));
 
 const staffBlocks = Array.from({ length: 100 }, (_, i) => ({
-  id: `work-${i + 1}`,
-  time: "08:00",
-  lane: "clinical",
-  subject: `Patient ${i + 1}`,
-  what: "Hospital work",
-  who: i % 3 === 0 ? "nurse" : "clinician",
-  assignedRole: i % 3 === 0 ? "nurse" : "clinician",
-  assignedStaffId: i + 1,
-  assignedStaffName: `Staff ${i + 1}`,
-  where: areas[i % areas.length].name,
-  how: "standard workflow",
-  next: "continue planned flow",
-  blocker: i === 3 ? "capacity conflict" : "none",
-  status: i === 3 ? "red" : "green",
-  route: "/workspace",
+  id: `work-${i + 1}`, time: "08:00", lane: "clinical", subject: `Patient ${i + 1}`, what: "Hospital work",
+  who: i % 3 === 0 ? "nurse" : "clinician", assignedRole: i % 3 === 0 ? "nurse" : "clinician", assignedStaffId: i + 1,
+  assignedStaffName: `Staff ${i + 1}`, where: areas[i % areas.length].name, how: "standard workflow", next: "continue planned flow",
+  blocker: i === 3 ? "capacity conflict" : "none", status: i === 3 ? "red" : "green", route: "/workspace",
 }));
 
 const hospitalBoard = {
   generatedAt: iso(0), operationalDate: iso(0).slice(0, 10), boardVersion: "11.0",
-  premises: { premisesRef: "hospital-main", name: "Bristol Referral Hospital" },
-  areas, blocks,
+  premises: { premisesRef: "hospital-main", name: "Bristol Referral Hospital" }, areas, blocks,
   episodes: blocks.map(block => ({ episodeRef: block.episodeRef, patientRef: block.patientRef, patientName: block.patientName, phase: "active", urgency: "routine", ownerRole: "clinician", currentAreaRef: block.areaRef, nextAction: block.procedureName, status: "active", version: 1 })),
   conflicts: [{ conflictRef: "conflict-1", conflictType: "capacity", severity: "red", primaryBlockRef: "block-4", relatedRefs: [], explanation: "Capacity conflict", options: [] }],
   summary: { blocks: blocks.length, episodes: blocks.length, redConflicts: 1, amberConflicts: 0, unassignedBlocks: 0, blockedBlocks: 1, lastChangeId: 1 },
@@ -79,7 +67,8 @@ test("command centre handles forty rooms and at least one hundred represented st
   await page.goto("/hospital-board", { waitUntil: "networkidle" });
   await expect(page.locator(".roomRow")).toHaveCount(40);
   await expect.poll(async () => page.locator(".staffList button").count()).toBeGreaterThanOrEqual(100);
-  await expect(page.getByText("40 rooms / areas")).toBeVisible();
+  await expect(page.locator(".hccKpis article").first()).toContainText("40");
+  await expect(page.locator(".hccKpis article").first()).toContainText("rooms / areas");
   await expect(page.getByText(/\d+ staff represented in current operational feeds/)).toBeVisible();
 });
 
@@ -95,8 +84,8 @@ test("room, staff, exception and case controls all change real state", async ({ 
   await expect(page.locator(".staffList button")).toHaveCount(1);
   await page.locator(".staffList button").first().click();
   await expect(page.getByLabel("Search hospital command")).toHaveValue("Staff 77");
-  await page.getByLabel("Search hospital command").fill("");
-  await page.locator(".caseBlock").first().click();
+  await page.getByLabel("Search hospital command").fill("Patient 1");
+  await page.locator('.caseBlock[title^="Patient 1 ·"]').click();
   await expect(page.getByRole("link", { name: "Patient record" })).toHaveAttribute("href", "/patient-record?episode=EP-1000");
   await expect(page.getByRole("link", { name: "Patient work" })).toHaveAttribute("href", "/clinical-execution?episode=EP-1000");
   await page.getByRole("button", { name: "Close selected case" }).click();
