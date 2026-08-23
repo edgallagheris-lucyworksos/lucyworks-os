@@ -28,10 +28,14 @@ jobs:
         run: |
           echo '--- INSTALLED TREE ---'
           npm ls playwright @playwright/test postcss sharp next || true
-          echo '--- NEXT 15.5.21 DEPENDENCIES ---'
-          npm view next@15.5.21 dependencies --json
-          echo '--- NEXT 16.3.2 DEPENDENCIES ---'
-          npm view next@16.3.2 dependencies --json
+          echo '--- NEXT 15.5.21 PACKAGE CONTRACT ---'
+          npm view next@15.5.21 dependencies optionalDependencies peerDependencies engines --json
+          echo '--- NEXT 16.3.2 PACKAGE CONTRACT ---'
+          npm view next@16.3.2 dependencies optionalDependencies peerDependencies engines --json
+          echo '--- CURRENT SAFE CANDIDATES ---'
+          npm view @playwright/test@1.62.1 version engines --json
+          npm view postcss@8.5.23 version engines --json
+          npm view sharp@0.35.0 version engines --json
       - name: Production dependency audit
         shell: bash
         run: |
