@@ -1,9 +1,9 @@
-FROM node:20-alpine AS dependencies
+FROM node:22-alpine AS dependencies
 WORKDIR /repo/apps/web
 COPY apps/web/package*.json ./
 RUN npm install --no-audit --no-fund
 
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /repo
 ARG API_INTERNAL_BASE=http://api:8000
 ENV NEXT_TELEMETRY_DISABLED=1 \
@@ -14,7 +14,7 @@ COPY packages/shared ./packages/shared
 WORKDIR /repo/apps/web
 RUN mkdir -p public && npm run build
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
