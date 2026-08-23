@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+python scripts/validate_current_architecture.py
 python scripts/validate_lucyworks_architecture.py
 python scripts/validate_bvs_public_site_layer.py
 python scripts/validate_staff_assignment_layer.py

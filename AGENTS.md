@@ -17,15 +17,43 @@ Canonical names:
 
 Do not rename the system or invent replacement module names.
 
+## Canonical repository topology
+
+There is one active LucyWorksOS implementation:
+
+```text
+apps/web  = canonical staff-facing web application
+apps/api  = canonical backend/API and persistence layer
+```
+
+The root scripts, tests and deployment work must target these canonical directories.
+
+The following top-level directories are legacy migration sources only:
+
+```text
+frontend/
+backend/
+```
+
+Hard rules for legacy directories:
+
+- Do not implement new product work in `frontend/` or `backend/`.
+- Do not fix a feature in a legacy directory instead of the canonical implementation.
+- Do not add imports, runtime dependencies, scripts or deployment paths from `apps/*` to legacy code.
+- Legacy code may be read only to identify useful behaviour that has not yet reached the canonical system.
+- If useful legacy behaviour is required, migrate/rebuild it inside `apps/web` or `apps/api`, add canonical tests, then leave the legacy copy untouched until deletion is approved.
+- If documentation conflicts with the current root `package.json`, `PRODUCT_CONTRACT.md`, this file, or `apps/*`, the canonical `apps/*` architecture wins.
+
 ## Mandatory continuation rule
 
 At the start of every LucyWorksOS coding session, read these files before making changes:
 
-1. `docs/LUCYWORKS_SYSTEM_CONTRACT.md`
-2. `docs/LUCYWORKS_CONTINUE_HERE.md`
-3. `apps/web/lib/day-control-work.ts`
-4. `apps/web/lib/day-control-views.ts`
-5. `apps/web/components/day-control-grid.tsx`
+1. `PRODUCT_CONTRACT.md`
+2. `docs/LUCYWORKS_SYSTEM_CONTRACT.md`
+3. `docs/LUCYWORKS_CONTINUE_HERE.md`
+4. `apps/web/lib/day-control-work.ts`
+5. `apps/web/lib/day-control-views.ts`
+6. `apps/web/components/day-control-grid.tsx`
 
 The current frontend source of truth is the generated 15-minute day-control schedule in:
 
@@ -40,6 +68,8 @@ apps/web/lib/day-control-views.ts
 ```
 
 Do not build any new module that invents a separate work model.
+
+Where canonical backend persistence exists, the web application must converge on that shared backend state rather than creating a second persistent source of truth in the browser.
 
 ## Professional-grade standard
 
@@ -130,16 +160,15 @@ Minimum professional system capabilities:
 
 The next build work must continue in this order unless the user explicitly changes priority:
 
-1. Convert department pages to `day-control-views.ts`.
-2. Add local action persistence for `ScheduledWorkBlock` changes.
-3. Add backend persistence for scheduled blocks and audit events.
-4. Add arrivals, consults, insurance/admin and reception queues to the generated model.
-5. Add conflict detection for resources, staff skills, late updates, missed breaks and overrun work.
-6. Add voice-to-work capture that creates or updates scheduled blocks.
-7. Add patient/subject timeline views from the same block model.
+1. Consolidate all active development on `apps/web` + `apps/api`; migrate any verified legacy-only behaviour before deleting legacy copies.
+2. Convert department pages to `day-control-views.ts` where still required.
+3. Converge live actions and scheduled work on canonical backend persistence and audit.
+4. Add/strengthen conflict detection for resources, staff skills, late updates, missed breaks and overrun work.
+5. Add voice-to-work capture that creates or updates canonical scheduled work.
+6. Add patient/subject timeline views from the same operating model.
 
 ## Hard rule
 
 If a change creates another disconnected board, dashboard, fake module or separate source of truth, it is wrong.
 
-LucyWorksOS must remain one generated hospital operating model with multiple filtered views.
+LucyWorksOS must remain one hospital operating model with multiple filtered views. New work belongs in `apps/web` and `apps/api` only.

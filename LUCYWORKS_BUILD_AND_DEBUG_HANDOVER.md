@@ -1,503 +1,168 @@
-# LucyWorks OS — Build + Debug Handover Pack
+# LucyWorks OS — Current Build + Debug Handover
 
-## Current status
-This file is the current source-of-truth handover for LucyWorks OS after the backend stabilisation pass.
+## Current architecture
 
-The project now uses a safer backend entrypoint:
+LucyWorksOS is one connected referral-hospital operating system.
 
-```text
-backend/app/main_fixed.py
-```
-
-The older `backend/app/main.py` still exists, but the smoke test and full run script now target `main_fixed.py`.
-
----
-
-# 1. Product Definition
-
-## Product name
-LucyWorks OS
-
-## Product type
-Hospital operations engine for specialist veterinary hospitals.
-
-## Core positioning
-**Run the hospital. Not just the schedule.**
-
-LucyWorks OS coordinates:
-- Episodes / cases
-- Patients and owners
-- Rooms
-- Procedure scheduling
-- Prep / anaesthesia / procedure / recovery / cleaning blocks
-- Staff and shifts
-- Work ownership
-- Conflicts
-- Results review
-- Mail Ops / communications
-- Handover
-- Audit trail
-
-Core loop:
+The canonical implementation is:
 
 ```text
-Episode → Schedule → Rooms → Staff → Conflicts → Results → Messages → Work → Audit
+apps/web   # Next.js staff-facing product
+apps/api   # FastAPI backend, domain services, persistence, auth and governance
 ```
 
----
+Top-level `frontend/` and `backend/` were earlier implementation snapshots. They are not current run targets and must not receive new product work. See `docs/CANONICAL_CONSOLIDATION_AUDIT.md`.
 
-# 2. Repository
+## Product authority
 
-GitHub repository:
+Read these before changing product behaviour:
+
+1. `PRODUCT_CONTRACT.md`
+2. `AGENTS.md`
+3. `docs/LUCYWORKS_SYSTEM_CONTRACT.md`
+4. `docs/LUCYWORKS_CONTINUE_HERE.md`
+
+The operating principle is one hospital model with connected views, not independent departmental apps.
+
+## Canonical frontend
 
 ```text
-edgallagheris-lucyworksos/lucyworks-os
+apps/web
 ```
 
-Expected structure:
+Important operating-model files include:
 
 ```text
-lucyworks-os/
-  backend/
-    app/
-      main.py
-      main_fixed.py
-      models.py
-      schemas.py
-      database.py
-      seed.py
-    requirements.txt
-    smoke_test.py
-  frontend/
-    app/
-      page.tsx
-      login/
-      command/
-      episodes/
-      schedule/
-      conflicts/
-      staff/
-      rooms/
-      results/
-      mail/
-      consult/
-      ward/
-      theatre/
-      queues/
-      audit/
-      input/
-    components/
-      hospital-shell.tsx
-    lib/
-      session.ts
-    package.json
-    tsconfig.json
-  run-backend-check.sh
-  run-all.sh
-  SYSTEM_AUDIT.md
-  LUCYWORKS_BUILD_AND_DEBUG_HANDOVER.md
+apps/web/lib/day-control-work.ts
+apps/web/lib/day-control-views.ts
+apps/web/components/day-control-grid.tsx
 ```
 
----
+The current product also contains the newer hospital command, episode, care, clinical execution, governance, access, automation and system-control surfaces under `apps/web/app`.
 
-# 3. Backend Stack
-
-Framework: FastAPI
-
-ORM / DB: SQLModel with SQLite for development.
-
-Default DB is defined in `backend/app/database.py`:
-
-```python
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./lucyworks.db")
-```
-
-## Current backend entrypoint
-Use:
+## Canonical backend
 
 ```text
-backend/app/main_fixed.py
+apps/api
 ```
 
-Run target:
+Run entrypoint:
+
+```text
+apps/api/app/main.py
+```
+
+The canonical backend contains authentication and access control, audit attribution, migrations, hospital operations, scheduling/day control, conflict handling, care, evidence/governance and newer operational services. Do not route new functionality back through the deleted/legacy top-level backend.
+
+## Install
+
+From the repository root:
 
 ```bash
-uvicorn app.main_fixed:app --host 0.0.0.0 --port 8000
+npm run backend:install
+npm run frontend:install
 ```
 
-## Main backend files
+## Full validation
 
-### `backend/app/models.py`
-Core entities:
-- `User`
-- `HospitalSection`
-- `Room`
-- `Patient`
-- `Episode`
-- `Admission`
-- `Handover`
-- `ResultReview`
-- `MessageThread`
-- `MessageEntry`
-- `StaffMember`
-- `Shift`
-- `ProcedureType`
-- `CaseProcedure`
-- `ScheduleBlock`
-- `RoomState`
-- `ConflictAction`
-- `WorkItem`
-- `AuditEvent`
-
-Important current fix:
-
-```python
-ScheduleBlock.assigned_staff_member_id
-```
-
-This means schedule blocks can now store the actual assigned staff member, not just the role.
-
-`ConflictAction` now also supports resolution state:
-
-```python
-status
-resolved_at
-resolution_note
-```
-
----
-
-# 4. Critical Backend Endpoints
-
-## Health
-```text
-GET /api/health
-```
-
-## Users / staff / shifts
-```text
-GET /api/users
-GET /api/staff
-GET /api/shifts
-GET /api/staff-load
-```
-
-## Patients / episodes
-```text
-GET /api/patients
-GET /api/episodes
-GET /api/episode-command/{episode_ref}
-```
-
-## Boards required by frontend
-```text
-GET /api/director-board
-GET /api/consult-board
-GET /api/ward-board
-GET /api/theatre-board
-```
-
-## Schedule
-```text
-GET  /api/procedure-types
-GET  /api/case-procedures
-GET  /api/schedule-blocks
-POST /api/schedule/generate
-POST /api/schedule/block/{block_id}/shift
-```
-
-## Staff allocation
-```text
-POST /api/staff/allocate
-```
-
-This now writes:
-
-```text
-assigned_staff_member_id
-owner_role
-```
-
-## Conflicts
-```text
-GET  /api/conflicts
-POST /api/conflicts/to-work
-GET  /api/conflict-actions
-POST /api/conflict-actions/{action_id}/resolve
-```
-
-## Results
-```text
-GET  /api/results
-POST /api/results/{result_id}/action
-```
-
-## Messaging / Mail Ops
-```text
-GET  /api/message-threads
-GET  /api/message-threads/{thread_id}/entries
-POST /api/messages/thread
-POST /api/messages/{thread_id}
-```
-
-## Rooms
-```text
-GET  /api/rooms
-GET  /api/room-states
-POST /api/room-states/{room_state_id}/set
-```
-
-## Audit
-```text
-GET /api/audit
-```
-
----
-
-# 5. Frontend Stack
-
-Framework: Next.js 15 + React 19
-
-## Product landing
-`frontend/app/page.tsx`
-
-Should position LucyWorks OS as:
-
-```text
-Hospital Operations Engine
-Run the hospital. Not just the schedule.
-```
-
-## Shared shell
-`frontend/components/hospital-shell.tsx`
-
-Includes role navigation and now links to `/staff` for ops manager, clinician, and nurse roles.
-
-## Episode command view
-`frontend/app/episodes/[episodeRef]/page.tsx`
-
-Uses:
-
-```text
-GET /api/episode-command/{episode_ref}
-GET /api/staff-load
-```
-
-Current controls:
-- shift schedule block by -15 / +15 minutes
-- assign staff to a block
-- convert conflict to work
-- mark result reviewed
-- show assigned staff name using `assigned_staff_member_id`
-- show staff load cards
-
-## Conflicts page
-`frontend/app/conflicts/page.tsx`
-
-Current controls:
-- show detected conflicts
-- convert detected conflict to work
-- show conflict actions
-- resolve conflict actions
-
-## Staff page
-`frontend/app/staff/page.tsx`
-
-Shows:
-- staff member
-- role
-- on shift / off shift
-- active assigned blocks
-- assigned block IDs
-- skills
-
----
-
-# 6. Run Scripts
-
-## Backend smoke check
-File:
-
-```text
-run-backend-check.sh
-```
-
-Command:
+From the repository root:
 
 ```bash
-bash run-backend-check.sh
+npm run check
 ```
 
-## Full development run
-File:
+This uses the canonical root validation pipeline in `scripts/check-all.sh`, including architecture/system checks, backend smoke/safety validation and the frontend build.
 
-```text
-run-all.sh
-```
+Do not treat a visual screenshot as sufficient acceptance for staff-facing behaviour. Preserve functional browser and hospital-scale acceptance tests required by `PRODUCT_CONTRACT.md`.
 
-Command:
+## Run locally
+
+Use two terminals from the repository root.
+
+### Terminal 1 — API
 
 ```bash
-bash run-all.sh
+npm run backend:run
 ```
 
-Important: this now runs:
-
-```bash
-uvicorn app.main_fixed:app --host 0.0.0.0 --port 8000
-```
-
----
-
-# 7. Smoke Test
-
-File:
+Default API port:
 
 ```text
-backend/smoke_test.py
+8000
 ```
 
-It imports:
-
-```python
-from app.main_fixed import app
-```
-
-It uses an isolated clean SQLite database every run.
-
-It validates:
-1. `/api/health`
-2. seeded episodes
-3. `EP-1042` episode command
-4. director, consult, ward, and theatre boards
-5. schedule generation
-6. schedule block chain
-7. schedule shifting
-8. staff list
-9. staff allocation
-10. `/api/staff-load`
-11. `/api/conflicts`
-12. conflict-to-work
-13. `/api/conflict-actions`
-14. conflict resolution
-15. episode command after actions
-
-Expected pass output:
-
-```text
---- ALL TESTS PASSED ---
-```
-
----
-
-# 8. Current Known Risks
-
-## Risk 1 — frontend build still needs external verification
-The backend has been hardened, but the frontend build has not been executed inside this assistant runtime.
-
-Required check:
+### Terminal 2 — web
 
 ```bash
-cd frontend
-npm install
-NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run build
+npm run frontend:run
 ```
 
-## Risk 2 — no migration system
-There is still no Alembic migration system. Development uses SQLite + SQLModel create_all.
-
-Production requires migrations.
-
-## Risk 3 — schedule duplication policy not resolved
-`/api/schedule/generate` creates a new case procedure and new block chain every call.
-
-Need a product decision:
-- allow multiple procedures per episode, or
-- replace/void prior planned blocks for same episode/procedure.
-
-## Risk 4 — old `main.py` remains
-The safer app is `main_fixed.py`. The older `main.py` is not the recommended run target.
-
-Future cleanup should either:
-- replace `main.py` with `main_fixed.py`, or
-- keep `main_fixed.py` as stable entrypoint and document it clearly.
-
-## Risk 5 — UI is functional but not polished
-Current UI is operational and dark-command styled, but still needs:
-- stronger logo component
-- product/pitch page
-- demo story
-- screenshots
-- pricing hypothesis
-- technical architecture diagram
-
----
-
-# 9. Branding / Marketing State
-
-Name: LucyWorks OS
-
-Category: Hospital Operations Engine
-
-Tagline:
+Default web port:
 
 ```text
-Run the hospital. Not just the schedule.
+3000
 ```
 
-Visual direction:
-- dark operational UI
-- clinical / command-centre feel
-- teal accent `#14b8a6`
-- near-black background `#020617`
-- no cute vet branding
-- no SaaS fluff
-
----
-
-# 10. Next Build Order
-
-Do not add new concepts until validation is done.
-
-## Step 1 — backend verification
-Run:
+Or use the repository's canonical combined development scripts where appropriate:
 
 ```bash
-bash run-backend-check.sh
+npm run dev
 ```
 
-Fix any failure.
+## Debug order
 
-## Step 2 — frontend build verification
-Run:
+When something fails:
 
-```bash
-cd frontend
-npm install
-NEXT_PUBLIC_API_BASE=http://localhost:8000 npm run build
-```
+1. Confirm you are working in `apps/web` / `apps/api`, not a historical directory.
+2. Run `npm run check` and capture the first real failure.
+3. Fix the smallest root cause; do not redesign adjacent modules.
+4. Run the relevant focused test.
+5. Run the full check again.
+6. Review `git diff` before accepting the change.
 
-Fix any build errors.
+## Connected-system rule
 
-## Step 3 — product cleanup
-- decide schedule duplication policy
-- replace/retire old `main.py`
-- add CI workflow manually if GitHub connector blocks it
-- add product/pitch page
-- add better logo/brand component
+A feature is not complete merely because a page renders.
 
----
-
-# 11. Prompt for another LLM
+Changes must preserve the chain:
 
 ```text
-You are debugging LucyWorks OS in repo edgallagheris-lucyworksos/lucyworks-os.
-Use LUCYWORKS_BUILD_AND_DEBUG_HANDOVER.md as source of truth.
-Use backend/app/main_fixed.py as the current stable backend entrypoint.
-Do not guess from chat.
-First make backend/smoke_test.py pass on a clean isolated DB.
-Then make frontend npm build pass.
-Do not add new concepts until validation passes.
-Product direction: LucyWorks OS is a hospital operations engine, not a dashboard.
-Core loop: Episode → Schedule → Rooms → Staff → Conflicts → Results → Messages → Work → Audit.
+hospital
+→ area / room
+→ patient / episode
+→ work / procedure
+→ staff / resource
+→ state / action
+→ evidence / audit
 ```
+
+A change in one operational surface must update shared canonical state so the rest of LucyWorks can reflect it. Do not create a private page-level database, alternate master schedule, duplicate patient workflow or disconnected board.
+
+## AI / coding-agent rule
+
+AI may assist development and operational text handling, but it is not system authority.
+
+For coding agents:
+
+- read `AGENTS.md` first;
+- work in a feature branch;
+- analyse before editing when scope is uncertain;
+- do not write new product code into legacy paths;
+- do not change architecture, auth, safety/governance, schema or deployment boundaries without explicit scope;
+- run tests and show the diff after edits.
+
+For LucyWorks runtime AI:
+
+- use structured inputs/outputs;
+- validate model output before persistence;
+- hard rules, permissions, audit and human authority remain authoritative;
+- local Ollama models may be used as an implementation detail, not as the source of hospital truth.
+
+## Current consolidation task
+
+The repository is being reduced to one obvious active implementation. The canonical branch work should:
+
+1. lock `apps/web` + `apps/api` as the only product implementation;
+2. preserve any verified useful legacy behaviour through Git history/migration;
+3. remove duplicate top-level `frontend/` and `backend/` once the canonical checks are green;
+4. continue all subsequent LucyWorks work only in the canonical monorepo.
