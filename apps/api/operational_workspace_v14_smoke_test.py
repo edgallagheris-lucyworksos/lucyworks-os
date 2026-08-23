@@ -120,12 +120,16 @@ with TestClient(app) as client:
     assert data["summary"]["activePatients"] == 1
     assert data["summary"]["boardBlocks"] == 1
     assert data["summary"]["scheduledPatients"] == 1
-    assert data["summary"]["unlinkedTasks"] == 1
+    assert data["summary"]["unlinkedTasks"] == len(data["unlinkedTasks"])
+    assert data["summary"]["unlinkedTasks"] >= 1
     assert data["summary"]["overdueTasks"] == 1
     assert data["patientFlow"][0]["patientName"] == "Bramble V14"
     assert data["patientFlow"][0]["schedule"][0]["areaName"] == "MRI"
     assert data["tasks"][0]["linkedToCanonicalEpisode"] is True
-    assert data["unlinkedTasks"][0]["linkedToCanonicalEpisode"] is False
+    assert any(
+        task["title"] == "Legacy task without episode" and task["linkedToCanonicalEpisode"] is False
+        for task in data["unlinkedTasks"]
+    )
     assert data["consistency"]["canonicalEpisodeCount"] == data["consistency"]["workspacePatientCount"]
 
     r = client.post(

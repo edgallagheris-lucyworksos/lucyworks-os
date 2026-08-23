@@ -147,7 +147,8 @@ for token in required_governance_panel:
         raise SystemExit(f"Governance panel missing required UI token: {token}")
 
 required_panel = [
-    "Generate referral pathway",
+    "Create referral episode",
+    "Create episode",
     "onGenerate",
     "generateReferralPathway",
     "Referral consult",
@@ -211,7 +212,7 @@ for token in required_models:
         raise SystemExit(f"Schedule state model missing explicit governance field: {token}")
 
 required_database = [
-    "GOVERNANCE_COLUMNS",
+    "SCHEDULE_STATE_COLUMNS",
     "consent_status",
     "estimate_status",
     "insurance_status",
@@ -219,8 +220,12 @@ required_database = [
     "owner_updated",
     "referring_vet_report_sent",
     "discharge_clear",
-    "ALTER TABLE schedulestateblock ADD COLUMN",
-    "_ensure_schedule_state_governance_columns",
+    "SQLITE_COLUMN_MIGRATIONS",
+    '"schedulestateblock": SCHEDULE_STATE_COLUMNS',
+    "_ensure_sqlite_columns",
+    "ALTER TABLE",
+    "alembic_version",
+    "alembic upgrade head",
 ]
 
 for token in required_database:

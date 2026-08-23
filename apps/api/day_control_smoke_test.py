@@ -7,6 +7,7 @@ if TEST_DB.exists():
     TEST_DB.unlink()
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
+os.environ["ALLOW_LEGACY_BOARD_BULK_REPLACE"] = "true"
 
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel

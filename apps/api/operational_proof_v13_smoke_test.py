@@ -64,7 +64,7 @@ clinician = auth_headers(203, "Operational Proof Clinician", "clinical_director"
 nurse = auth_headers(204, "Operational Proof Nurse", "nurse")
 
 referral_payload = {
-    "premisesRef": "default-premises",
+    "premisesRef": "bvs-bristol",
     "patientName": "Operational Bramble",
     "species": "dog",
     "breed": "Labrador",
@@ -147,7 +147,7 @@ try:
             "/api/v11/master-board/day",
             headers=ops,
             params={
-                "premises_ref": "default-premises",
+                "premises_ref": "bvs-bristol",
                 "operational_date": proposed_block["operationalDate"],
             },
         )
