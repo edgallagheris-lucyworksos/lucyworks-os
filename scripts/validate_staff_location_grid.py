@@ -147,7 +147,8 @@ for token in required_governance_panel:
         raise SystemExit(f"Governance panel missing required UI token: {token}")
 
 required_panel = [
-    "Generate referral pathway",
+    "Create referral episode",
+    "Create episode",
     "onGenerate",
     "generateReferralPathway",
     "Referral consult",
