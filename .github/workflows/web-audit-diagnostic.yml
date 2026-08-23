@@ -1,0 +1,35 @@
+name: Web npm audit diagnostic
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/package.json"
+      - ".github/workflows/web-audit-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install current dependency graph
+        run: npm install --ignore-scripts
+      - name: Production dependency audit
+        shell: bash
+        run: |
+          echo '--- PRODUCTION AUDIT ---'
+          npm audit --omit=dev --audit-level=high || true
+      - name: Full dependency audit
+        shell: bash
+        run: |
+          echo '--- FULL AUDIT ---'
+          npm audit --audit-level=high || true
