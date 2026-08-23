@@ -16,9 +16,16 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def as_utc(value: datetime) -> datetime:
+    """Return an aware UTC datetime; SQLite-loaded naive values are treated as UTC."""
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def overlap_minutes(start_a: datetime, end_a: datetime, start_b: datetime, end_b: datetime) -> int:
-    start = max(start_a, start_b)
-    end = min(end_a, end_b)
+    start = max(as_utc(start_a), as_utc(start_b))
+    end = min(as_utc(end_a), as_utc(end_b))
     seconds = (end - start).total_seconds()
     return max(0, int(seconds // 60))
 
@@ -97,8 +104,8 @@ def hospital_forecast(
             if block.room_name and block.room_name in state_by_room and state_by_room[block.room_name].state in {"blocked", "out_of_service", "cleaning"}:
                 risks.append(f"{block.room_name} is {state_by_room[block.room_name].state}")
 
-        due_obs = [x for x in obs_due if cursor <= x.due_at < slot_end]
-        due_meds = [x for x in meds_due if cursor <= x.due_at < slot_end]
+        due_obs = [x for x in obs_due if cursor <= as_utc(x.due_at) < slot_end]
+        due_meds = [x for x in meds_due if cursor <= as_utc(x.due_at) < slot_end]
         if len(due_obs) >= 5:
             risks.append(f"{len(due_obs)} observations due")
         if len(due_meds) >= 5:
