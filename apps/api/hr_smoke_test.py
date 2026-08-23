@@ -6,7 +6,16 @@ TEST_DB = Path(__file__).parent / "hr_smoke_test.db"
 if TEST_DB.exists():
     TEST_DB.unlink()
 
-os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
+os.environ.update({
+    "DATABASE_URL": f"sqlite:///{TEST_DB}",
+    "AUTO_CREATE_SCHEMA": "true",
+    "AUTH_MODE": "local",
+    "AUTH_ENFORCEMENT": "required",
+    "AUTH_DEV_LOGIN_ENABLED": "true",
+    "AUTH_JWT_SECRET": "smoke-test-secret-that-is-long-and-not-for-production",
+    "AUTH_ISSUER": "lucyworks-smoke",
+    "AUTH_AUDIENCE": "lucyworks-smoke-api",
+})
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
@@ -20,6 +29,13 @@ print("\n--- RUNNING HR STAFFING SMOKE TEST ---\n")
 with TestClient(app) as client:
     r = client.get("/api/health")
     assert r.status_code == 200, r.text
+
+    login = client.post("/api/auth/dev-login", json={"user_id": 1})
+    assert login.status_code == 200, login.text
+    identity = login.json()
+    assert identity["user"]["verified"] is True
+    assert identity["user"]["role"] == "ops_manager"
+    client.headers.update({"Authorization": f"Bearer {identity['accessToken']}"})
 
     r = client.get("/api/staff")
     assert r.status_code == 200, r.text
