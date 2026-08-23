@@ -16,15 +16,31 @@ os.environ.update({
 })
 
 from fastapi.testclient import TestClient
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Session
 
 from app.database import engine
+from app.hospital_ops_models import CanonicalEpisodeState
 from app.main import app
 
 SQLModel.metadata.drop_all(engine)
 SQLModel.metadata.create_all(engine)
 
 try:
+    with Session(engine) as session:
+        session.add(CanonicalEpisodeState(
+            episode_ref="EP-V13-CRITICAL",
+            patient_ref="PAT-V13-CRITICAL",
+            patient_name="Critical Result Proof Patient",
+            premises_ref="default-premises",
+            service_line="diagnostics",
+            urgency="urgent",
+            phase="diagnostics",
+            status="active",
+            owner_role="clinician",
+            next_action="Acknowledge and act on the critical diagnostic result",
+        ))
+        session.commit()
+
     with TestClient(app) as client:
         due_at = datetime.now(timezone.utc) - timedelta(minutes=17)
         created = client.post("/api/control-plane/critical-results", json={
