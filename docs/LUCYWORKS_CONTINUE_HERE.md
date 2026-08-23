@@ -4,62 +4,53 @@ Use this at the start of every LucyWorks build session.
 
 ## Core rule
 
-LucyWorks OS is one operating model with many views. Do not create disconnected pages.
+LucyWorks OS is one connected hospital operating model with many role/department views. Do not create disconnected pages, boards, databases or workflows.
 
-The base model is:
+## Canonical codebase
 
 ```text
-templates
-scheduled cases
-resources
-staff cover
-15-minute slots
-scheduled work blocks
+apps/web = active staff-facing application
+apps/api = active backend, persistence, auth, governance and operational services
 ```
+
+Top-level `frontend/` and `backend/` are legacy history and are not build targets.
 
 ## Mandatory reading order
 
-1. `docs/LUCYWORKS_SYSTEM_CONTRACT.md`
-2. `docs/LUCYWORKS_CONTINUE_HERE.md`
-3. `apps/web/lib/day-control-work.ts`
-4. `apps/web/lib/day-control-views.ts`
-5. `apps/web/components/day-control-grid.tsx`
+1. `PRODUCT_CONTRACT.md`
+2. `AGENTS.md`
+3. `docs/LUCYWORKS_SYSTEM_CONTRACT.md`
+4. `docs/LUCYWORKS_CONTINUE_HERE.md`
+5. `docs/CANONICAL_CONSOLIDATION_AUDIT.md`
+6. the canonical files relevant to the task under `apps/web` and `apps/api`
 
-## Current source of truth
-
-Primary file:
+For day-control work also read:
 
 ```text
 apps/web/lib/day-control-work.ts
-```
-
-View adapter:
-
-```text
 apps/web/lib/day-control-views.ts
+apps/web/components/day-control-grid.tsx
 ```
 
-All screens must use these until backend storage replaces them.
+## Source-of-truth direction
 
-## What the full system must show
+The operating model is:
 
 ```text
-arrivals
-consults
-owner/contact updates
-insurance/admin blockers
-reception/admin queue
-planned work
-rooms/resources
-staff assignments
-staff skills
-breaks/welfare
-handover
-records/audit
-next actions
+patients / episodes
++ procedure templates and planned work
++ staff / skills / shifts
++ rooms / resources / capacity
++ blockers / decisions / handovers
++ 15-minute time control
+= connected scheduled operational work
 ```
 
-Every row must answer:
+Where canonical backend persistence exists, `apps/api` is the authority for persisted hospital state. Frontend-generated day-control data is a compatibility/prototype layer that must converge on the backend; it must not become a second persistent hospital reality.
+
+All views must consume the same canonical operating state directly or through approved view adapters.
+
+## Every operational row/action must answer
 
 ```text
 who
@@ -67,39 +58,56 @@ what
 where
 when
 how
+status
 blocker
 next action
+patient / episode
+staff / resource ownership
+evidence / audit consequence
 ```
 
-## Current committed state
+## Connected-system acceptance
+
+A change is only complete when it preserves the operational chain:
 
 ```text
-/hospital-board uses DayControlGrid
-DayControlGrid uses generated 15-minute blocks
-Templates generate prep/main/recovery/update/check rows
-Action drawer includes generated contact update
-/my-shift includes timed work and queue work
-/rota includes day-grid pressure and rota grid
+hospital
+→ area / room
+→ patient / episode
+→ work / procedure
+→ staff / resource
+→ state / action
+→ evidence / audit
 ```
 
-## Next build sequence
+Examples:
 
-### 1. Convert area pages
+- moving a procedure must affect the shared schedule/resource state, not only one page;
+- assigning staff must update the canonical assignment and be visible to dependent views;
+- resolving a blocker must change shared state and produce the required evidence/audit;
+- an emergency override must be authorised, explicit and traceable;
+- department views may filter the hospital model but may not invent their own work model.
 
-Convert these to `day-control-views.ts`:
+## Current consolidation priority
+
+### 1. Keep one implementation
+
+All active work belongs in:
 
 ```text
-/theatre
-/imaging
-/icu-wards
-/lucy-pharm
-/lucy-intake
-/flow
+apps/web
+apps/api
 ```
 
-### 2. Add live state updates
+Do not restore or recreate top-level `frontend/` or `backend/`.
 
-Drawer actions must update the selected scheduled block:
+### 2. Finish source-of-truth convergence
+
+Identify any remaining UI surface that still depends on hard-coded/generated-only state when canonical backend state exists. Move it to the shared API/domain model without breaking the 15-minute operational view.
+
+### 3. Strengthen live connected actions
+
+Actions such as:
 
 ```text
 assign
@@ -109,48 +117,55 @@ resolve
 handover
 review
 complete
+move / reschedule
+emergency override
 ```
 
-### 3. Add persistence
+must update shared canonical state, respect permissions and produce audit/evidence.
 
-Add storage for scheduled blocks and actions:
+### 4. Strengthen conflict and capacity rules
 
-```text
-list blocks
-create block
-update block
-record action
-```
-
-### 4. Add conflict detection
-
-Detect:
+Detect and expose at minimum:
 
 ```text
-resource clash
-missing staff role
+room/resource clash
+staff overlap
+missing required skill/role
 late update
-admin blocker
+admin/consent blocker
 thin cover
-missed break
-work running over
+missed/protected break
+work overrun
+recovery/turnover dependency
+emergency displacement impact
 ```
 
-### 5. Improve overview layout
+### 5. Complete connected domain workflows
 
-The main board needs:
+Clinical/operational areas such as intake, theatre, imaging, wards/ICU, pharmacy, discharge, owner communications, rota and safety/governance must remain domain-specific while sharing the same patient/episode/work/staff/resource/evidence spine.
 
-```text
-command strip
-now / next / blocked / overload summaries
-generated schedule lanes
-resource panel
-staff pressure panel
-update-needed panel
+### 6. Add AI only inside the operating boundary
+
+AI may extract, classify, summarise, retrieve, draft and explain. It must not become the source of truth or bypass permissions, hard safety rules, human authority, validation or audit.
+
+## Validation
+
+Before accepting a change:
+
+```bash
+npm run check
 ```
 
-## New chat prompt
+Also review:
+
+```bash
+git diff
+```
+
+Staff-facing changes must retain the functional and hospital-scale acceptance requirements in `PRODUCT_CONTRACT.md`.
+
+## Prompt for a coding agent
 
 ```text
-Continue LucyWorks OS from docs/LUCYWORKS_SYSTEM_CONTRACT.md and docs/LUCYWORKS_CONTINUE_HERE.md. Use the generated 15-minute day-control schedule as the single source of truth. Do not build disconnected pages. Convert the next page/module to use day-control-work.ts or day-control-views.ts, then add persistence/actions.
+Continue LucyWorksOS from PRODUCT_CONTRACT.md, AGENTS.md, docs/LUCYWORKS_SYSTEM_CONTRACT.md and docs/LUCYWORKS_CONTINUE_HERE.md. Work only in the canonical apps/web + apps/api system unless the task explicitly concerns current support files. Preserve one connected hospital operating model. Where backend persistence exists, use it as the persisted source of truth; do not create parallel page-level state or a second schedule. Analyse the relevant existing code first, make the minimum scoped change, run the relevant tests and the canonical check, then report the exact diff and any unresolved risks.
 ```
