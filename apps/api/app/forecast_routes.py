@@ -16,9 +16,16 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def as_utc(value: datetime) -> datetime:
+    """Return an aware UTC datetime; SQLite-loaded naive values are treated as UTC."""
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def overlap_minutes(start_a: datetime, end_a: datetime, start_b: datetime, end_b: datetime) -> int:
-    start = max(start_a, start_b)
-    end = min(end_a, end_b)
+    start = max(as_utc(start_a), as_utc(start_b))
+    end = min(as_utc(end_a), as_utc(end_b))
     seconds = (end - start).total_seconds()
     return max(0, int(seconds // 60))
 
@@ -52,7 +59,10 @@ def hospital_forecast(
     slot_minutes: int = Query(default=60, ge=15, le=240),
     session: Session = Depends(get_session),
 ):
-    now = utc_now()
+    # Forecast slots are minute-aligned. Derive the end from the same aligned
+    # boundary so a six-hour request is exactly six hours rather than six
+    # hours plus the discarded seconds/microseconds.
+    now = utc_now().replace(second=0, microsecond=0)
     end = now + timedelta(hours=hours)
 
     rooms = session.exec(select(Room).where(Room.active == True)).all()
@@ -76,9 +86,11 @@ def hospital_forecast(
     blocked_rooms = [x for x in room_states if x.state in {"blocked", "out_of_service", "cleaning"}]
 
     slots = []
-    cursor = now.replace(second=0, microsecond=0)
+    cursor = now
     while cursor < end:
         slot_end = cursor + timedelta(minutes=slot_minutes)
+        if slot_end > end:
+            slot_end = end
         group_load = {"theatre": 0, "imaging": 0, "ward": 0, "icu": 0, "recovery": 0, "ecc": 0}
         risks: list[str] = []
         events: list[dict] = []
@@ -97,8 +109,8 @@ def hospital_forecast(
             if block.room_name and block.room_name in state_by_room and state_by_room[block.room_name].state in {"blocked", "out_of_service", "cleaning"}:
                 risks.append(f"{block.room_name} is {state_by_room[block.room_name].state}")
 
-        due_obs = [x for x in obs_due if cursor <= x.due_at < slot_end]
-        due_meds = [x for x in meds_due if cursor <= x.due_at < slot_end]
+        due_obs = [x for x in obs_due if cursor <= as_utc(x.due_at) < slot_end]
+        due_meds = [x for x in meds_due if cursor <= as_utc(x.due_at) < slot_end]
         if len(due_obs) >= 5:
             risks.append(f"{len(due_obs)} observations due")
         if len(due_meds) >= 5:
