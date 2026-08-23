@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   web-security:
@@ -20,6 +20,8 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -33,9 +35,15 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE: http://localhost:8000
         run: npm run build
-      - name: Capture package lock
-        uses: actions/upload-artifact@v4
-        with:
-          name: patched-web-package-lock
-          path: apps/web/package-lock.json
-          if-no-files-found: error
+      - name: Commit validated package lock
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "Package lock already current"
+          else
+            git commit -m "Lock patched web dependency graph"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
