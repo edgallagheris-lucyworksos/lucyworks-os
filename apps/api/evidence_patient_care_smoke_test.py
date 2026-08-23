@@ -7,6 +7,10 @@ if TEST_DB.exists():
     TEST_DB.unlink()
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
+# This isolated compatibility test seeds the retired day-control board so the
+# legacy patient-care/evidence bridge can still be proven without reopening the
+# production whole-board replacement endpoint.
+os.environ["LUCYWORKS_LEGACY_TEST_BYPASS"] = "true"
 
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
