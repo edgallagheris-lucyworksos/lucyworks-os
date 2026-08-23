@@ -23,6 +23,15 @@ jobs:
           node-version: 22
       - name: Install current dependency graph
         run: npm install --ignore-scripts
+      - name: Vulnerable dependency tree
+        shell: bash
+        run: |
+          echo '--- INSTALLED TREE ---'
+          npm ls playwright @playwright/test postcss sharp next || true
+          echo '--- NEXT 15.5.21 DEPENDENCIES ---'
+          npm view next@15.5.21 dependencies --json
+          echo '--- NEXT 16.3.2 DEPENDENCIES ---'
+          npm view next@16.3.2 dependencies --json
       - name: Production dependency audit
         shell: bash
         run: |
