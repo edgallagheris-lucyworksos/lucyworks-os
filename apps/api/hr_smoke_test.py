@@ -128,7 +128,8 @@ with TestClient(app) as client:
     r = client.post(f"/api/hr/fatigue/evaluate/{staff_id}?actor_name=HR%20Test")
     assert r.status_code == 200, r.text
     risk = r.json()["risk"]
-    assert risk["risk_level"] in {"MED", "HIGH"}
+    risk_level = risk.get("risk_level") or risk.get("riskLevel")
+    assert risk_level in {"MED", "HIGH"}, risk
 
     r = client.get("/api/hr")
     assert r.status_code == 200, r.text
