@@ -59,7 +59,10 @@ def hospital_forecast(
     slot_minutes: int = Query(default=60, ge=15, le=240),
     session: Session = Depends(get_session),
 ):
-    now = utc_now()
+    # Forecast slots are minute-aligned. Derive the end from the same aligned
+    # boundary so a six-hour request is exactly six hours rather than six
+    # hours plus the discarded seconds/microseconds.
+    now = utc_now().replace(second=0, microsecond=0)
     end = now + timedelta(hours=hours)
 
     rooms = session.exec(select(Room).where(Room.active == True)).all()
@@ -83,9 +86,11 @@ def hospital_forecast(
     blocked_rooms = [x for x in room_states if x.state in {"blocked", "out_of_service", "cleaning"}]
 
     slots = []
-    cursor = now.replace(second=0, microsecond=0)
+    cursor = now
     while cursor < end:
         slot_end = cursor + timedelta(minutes=slot_minutes)
+        if slot_end > end:
+            slot_end = end
         group_load = {"theatre": 0, "imaging": 0, "ward": 0, "icu": 0, "recovery": 0, "ecc": 0}
         risks: list[str] = []
         events: list[dict] = []
