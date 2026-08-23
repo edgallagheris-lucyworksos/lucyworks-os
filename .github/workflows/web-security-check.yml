@@ -1,0 +1,41 @@
+name: Web security check
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/package.json"
+      - "apps/web/package-lock.json"
+      - "apps/web/next.config.ts"
+      - ".github/workflows/web-security-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-security:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependency graph
+        run: npm install --ignore-scripts
+      - name: Reject high production vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+      - name: Reject high full-tree vulnerabilities
+        run: npm audit --audit-level=high
+      - name: Build production web app
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8000
+        run: npm run build
+      - name: Capture package lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: patched-web-package-lock
+          path: apps/web/package-lock.json
+          if-no-files-found: error
