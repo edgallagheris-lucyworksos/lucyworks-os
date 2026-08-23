@@ -7,6 +7,9 @@ if TEST_DB.exists():
     TEST_DB.unlink()
 
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
+# This test intentionally exercises the retired day-control bulk board contract.
+# Keep that compatibility surface available only inside this isolated legacy smoke test.
+os.environ["LUCYWORKS_LEGACY_TEST_BYPASS"] = "true"
 
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
