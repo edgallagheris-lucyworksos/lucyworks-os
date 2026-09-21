@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import func, text
 from sqlmodel import Session, select
 
-from app.auth import get_current_auth_context
+from app.auth import AuthContext, get_current_auth_context
 from app.v7_models import DurableEvent
 
 
@@ -59,6 +59,7 @@ def publish_event(
     correlation_id: str | None = None,
     causation_ref: str | None = None,
     idempotency_key: str | None = None,
+    actor: AuthContext | None = None,
 ) -> DurableEvent:
     if idempotency_key:
         existing = session.exec(select(DurableEvent).where(DurableEvent.idempotency_key == idempotency_key)).first()
@@ -73,7 +74,7 @@ def publish_event(
             return existing
     current = session.exec(select(func.max(DurableEvent.sequence))).one()
     sequence = int(current or 0) + 1
-    auth = get_current_auth_context()
+    auth = actor or get_current_auth_context()
     row = DurableEvent(
         event_ref=f"event-{uuid4().hex}",
         sequence=sequence,

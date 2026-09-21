@@ -39,7 +39,16 @@ Every module must declare:
 11. Feature flag used to enable/disable it.
 12. Acceptance tests proving its real action path.
 
-A module is not complete merely because it renders a page.
+A registry entry is a declaration, not runtime authority. A module cannot be
+marked executable unless every declared command has a resolvable backend
+handler and the manifest names its acceptance proof. Pilot and production
+modules must be executable. A module is not complete merely because it renders
+a page.
+
+The four initial extension declarations (`lucy.capture`, `lucy.pharmacy`,
+`lucy.insurance` and `lucy.disruption`) are deliberately `disabled` and
+non-executable. Their command names are design reservations, not claims that
+handlers exist.
 
 ## Command rule
 
@@ -71,7 +80,12 @@ Examples:
 - `patient.deteriorated`
 - `owner.updated`
 
-Every event carries canonical subject references, premises scope, timestamp, source, actor/provenance, correlation ID and payload version.
+Every event carries canonical subject references, organisation/site/premises
+scope, timestamp, source, actor/provenance, correlation ID, an idempotency key
+and payload version. The canonical publisher validates fact naming and active
+site scope, derives the actor from verified authentication, and persists the
+envelope through the existing V7 durable event store. Reusing an idempotency
+key with different event content is rejected.
 
 ## Extension behaviour
 
@@ -106,6 +120,13 @@ Role-specific views are projections of the same hospital state.
 
 External PMS, PACS, laboratory, pharmacy, insurer and communication systems connect through adapters. Source-system IDs are attached to canonical LucyWorks objects rather than replacing them.
 
+Static connector definitions describe supported read actions only; they never
+enable a connection. Runtime authority comes from the persisted,
+organisation/site/premises-scoped `IntegrationConnectorV28` record. The
+extension gateway accepts only active connectors in `shadow` or `read_only`
+mode and only actions declared by the matching connector definition. It has no
+execute mode, external write-back path or caller-controlled `write` bypass.
+
 ## Acceptance rule
 
 Every serious extension must prove:
@@ -117,6 +138,14 @@ Every serious extension must prove:
 5. evidence/audit capture for consequential actions;
 6. frontend action path when staff interaction exists;
 7. automated acceptance test.
+
+`apps/api/extension_platform_smoke_test.py` is the executable proof for the
+platform boundary itself. It verifies that unbacked modules cannot become
+executable, command-like event names and cross-site publication are rejected,
+events are durably attributed and idempotent, connector state is persisted and
+site scoped, external-write actions are denied, secrets are not exposed, and
+the platform API requires authentication. The test is invoked by both the
+monorepo check and the V28 connection workflow when these files change.
 
 ## Design test
 
