@@ -116,10 +116,11 @@ export function HospitalOsHomeV32({ user }: { user: SessionUser }) {
     return state.context?.sites.find(item => item.siteRef === current) || state.context?.sites[0] || null;
   }, [state.context]);
 
-  const critical = useMemo(() => {
-    const tasks = state.workspace?.tasks || [];
+  const critical = useMemo<number | null>(() => {
+    if (!state.workspace) return null;
+    const tasks = state.workspace.tasks || [];
     const criticalTasks = tasks.filter(item => item.overdue || item.status === "blocked" || item.urgency === "red").length;
-    const redConflicts = (state.workspace?.conflicts || []).filter(item => ["red", "critical"].includes(item.severity)).length;
+    const redConflicts = (state.workspace.conflicts || []).filter(item => ["red", "critical"].includes(item.severity)).length;
     return criticalTasks + redConflicts;
   }, [state.workspace]);
 
@@ -171,11 +172,11 @@ export function HospitalOsHomeV32({ user }: { user: SessionUser }) {
           <strong>{critical ?? "—"}</strong>
           <h3>{critical === 1 ? "item needs immediate attention" : "items need immediate attention"}</h3>
           <p>
-            {critical
-              ? "Open Patient Command to work through overdue, blocked or red items and operational conflicts."
-              : liveAvailable
-                ? "No red or blocked work is visible in the connected patient workspace."
-                : "Live hospital feeds have not loaded yet."}
+            {critical === null
+              ? "Live patient-workspace data has not loaded yet."
+              : critical > 0
+                ? "Open Patient Command to work through overdue, blocked or red items and operational conflicts."
+                : "No red or blocked work is visible in the connected patient workspace."}
           </p>
           <Link href="/workspace">Review attention queue →</Link>
         </aside>
