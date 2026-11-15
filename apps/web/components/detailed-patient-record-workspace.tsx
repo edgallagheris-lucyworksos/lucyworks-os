@@ -38,10 +38,10 @@ export function DetailedPatientRecordWorkspace() {
   const [speechOpen, setSpeechOpen] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const initial = params.get("episode");
+    const initial = new URLSearchParams(window.location.search).get("episode");
+    const speech = new URLSearchParams(window.location.search).get("speech");
     if (initial) setEpisodeRef(initial);
-    setSpeechOpen(params.get("speech") === "1");
+    setSpeechOpen(speech === "1");
   }, []);
 
   const load = useCallback(async () => {
