@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiJson } from "@/lib/api-client";
+import { SpeechCaptureV19 } from "@/components/speech-capture-v19";
 
 type Tab = "overview" | "identity" | "clinical" | "medication" | "anaesthesia" | "inpatient" | "procedure" | "finance" | "communication";
 type RecordData = Record<string, any>;
@@ -34,10 +35,13 @@ export function DetailedPatientRecordWorkspace() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [speechOpen, setSpeechOpen] = useState(false);
 
   useEffect(() => {
-    const initial = new URLSearchParams(window.location.search).get("episode");
+    const params = new URLSearchParams(window.location.search);
+    const initial = params.get("episode");
     if (initial) setEpisodeRef(initial);
+    setSpeechOpen(params.get("speech") === "1");
   }, []);
 
   const load = useCallback(async () => {
@@ -46,7 +50,9 @@ export function DetailedPatientRecordWorkspace() {
     try {
       const result = await apiGet<RecordData>(`/api/v8/episodes/${encodeURIComponent(episodeRef.trim())}/record`);
       setData(result);
-      window.history.replaceState(null, "", `/patient-record?episode=${encodeURIComponent(result.episode?.episode_ref || episodeRef.trim())}`);
+      const resolvedEpisode = result.episode?.episode_ref || episodeRef.trim();
+      const keepSpeech = new URLSearchParams(window.location.search).get("speech") === "1";
+      window.history.replaceState(null, "", `/patient-record?episode=${encodeURIComponent(resolvedEpisode)}${keepSpeech ? "&speech=1" : ""}`);
     }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load patient record"); }
     finally { setBusy(false); }
@@ -61,6 +67,7 @@ export function DetailedPatientRecordWorkspace() {
 
   const patientRef = data?.patient?.patient_ref || data?.episode?.patient_ref || "";
   const ownerRef = data?.owners?.[0]?.owner_ref || "";
+  const speechReturnTo = episodeRef.trim() ? `/patient-record?episode=${encodeURIComponent(episodeRef.trim())}&speech=1` : "/patient-record";
   const tabs: Array<[Tab, string]> = [["overview", "Overview"], ["identity", "Patient & owner"], ["clinical", "Clinical record"], ["medication", "Medication safety"], ["anaesthesia", "Anaesthesia"], ["inpatient", "Inpatient"], ["procedure", "Procedure"], ["finance", "Estimate & insurance"], ["communication", "Communication & documents"]];
 
   return <main style={{ minHeight: "100vh", background: "#e8eef4", color: "#0f172a", padding: 12, fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -75,7 +82,8 @@ export function DetailedPatientRecordWorkspace() {
     <nav aria-label="Patient record sections" style={{ display: "flex", gap: 7, overflowX: "auto", padding: "10px 0" }}>{tabs.map(([key, label]) => <button key={key} style={{ ...button, flex: "0 0 auto", background: tab === key ? "#0f766e" : "#334155" }} onClick={() => setTab(key)}>{label}</button>)}</nav>
     {error && <div aria-live="assertive" style={{ ...panel, borderColor: "#ef4444", color: "#991b1b", marginBottom: 10 }}>{error}</div>}
     {message && <div aria-live="polite" style={{ ...panel, borderColor: "#22c55e", color: "#166534", marginBottom: 10 }}>{message}</div>}
-    {data && <section style={{ ...panel, position: "sticky", top: 6, zIndex: 20, marginBottom: 10, borderLeft: "7px solid #0f766e", display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><strong style={{ fontSize: 22 }}>{data.patient?.display_name || data.episode?.patient_name}</strong><div>{data.patient?.species || "Species not recorded"} · {data.episode?.episode_ref}</div></div><div><strong>{data.episode?.current_area_ref || "Location not recorded"}</strong><div>{data.episode?.phase} · accountable {data.episode?.owner_role}</div></div></section>}
+    {data && <section style={{ ...panel, position: "sticky", top: 6, zIndex: 20, marginBottom: 10, borderLeft: "7px solid #0f766e", display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}><div><strong style={{ fontSize: 22 }}>{data.patient?.display_name || data.episode?.patient_name}</strong><div>{data.patient?.species || "Species not recorded"} · {data.episode?.episode_ref}</div></div><div><strong>{data.episode?.current_area_ref || "Location not recorded"}</strong><div>{data.episode?.phase} · accountable {data.episode?.owner_role}</div></div><button type="button" style={{ ...button, background: speechOpen ? "#334155" : "#0f766e" }} onClick={() => setSpeechOpen(value => !value)}>{speechOpen ? "Close dictation" : "Dictate / speech"}</button></section>}
+    {data && speechOpen ? <section style={{ marginBottom: 10 }}><SpeechCaptureV19 episodeRef={data.episode?.episode_ref || episodeRef} mode="clinical_dictation" createClinicalNote compact returnTo={speechReturnTo} onConfirmed={() => void load()} /></section> : null}
     {!data ? <section style={panel}>Enter an episode reference to open its complete record.</section> : <>
       {tab === "overview" && <Overview data={data} />}
       {tab === "identity" && <Identity data={data} episodeRef={episodeRef} patientRef={patientRef} ownerRef={ownerRef} busy={busy} act={act} />}
