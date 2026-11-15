@@ -68,12 +68,14 @@ export function SpeechCaptureV19({
   createClinicalNote = true,
   compact = false,
   onConfirmed,
+  returnTo = "/input",
 }: {
   episodeRef: string;
   mode?: CaptureMode;
   createClinicalNote?: boolean;
   compact?: boolean;
   onConfirmed?: (result: any) => void;
+  returnTo?: string;
 }) {
   const { premisesRef, siteName } = useOperationalContext();
   const [captureMode, setCaptureMode] = useState<CaptureMode>(mode);
@@ -82,6 +84,7 @@ export function SpeechCaptureV19({
   const [notice, setNotice] = useState(false);
   const [authorityName, setAuthorityName] = useState("");
   const [recording, setRecording] = useState(false);
+  const [usedSpeech, setUsedSpeech] = useState(false);
   const [reviewed, setReviewed] = useState(false);
   const [response, setResponse] = useState<SpeechResponse | null>(null);
   const [sections, setSections] = useState<Record<string, string>>({});
@@ -155,8 +158,9 @@ export function SpeechCaptureV19({
     recognition.onend = () => { setRecording(false); setPartial(""); };
     recognitionRef.current = recognition;
     recognition.start();
+    setUsedSpeech(true);
     setRecording(true);
-    setStatus("Recording and transcribing. Raw audio is not retained by LucyWorks.");
+    setStatus("Recording and transcribing. LucyWorks does not retain raw audio; the configured browser or device speech service may process audio.");
   }
 
   function stopRecording() {
@@ -180,7 +184,7 @@ export function SpeechCaptureV19({
       const result = await apiPost<SpeechResponse>("/api/v19/speech/captures", {
         episodeRef: episodeRef.trim(),
         captureMode,
-        sourceType: recognitionAvailable ? "browser_speech_or_typed" : "typed",
+        sourceType: usedSpeech ? "browser_speech" : "typed",
         transcript: transcript.trim(),
         language: "en-GB",
         noticeVersion: SPEECH_NOTICE_VERSION,
@@ -247,6 +251,7 @@ export function SpeechCaptureV19({
   const negations = response?.draft.negations || [];
   const tasks = response?.draft.task_proposals || [];
   const confirmed = response?.capture.status === "confirmed";
+  const authorityHref = `/speech-authority?returnTo=${encodeURIComponent(returnTo)}`;
 
   return <section className={`sp ${compact ? "compact" : ""}`}>
     <style>{css}</style>
@@ -257,10 +262,10 @@ export function SpeechCaptureV19({
     {!response ? <>
       <div className="settings">
         <label>Capture mode<select value={captureMode} onChange={event => setCaptureMode(event.target.value as CaptureMode)}><option value="clinical_dictation">Clinical dictation</option><option value="consultation_transcription">Consultation transcription</option><option value="voice_command">Low-risk work capture</option><option value="typed_predictive">Typed predictive wording</option></select></label>
-        {notice ? <div className="notice authority-ok"><span><b>Identity & recording authority confirmed</b><br />{authorityName} · {siteName}<br /><small>Raw audio retention is off.</small></span><Link href="/speech-authority?returnTo=%2Finput">Review authority →</Link></div> : <div className="notice authority-needed"><span><b>Before using speech capture, confirm who you are and your recording authority.</b><br /><small>The microphone stays locked until this is resolved.</small></span><Link href="/speech-authority?returnTo=%2Finput">Confirm identity & recording authority →</Link></div>}
+        {notice ? <div className="notice authority-ok"><span><b>Identity & recording authority confirmed</b><br />{authorityName} · {siteName}<br /><small>Raw audio retention is off.</small></span><Link href={authorityHref}>Review authority →</Link></div> : <div className="notice authority-needed"><span><b>Before using speech capture, confirm who you are and your recording authority.</b><br /><small>The microphone stays locked until this is resolved.</small></span><Link href={authorityHref}>Confirm identity & recording authority →</Link></div>}
       </div>
-      <div className="mic-row"><button className={recording ? "stop" : "primary"} onClick={recording ? stopRecording : startRecording} disabled={!episodeRef.trim() || !notice}>{recording ? "Stop recording" : recognitionAvailable ? "Start microphone" : "Microphone unavailable"}</button><button onClick={() => { setTranscript(""); setPartial(""); }}>Clear</button></div>
-      <label>Source transcript<textarea rows={compact ? 6 : 10} value={transcript} onChange={event => setTranscript(event.target.value)} placeholder="Dictate, type or paste the veterinary consultation or operational update." /></label>
+      <div className="mic-row"><button className={recording ? "stop" : "primary"} onClick={recording ? stopRecording : startRecording} disabled={!episodeRef.trim() || !notice}>{recording ? "Stop recording" : recognitionAvailable ? "Start microphone" : "Microphone unavailable"}</button><button onClick={() => { setTranscript(""); setPartial(""); setUsedSpeech(false); }}>Clear</button></div>
+      <label>Source transcript<textarea rows={compact ? 6 : 10} value={transcript} onChange={event => setTranscript(event.target.value)} placeholder="Dictate, type or paste the veterinary consultation or operational update." /></label><small className="source-note">{usedSpeech ? "Source: browser/device speech transcription. Review carefully before confirmation." : "Source: typed or pasted text."}</small>
       {partial ? <div className="partial" aria-live="polite">Live: {partial}</div> : null}
       {terms.length ? <div className="terms" aria-label="Predictive veterinary wording">{terms.map(item => <button key={`${item.type}-${item.term}`} onClick={() => insertTerm(item.term)}><b>{item.term}</b><small>{item.type} · {item.source}</small></button>)}</div> : null}
       <button className="primary" disabled={busy || !episodeRef.trim() || !transcript.trim() || !notice} onClick={() => void createDraft()}>{busy ? "Creating draft…" : "Create structured draft"}</button>
@@ -288,5 +293,5 @@ export function SpeechCaptureV19({
 }
 
 const css = `
-.sp{display:grid;gap:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:16px;padding:12px;color:#0f172a;font-family:Inter,system-ui,sans-serif}.sp *{box-sizing:border-box}.sp-head{display:flex;justify-content:space-between;gap:12px;background:#071019;color:white;border-radius:13px;padding:13px}.sp-head span{font-size:10px;letter-spacing:.12em;color:#2dd4bf;font-weight:950}.sp-head h2{margin:4px 0;font-size:28px}.sp-head p{margin:0;color:#b6c2d1}.sp-head>b{height:max-content;border-radius:999px;padding:7px 10px;font-size:10px}.sp-head .recording{background:#fee2e2;color:#991b1b}.sp-head .idle{background:#dcfce7;color:#166534}.sp-head .blocked{background:#fef3c7;color:#92400e}.identity{display:grid;grid-template-columns:max-content 1fr;gap:5px 10px;border:1px solid #cbd5e1;background:white;border-radius:10px;padding:9px}.identity b{color:#475569}.settings{display:grid;grid-template-columns:minmax(180px,280px) 1fr;gap:9px}.sp label{display:grid;gap:4px;font-size:12px;font-weight:900}.sp textarea,.sp select{width:100%;border:1px solid #94a3b8;border-radius:9px;padding:9px;background:white;color:#0f172a;font:inherit;font-weight:500}.notice{grid-template-columns:22px 1fr!important;align-items:start;background:white;border:1px solid #cbd5e1;border-radius:10px;padding:9px}.notice input,.suggestion input,.tasks input{width:20px;height:20px}.notice.authority-needed,.notice.authority-ok{display:flex!important;justify-content:space-between;gap:10px;align-items:center}.notice.authority-needed{border-color:#f59e0b;background:#fffbeb;color:#92400e}.notice.authority-ok{border-color:#22c55e;background:#f0fdf4;color:#166534}.notice.authority-needed a,.notice.authority-ok a{min-height:38px;white-space:nowrap}.mic-row,.confirm-row{display:flex;gap:8px;flex-wrap:wrap}.sp button,.sp a{min-height:44px;border:1px solid #64748b;border-radius:9px;background:white;color:#0f172a;padding:9px 12px;font-weight:900;text-decoration:none;cursor:pointer}.sp button.primary,.sp a{background:#0f766e;color:white;border-color:#0f766e}.sp button.stop{background:#b91c1c;color:white;border-color:#b91c1c}.sp button:disabled{opacity:.5;cursor:not-allowed}.partial{border-left:5px solid #0ea5e9;background:#eff6ff;padding:8px}.terms{display:flex;gap:6px;overflow:auto}.terms button{display:grid;text-align:left;min-width:160px}.terms small{font-weight:500;color:#64748b}.boundary{border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:9px;padding:9px;font-weight:800}.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.review-grid>article,.signals>div,.suggestions,.meds,.tasks{display:grid;gap:7px;background:white;border:1px solid #cbd5e1;border-radius:11px;padding:10px}.review-grid h3,.signals h3,.suggestions h3,.meds h3,.tasks h3{margin:0}.review-grid article:first-child p{white-space:pre-wrap;line-height:1.5}.review-grid small,.suggestion small,.meds small,.tasks small{color:#64748b}.signals{display:grid;grid-template-columns:1fr 1fr;gap:9px}.signals span{border-left:5px solid #f59e0b;background:#fffbeb;padding:7px}.suggestion,.tasks label{grid-template-columns:22px 1fr;align-items:start;border:1px solid #e2e8f0;border-radius:8px;padding:8px}.suggestion span,.tasks span,.meds article{display:grid;gap:3px}.suggestion.low{border-color:#ef4444;background:#fff1f2}.suggestion.medium{border-color:#f59e0b}.meds{border-color:#f59e0b}.meds article{border-bottom:1px solid #e2e8f0;padding-bottom:7px}.confirm{border-color:#0f766e;background:#f0fdfa}.confirmed{border:1px solid #22c55e;background:#f0fdf4;color:#166534;border-radius:9px;padding:10px;font-weight:900}.messages p{margin:0;color:#166534}.messages .error{color:#b91c1c}.sp.compact .sp-head h2{font-size:22px}@media(max-width:760px){.sp{padding:7px}.sp-head,.settings{grid-template-columns:1fr;display:grid}.review-grid,.signals{grid-template-columns:1fr}.mic-row button,.confirm-row button{flex:1}.notice.authority-needed,.notice.authority-ok{display:grid!important}.notice.authority-needed a,.notice.authority-ok a{white-space:normal}.sp-head h2{font-size:24px}}
+.sp{display:grid;gap:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:16px;padding:12px;color:#0f172a;font-family:Inter,system-ui,sans-serif}.sp *{box-sizing:border-box}.sp-head{display:flex;justify-content:space-between;gap:12px;background:#071019;color:white;border-radius:13px;padding:13px}.sp-head span{font-size:10px;letter-spacing:.12em;color:#2dd4bf;font-weight:950}.sp-head h2{margin:4px 0;font-size:28px}.sp-head p{margin:0;color:#b6c2d1}.sp-head>b{height:max-content;border-radius:999px;padding:7px 10px;font-size:10px}.sp-head .recording{background:#fee2e2;color:#991b1b}.sp-head .idle{background:#dcfce7;color:#166534}.sp-head .blocked{background:#fef3c7;color:#92400e}.identity{display:grid;grid-template-columns:max-content 1fr;gap:5px 10px;border:1px solid #cbd5e1;background:white;border-radius:10px;padding:9px}.identity b{color:#475569}.settings{display:grid;grid-template-columns:minmax(180px,280px) 1fr;gap:9px}.sp label{display:grid;gap:4px;font-size:12px;font-weight:900}.sp textarea,.sp select{width:100%;border:1px solid #94a3b8;border-radius:9px;padding:9px;background:white;color:#0f172a;font:inherit;font-weight:500}.notice{grid-template-columns:22px 1fr!important;align-items:start;background:white;border:1px solid #cbd5e1;border-radius:10px;padding:9px}.notice input,.suggestion input,.tasks input{width:20px;height:20px}.notice.authority-needed,.notice.authority-ok{display:flex!important;justify-content:space-between;gap:10px;align-items:center}.notice.authority-needed{border-color:#f59e0b;background:#fffbeb;color:#92400e}.notice.authority-ok{border-color:#22c55e;background:#f0fdf4;color:#166534}.notice.authority-needed a,.notice.authority-ok a{min-height:38px;white-space:nowrap}.mic-row,.confirm-row{display:flex;gap:8px;flex-wrap:wrap}.sp button,.sp a{min-height:44px;border:1px solid #64748b;border-radius:9px;background:white;color:#0f172a;padding:9px 12px;font-weight:900;text-decoration:none;cursor:pointer}.sp button.primary,.sp a{background:#0f766e;color:white;border-color:#0f766e}.sp button.stop{background:#b91c1c;color:white;border-color:#b91c1c}.sp button:disabled{opacity:.5;cursor:not-allowed}.partial{border-left:5px solid #0ea5e9;background:#eff6ff;padding:8px}.source-note{color:#64748b;font-size:11px;font-weight:700}.terms{display:flex;gap:6px;overflow:auto}.terms button{display:grid;text-align:left;min-width:160px}.terms small{font-weight:500;color:#64748b}.boundary{border:1px solid #f59e0b;background:#fffbeb;color:#92400e;border-radius:9px;padding:9px;font-weight:800}.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.review-grid>article,.signals>div,.suggestions,.meds,.tasks{display:grid;gap:7px;background:white;border:1px solid #cbd5e1;border-radius:11px;padding:10px}.review-grid h3,.signals h3,.suggestions h3,.meds h3,.tasks h3{margin:0}.review-grid article:first-child p{white-space:pre-wrap;line-height:1.5}.review-grid small,.suggestion small,.meds small,.tasks small{color:#64748b}.signals{display:grid;grid-template-columns:1fr 1fr;gap:9px}.signals span{border-left:5px solid #f59e0b;background:#fffbeb;padding:7px}.suggestion,.tasks label{grid-template-columns:22px 1fr;align-items:start;border:1px solid #e2e8f0;border-radius:8px;padding:8px}.suggestion span,.tasks span,.meds article{display:grid;gap:3px}.suggestion.low{border-color:#ef4444;background:#fff1f2}.suggestion.medium{border-color:#f59e0b}.meds{border-color:#f59e0b}.meds article{border-bottom:1px solid #e2e8f0;padding-bottom:7px}.confirm{border-color:#0f766e;background:#f0fdfa}.confirmed{border:1px solid #22c55e;background:#f0fdf4;color:#166534;border-radius:9px;padding:10px;font-weight:900}.messages p{margin:0;color:#166534}.messages .error{color:#b91c1c}.sp.compact .sp-head h2{font-size:22px}@media(max-width:760px){.sp{padding:7px}.sp-head,.settings{grid-template-columns:1fr;display:grid}.review-grid,.signals{grid-template-columns:1fr}.mic-row button,.confirm-row button{flex:1}.notice.authority-needed,.notice.authority-ok{display:grid!important}.notice.authority-needed a,.notice.authority-ok a{white-space:normal}.sp-head h2{font-size:24px}}
 `;
