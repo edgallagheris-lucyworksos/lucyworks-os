@@ -33,6 +33,7 @@ python care_brief_v16_smoke_test.py
 python ops_engine_smoke_test.py
 python canonical_v3_smoke_test.py
 python canonical_modules_smoke_test.py
+python extension_platform_smoke_test.py
 python knowledge_smoke_test.py
 python operational_action_smoke_test.py
 python day_control_smoke_test.py

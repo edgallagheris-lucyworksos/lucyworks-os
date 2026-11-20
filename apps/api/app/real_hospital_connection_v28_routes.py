@@ -234,9 +234,13 @@ def control_centre(
     )).all()
     connector_rows = []
     for connector in connectors:
+        last_event_at = connector.last_event_at
+        if last_event_at and last_event_at.tzinfo is None:
+            # SQLite drops timezone metadata; persisted production timestamps are UTC.
+            last_event_at = last_event_at.replace(tzinfo=timezone.utc)
         stale = bool(
-            connector.status == "active" and connector.last_event_at and
-            (now - connector.last_event_at).total_seconds() > connector.stale_after_seconds
+            connector.status == "active" and last_event_at and
+            (now - last_event_at).total_seconds() > connector.stale_after_seconds
         )
         connector_rows.append({**row_dict(connector), "stale": stale})
     return {
@@ -795,6 +799,8 @@ def ingest_integration_event(
     session.add(event)
     session.commit()
     session.refresh(event)
+    if reconciliation:
+        session.refresh(reconciliation)
     return {"event": row_dict(event), "reconciliation": row_dict(reconciliation) if reconciliation else None, "idempotent": False}
 
 
@@ -842,6 +848,8 @@ def resolve_reconciliation(
     record_event(session, auth, action="reconciliation_resolved", entity_type="reconciliation_item", entity_ref=item_ref, previous_state=previous, new_state={"item": row_dict(item), "event": row_dict(event) if event else None}, reason=payload.resolution, patient_ref=event.patient_ref if event else None, episode_ref=event.episode_ref if event else None, risk="green")
     session.commit()
     session.refresh(item)
+    if event:
+        session.refresh(event)
     return {"item": row_dict(item), "event": row_dict(event) if event else None}
 
 

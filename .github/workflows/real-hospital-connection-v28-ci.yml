@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - "apps/api/app/real_hospital_connection_v28_*.py"
+      - "apps/api/app/canonical_event_schema.py"
+      - "apps/api/app/extension_platform_routes.py"
+      - "apps/api/app/extension_registry.py"
+      - "apps/api/app/integration_agent_gateway.py"
+      - "apps/api/app/v7_event_service.py"
+      - "apps/api/extension_platform_smoke_test.py"
       - "apps/api/app/production_readiness_v28_patch.py"
       - "apps/api/migrations/versions/0022_real_hospital_connection_v28.py"
       - "apps/api/real_hospital_connection_v28_*.py"
@@ -17,6 +23,12 @@ on:
     branches: [main]
     paths:
       - "apps/api/app/real_hospital_connection_v28_*.py"
+      - "apps/api/app/canonical_event_schema.py"
+      - "apps/api/app/extension_platform_routes.py"
+      - "apps/api/app/extension_registry.py"
+      - "apps/api/app/integration_agent_gateway.py"
+      - "apps/api/app/v7_event_service.py"
+      - "apps/api/extension_platform_smoke_test.py"
       - "apps/api/app/production_readiness_v28_patch.py"
       - "apps/api/migrations/versions/0022_real_hospital_connection_v28.py"
       - "apps/api/real_hospital_connection_v28_*.py"
@@ -64,6 +76,9 @@ jobs:
       - name: Run strict request and contiguous sequence authority proof
         working-directory: apps/api
         run: python real_hospital_connection_v28_authority_test.py 2>&1 | tee real-hospital-connection-v28-authority.log
+      - name: Run extension registry, durable event and connector authority proof
+        working-directory: apps/api
+        run: python extension_platform_smoke_test.py 2>&1 | tee extension-platform-safety.log
       - name: Verify current migration head and v28 evidence tables
         working-directory: apps/api
         shell: bash
@@ -106,6 +121,7 @@ jobs:
             real-hospital-connection-v28-audit.log
             apps/api/real-hospital-connection-v28.log
             apps/api/real-hospital-connection-v28-authority.log
+            apps/api/extension-platform-safety.log
             apps/api/real-hospital-connection-migration-v28.log
             apps/web/real-hospital-connection-web-v28.log
           if-no-files-found: warn
